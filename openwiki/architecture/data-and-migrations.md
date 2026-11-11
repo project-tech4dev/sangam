@@ -1,9 +1,11 @@
 ---
 type: architecture concept
 title: Data and Migrations
-description: How Sangam's Postgres schema is organised by table group (including RFP Watch's rfps tables, server-side proposals, document links and the deleted_documents log), why a baseline plus forward-only migrations (latest 0056) define it, how `make migrate` also brings LangGraph's checkpoint tables to the expected version, how the SQL catalog drift check and the checkpointer version check gate backend boot, how shared public SQL fragments hide private sources, where documents live in storage buckets (including the org-vault type list and soft-delete trash), and how provenance columns keep the optional Neo4j graph rebuildable.
+description: How Sangam's Postgres schema is organised by table group (including RFP Watch's rfps tables, server-side proposals, document links and the deleted_documents log), why a baseline plus forward-only migrations (latest 0056) define it, how `make migrate` also brings LangGraph's checkpoint tables to the expected version, how the SQL catalog drift check and the checkpointer version check gate backend boot, how shared public SQL fragments hide private sources, how the Registry and other lists page on the server (`fetch_page`, `FacetedPage`, `registry_page_sql`), where documents live in storage buckets (including the org-vault type list and soft-delete trash), and how provenance columns keep the optional Neo4j graph rebuildable.
 tags: [database, postgres, migrations, provenance, storage, neo4j, schema]
 sources:
+  - id: openwiki-source-45827b3e47c07055c8ad6543
+    resource: repo://backend/app/api/deps.py
   - id: openwiki-source-ca736c25c2a1bb0e95531706
     resource: repo://backend/app/api/routes/documents.py
   - id: openwiki-source-e0103e1ba2cbec5a0f421c56
@@ -48,6 +50,16 @@ sources:
     resource: repo://backend/app/matching/run.py
   - id: openwiki-source-697868bd3a418ce8115944eb
     resource: repo://backend/app/repositories/documents.py
+  - id: openwiki-source-a7e905ea6574e0a7f28478ab
+    resource: repo://backend/app/repositories/facets.py
+  - id: openwiki-source-a68ab3b1d774c1be72fdfbca
+    resource: repo://backend/app/repositories/news_stories.py
+  - id: openwiki-source-ba18d0cbe843f3b2c07ce30c
+    resource: repo://backend/app/repositories/paging.py
+  - id: openwiki-source-03add8b7bfee3cbc8b94e31a
+    resource: repo://backend/app/repositories/partner_groups.py
+  - id: openwiki-source-99918b924a58bd1535f3e9f7
+    resource: repo://backend/app/repositories/profile_facts.py
   - id: openwiki-source-1157f5d2ae5aa2bccc1057d0
     resource: repo://backend/app/repositories/proposals.py
   - id: openwiki-source-e1e1f5d3920af8337551a6ac
@@ -56,6 +68,10 @@ sources:
     resource: repo://backend/app/repositories/registry.py
   - id: openwiki-source-7883f648138e78c1e5c84c85
     resource: repo://backend/app/repositories/rfps.py
+  - id: openwiki-source-33cf316a6bd97db5d3738d28
+    resource: repo://backend/app/schemas/common.py
+  - id: openwiki-source-4c6d60c2e2f8ab95a2d7a587
+    resource: repo://backend/app/schemas/registry.py
   - id: openwiki-source-8b5590d38dd10784b7da1f6d
     resource: repo://backend/app/schemas/rfps.py
   - id: openwiki-source-e5554658094627ddf1bb9942
@@ -64,8 +80,12 @@ sources:
     resource: repo://backend/tests/test_deleted_documents.py
   - id: openwiki-source-c19bf12e33dd13dd52164b8e
     resource: repo://backend/tests/test_migration_integrity.py
+  - id: openwiki-source-ca30f17cb9dd7937a8d05058
+    resource: repo://backend/tests/test_paging.py
   - id: openwiki-source-f44878a3e6212fc5978caacf
     resource: repo://backend/tests/test_pool_limits.py
+  - id: openwiki-source-0eb35035a6a3d8b4021f5dac
+    resource: repo://backend/tests/test_registry_sql.py
   - id: openwiki-source-b9b33576e920a6ec443c1309
     resource: repo://backend/tests/test_sql_catalog.py
   - id: openwiki-source-77a336ada304965e7aa89c22
@@ -134,10 +154,10 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-60b751726aee2d4aae078a12
     resource: repo://seed/graph_seed.py
-generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-11T11:11:22.403Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-10T13:16:49.280Z
+    at: 2026-11-11T11:11:22.403Z
 ---
 
 # Data and Migrations
@@ -295,7 +315,47 @@ Not every reader of these columns is the SQL tool. The public Registry list and 
 
 - **Private sources are hidden in SQL.** Staff datasets and the Doc Vault cite a synthetic URL on the reserved domain `sangam.invalid` (`PRIVATE_SOURCE_DOMAIN` in `backend/app/ingest/research/source_guards.py`). `public_sql.is_private_url` is the SQL twin of Python's `is_private_source`: it extracts the host with a regex and tests it against that domain or a subdomain. `public_url` and `public_name` return `NULL` for such a row (a sheet's title names the sheet), and `public_text` drops a note or quote whole if it mentions the domain. Every URL a public query selects goes through these. The SQL form is deliberately a little stricter than the Python check for a scheme-less `x.sangam.invalid`.
 - **Shared predicates.** `OPEN_CALL` (`status = 'open'` and no deadline or one not yet past, using `current_date`), `PUBLIC_STORY` (`visibility = 'public'` and `is_news`), `STORY_CHANNEL` (social versus press by source type) and `story_counts`, `entity_tags` and `entity_sdgs` keep the Registry's filters and counts consistent. The `Asia/Kolkata` date in the RFP feed is a separate computation in `repositories/rfps.py`.
-- **Caller pool versus owner pool.** `registry_rows(pool, owner)` reads orgs, funders, places, tags, programmes, partner counts, open calls, CSR years and story counts on the caller pool, so RLS and the `is_public`/`visibility` filters decide which entities appear. Two reads go through the owner pool so the list reads the same for every viewer: which registration types an org has on file (`ON_FILE`: current, registered or provisional, public or not) and `entity_research` counts (staff-only; `GET /api/registry` shows only a run count and latest date and treats a failure there as a hint to drop, not an error). The shared `IDENTIFIERS` query is likewise written for the owner pool: a non-public registration is listed as on file with its number and detail nulled and `number_withheld` set.
+- **Caller pool versus owner pool.** `registry_page_sql(pool, owner, filters, limit=, offset=)` (see Server-side paging below) reads the entity index, places, tags, programmes, partner counts, open calls, CSR years and story counts on the caller pool, so RLS decides which orgs and funders appear, and the shared fragments apply `is_public` (partner lines) and `visibility` (stories) themselves. Two reads go through the owner pool so the list reads the same for every viewer: which registration types an org has on file (`ON_FILE`: current, registered or provisional, public or not; read by `_add_registrations` for the page's orgs only, and by `_registered` for the Registrations filter) and `entity_research` counts (`research_counts`; the table is staff-only, and `GET /api/registry` shows only a run count and latest date for the page's rows). The route treats a failure of the research read as a hint to drop: it logs a warning and returns the page without counts. The shared `IDENTIFIERS` query is likewise written for the owner pool: a non-public registration is listed as on file with its number and detail nulled and `number_withheld` set. The registration read waits until the caller connection has been returned, because both pools are the same pool and holding two connections at once could wait on itself.
+
+## Server-side paging
+
+The Registry used to send every org and funder to the browser, which filtered and counted them. It is now paged, filtered, searched and counted in Postgres, and the rest of the list screens share the same paging helper (`docs/features/2026-11-03-registry-server-paging.md` records the design; where it differs from the code, such as the deleted Python `matches()` path and `Facet.n`, the code wins).
+
+| Piece | Role |
+|---|---|
+| `PageParams` (`backend/app/api/deps.py`) | `limit` 1 to 100 (default 50) and `offset` 0 or more, validated by FastAPI (422 otherwise); `build_page` turns rows and a total into a `Page[M]`. |
+| `Page[T]`, `Facet`, `FacetedPage[T]` (`backend/app/schemas/common.py`) | `Page` is `items`, `total`, `limit`, `offset`; `Facet` is `value` and `count`; `FacetedPage` adds `counts` (the bucket cards) and `facets` (each dropdown's options). `RegistryPage = FacetedPage[RegistryRow]`. |
+| `fetch_page` (`backend/app/repositories/paging.py`) | `(rows, total)` for one-query lists: contacts, documents, funders, meta tags and locations, orgs, partner lines, programs, rfps and scores. |
+| `facets.ordered` (`backend/app/repositories/facets.py`) | Pure ordering of dropdown options: most common first, ties A to Z ignoring case; SDGs in number order. |
+| `registry_page_sql` (`backend/app/repositories/registry.py`) | The Registry's own paged query (not `fetch_page`), because it also returns counts and options. |
+
+**`fetch_page` contract.** The SQL must select `COUNT(*) OVER () AS total` and end in an outermost `ORDER BY ... id` (optionally `ASC`/`DESC`, `NULLS FIRST/LAST`) with no `LIMIT`, `;` or comment after it; a regex check raises `ValueError` before any query runs, so tied rows cannot move between pages. It appends `LIMIT %(limit)s OFFSET %(offset)s`. The total is read from the first row; an empty first page is total 0 with no second query; a page past the end triggers one `SELECT count(*) ... FROM (<sql>) listed` so the total still reports the whole list. `backend/tests/test_paging.py` pins this and, for each of the ten list functions, that its sort ends in a unique id.
+
+**`registry_page_sql` flow.**
+
+<!-- openwiki: mermaid parse failed and this diagram was converted to a text fence so it does not break rendering. Fix the diagram source and restore the mermaid fence. Parser error: Heuristic: a semicolon inside a label breaks rendering; rephrase the label. -->
+```text
+flowchart TD
+    R["GET /api/registry: type, theme, population, sdg, where, reg, ftype, approach, q, limit, offset"] --> F["Filters dataclass; type cso/funder maps to org/funder, anything else is all"]
+    F --> G{"kind is org and reg set?"}
+    G -- yes --> H["_registered on the owner pool: org ids with every needed registration on file"]
+    G -- no --> I["one SQL statement on the caller pool"]
+    H --> I
+    I --> J["_INDEX CTE: one lean row per org and funder; kept = WHERE filters and search; page = ORDER BY kind, lower(name), id LIMIT/OFFSET"]
+    J --> K["returns total, page JSON and, on offset 0 only, facet counts"]
+    K --> L["_rows: per-entity detail queries pipelined in one round trip, only for the page's orgs and funders"]
+    L --> M["_add_registrations on the owner pool, orgs on the page only"]
+    M --> N["route: _add_research on owner pool, drop search, validate RegistryPage"]
+```
+
+- **One lean index.** `_INDEX` rebuilds, per entity, only what filters, sort and search read, from the same fragments (`_ORG_PLACES`, `entity_tag_domains`, `entity_sdgs`, `_PROGRAMS`, ...) that `_rows` uses for the displayed row, with `%(ids)s` replaced by every row of `orgs` or `funders` (`_over_all`). A row therefore cannot show something its filters do not read. `search` is the lower-cased name, aliases, districts, states, programme names and partner names, matched with `strpos` (a match anywhere in a word); the route drops it from the response (`response_model_exclude`).
+- **Filter scope.** `reg` applies only when `type=cso`; `ftype` and `approach` only when `type=funder`. The "works in" filter understands `any`, `ne` (the `NORTH_EAST` states, kept in step with `frontend/features/registry/rows.ts` by a test), `out` (some state outside them) or one state.
+- **Order and totals.** CSOs first, then funders, each by `lower(name) COLLATE "C"`, then `id`. `total` counts every kept row, so a page past the end is empty with the right total.
+- **Counts and options.** The bucket cards (`counts`: `all`, `org`, `funder`) and the dropdowns (`facets`: theme, population, sdg, where, ftype, approach) cover the whole Registry whatever the filters. They are computed only for `offset == 0`; later pages return `{}` for both, and the SQL is written (`WHERE %(with_facets)s`) so Postgres cuts the counting from the plan rather than computing and discarding it.
+- **Detail rows.** Only the page's orgs and funders get detail queries (a kind with no entities on the page sends none), sent through `conn.pipeline()` in one round trip. A page of funders reads no registrations.
+- **Frontend contract.** The server-rendered first batch and the `usePagedList` scroller consume this shape; see [Frontend](frontend.md).
+
+`backend/tests/test_registry_sql.py` runs this against Postgres: ordering, each filter and their combination, search inside a word, limit/offset with a total past the end, whole-Registry counts and options, that registrations are read for the page's orgs only (and for the filter only for the orgs it keeps), that later pages skip facet counting (checked with `EXPLAIN`), and that the join-based tag-domain lookup equals a recursive walk of the taxonomy.
 
 ## Storage buckets
 
@@ -333,6 +393,7 @@ Postgres is authoritative; Neo4j (via Graphiti, `backend/app/integrations/graphi
 
 - `backend/tests/test_migration_integrity.py` (marked `integration`, skips when the compose Postgres on port 5433 is unreachable) checks that restored research data survived: at least 96 `documents`, 29 `graph_ingest_log` rows, stable seed-order ids for the first orgs and funders, an advanced `documents` identity sequence, and seeded v2 content. It is a guard on preserved data rather than a schema check.
 - `backend/tests/test_sql_catalog.py` guards what the catalog must not expose.
+- `backend/tests/test_paging.py` (no database) pins `fetch_page`; `backend/tests/test_registry_sql.py` (Postgres) pins the Registry's paged SQL. See Server-side paging.
 - `backend/tests/test_cov_db_migrate.py` pins the runner's behaviour with a fake connection (ordered apply, drift reported but not fatal, `--status` writes nothing, a failing file stops the run and skips the checkpointer step). `backend/tests/test_pool_limits.py` pins the pool's timeouts and health check, REST's single role-claims-timeout statement, that `set_caller` does not raise Ask's lower timeout, and that boot refuses a checkpointer schema `make migrate` has not set while issuing no DDL itself.
 - `backend/tests/test_storage.py` pins the storage helpers (trash moves and rollback, the bucket suffix, `split`/`owned_split`) and that `storage.VAULT_TYPES` equals the types in `0055`; `backend/tests/test_deleted_documents.py` (integration) proves every `documents` delete is logged with the whole row and a refused vault delete logs nothing.
 - `backend/tests/test_rls.py` and `test_caller_pool.py` exercise policies and the caller pool against a real database; see [Auth, roles and RLS](auth-roles-rls.md).

@@ -2,7 +2,7 @@
 type: testing guide
 title: Testing
 description: How the backend test suite is split into unit tests (no database), integration tests (compose Postgres on :5433) and evals (real model calls that cost money), how the frontend Vitest suite and the per-component Codecov thresholds work, how CI and dependency review check every PR (CI never deploys), and which tests pin the system's architecture, security, tool-surface and proposal-copilot invariants.
-tags: [testing, pytest, vitest, frontend, integration-tests, evals, ci, github-actions, codecov, coverage, architecture-tests, invariants, proposals, rls]
+tags: [testing, paging, registry, pytest, vitest, frontend, integration-tests, evals, ci, github-actions, codecov, coverage, architecture-tests, invariants, proposals, rls]
 sources:
   - id: openwiki-source-164e2da859b5277df81c7d94
     resource: repo://.github/workflows/ci.yml
@@ -12,6 +12,8 @@ sources:
     resource: repo://.github/workflows/deploy.yml
   - id: openwiki-source-fe3601d35ecee292c4d2b24d
     resource: repo://backend/app/agentkit/middleware.py
+  - id: openwiki-source-10e08c1deca7d7728d8240c4
+    resource: repo://backend/app/db/pool.py
   - id: openwiki-source-070c6307b3860e1806baf566
     resource: repo://backend/pyproject.toml
   - id: openwiki-source-539ff1e55b1e385204a4bb93
@@ -62,6 +64,8 @@ sources:
     resource: repo://backend/tests/test_ingest_middleware.py
   - id: openwiki-source-c19bf12e33dd13dd52164b8e
     resource: repo://backend/tests/test_migration_integrity.py
+  - id: openwiki-source-ca30f17cb9dd7937a8d05058
+    resource: repo://backend/tests/test_paging.py
   - id: openwiki-source-fe6e4c3f43ca6fccc586454c
     resource: repo://backend/tests/test_prompt.py
   - id: openwiki-source-1a719932f8db409931d9e2ef
@@ -80,8 +84,18 @@ sources:
     resource: repo://backend/tests/test_proposal_suggest.py
   - id: openwiki-source-0607cb79e3440fdec4d15b13
     resource: repo://backend/tests/test_proposals_work.py
+  - id: openwiki-source-1b5480e092d7a09b76d2dff4
+    resource: repo://backend/tests/test_registry_filters.py
+  - id: openwiki-source-0eb35035a6a3d8b4021f5dac
+    resource: repo://backend/tests/test_registry_sql.py
+  - id: openwiki-source-7ad21629cd8f59763084adc2
+    resource: repo://backend/tests/test_registry.py
+  - id: openwiki-source-03cd5f1c2ac1a4db6357df24
+    resource: repo://backend/tests/test_rfps.py
   - id: openwiki-source-e3d5b96924a7ab50f4e2652f
     resource: repo://backend/tests/test_rls.py
+  - id: openwiki-source-b452c5f471e2aef0e36fb392
+    resource: repo://backend/tests/test_scores.py
   - id: openwiki-source-b9b33576e920a6ec443c1309
     resource: repo://backend/tests/test_sql_catalog.py
   - id: openwiki-source-428476beae4aa2e70ded4bae
@@ -102,6 +116,10 @@ sources:
     resource: repo://db/migrations/0053_deleted_documents.sql
   - id: openwiki-source-e2b923750735c644bf0f22f5
     resource: repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts
+  - id: openwiki-source-0fdaa6836f51e708a4ee3903
+    resource: repo://frontend/components/ui/__tests__/ListPage.test.tsx
+  - id: openwiki-source-00263c26223c6a490764e0f6
+    resource: repo://frontend/features/registry/__tests__/RegistryClient.test.tsx
   - id: openwiki-source-a8bd24489ee5c096845541ba
     resource: repo://frontend/lib/__tests__/copilotkit-route.test.ts
   - id: openwiki-source-4c6b88fce133b6d2e3039743
@@ -112,10 +130,10 @@ sources:
     resource: repo://frontend/vitest.config.mts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-11T11:11:22.403Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-10T13:16:49.280Z
+    at: 2026-11-11T11:11:22.403Z
 ---
 
 # Testing
@@ -217,6 +235,11 @@ A test that renders a component must therefore be `.tsx`. `tests/setup.ts` loads
 
 Tests sit beside the code in `__tests__/` folders under `lib/`, `components/` and `features/` (ask, auth, home, ingest, registry, resources, settings, taxonomy, terms). The ones that guard shared contracts are the URL-state tests (`lib/__tests__/url-hooks.test.tsx`, `back-navigation.test.ts`, `safe-next-path.test.ts`), the auth and API-client tests (`lib/__tests__/auth.test.tsx`, `api-client.test.ts`, `server-auth.test.ts`, `supabase.test.ts`, plus `features/auth/__tests__`, which includes a login form with no Supabase keys), the Ask workspace and its views (`features/ask/__tests__/AskWorkspace.test.tsx`, funder match, RFP watch, proposals), and the Import screens (`features/ingest/__tests__` and its `components` and `lib` folders). See [Frontend](../architecture/frontend.md).
 
+Two files pin the shared list pattern and its first user:
+
+- **`components/ui/__tests__/ListPage.test.tsx`** covers the building blocks every list screen reuses. `BucketCards` marks the active bucket with `aria-pressed` and reports a pick; `FilterRow` renders nothing without filters and flags a moved filter with `data-set`; `SearchBox` reports typed text. `useShowMore` grows by a page and resets when its key changes. `ListMore` is empty with no rows, says "End of the list" at the end, offers at most one page more ("Show 3 more · 3 left", "Loading…" and disabled when busy) and, for its `IntersectionObserver` trigger, loads near the end only after the person has scrolled. `useCursorList` (keyset paging) follows `next_cursor` without repeating a row, keeps rows and reports the error when a page fails, does not keep the last key's page when a new key's first page fails, and drops an answer for a key that is no longer current. `usePagedList` (limit and offset) loads from offset 0 then the next offset until the total is shown, uses a server-rendered `first` page without fetching it again, restarts from offset 0 when the key changes and drops the old key's answer, does not show a row twice when the list shifted between pages (and reports `fetched`, so `ListMore` says "End of the list" rather than "1 left"), and resets `total`, `last` and `more` when a new key's first page fails.
+- **`features/registry/__tests__/RegistryClient.test.tsx`** renders the Registry with `fetchRegistryPage` mocked (`vi.mock("@/features/registry/api")`) and a `first` page shaped like the server's `RegistryPage` (items, total, `counts`, `facets`). It checks bucket counts and profile links, that only the active bucket's own filters show (Registrations for CSOs, Funder type and approach for funders), filters read from the URL via the mocked `navigation.search`, filter changes written to the address as a replace that drops defaults, and that switching bucket resets the bucket-specific filters. The request tests assert what the server is asked: nothing on first render (the `first` page is used), one call once typing pauses (with `q`, `limit=25`, `offset=0`), a dropdown pick asks at once with the text typed so far, clearing a search with the filters asks once, and "Show 5 more · 5 left" asks for `offset=25` and keeps the cards and dropdown options from the first page when the later page carries empty `counts` and `facets`. Because `setUrlParams` writes jsdom's real history, which the shared setup does not reset, the file restores it itself in `afterEach`.
+
 `lib/__tests__/copilotkit-route.test.ts` is a security test of the CopilotKit proxy route (`app/api/copilotkit/[[...slug]]/route.ts`). It imports the real `GET` and `POST` handlers, built exactly as the route builds the runtime, and calls them with no cookie or `Authorization`. `/info` must answer 200, while the runtime's in-memory thread store (`GET /threads`, `/threads/<id>/events`, `/threads/<id>/messages`, `POST /threads/clear`) must answer 404. The route's `onBeforeHandler` hook calls `allowRoute` in `lib/copilotkit-access.ts`, which serves only `info` and the `agent/*` methods the chat client uses (`run`, `connect`, `stop`, `suggest`) and throws a 404 `Response` for everything else, because chat history is read from the backend's `/api/threads` (under RLS), not from the runtime. If an upgrade adds a route to the runtime, this test fails until it is allowed or blocked deliberately.
 
 Coverage uses the `v8` provider with `text-summary` and `lcov` reporters. Its `include` list is `lib/**`, `features/**` and `components/**` (`.ts` and `.tsx`), so **every source file counts whether or not a test imports it** and the figure is honest; test files, `__tests__` folders and `*.d.ts` are excluded. CI runs `npm run coverage` and uploads the `lcov.info`; the thresholds that fail a PR live in `codecov.yml` (75% floor, 1% drop, 75% patch for the `frontend` component), not in the Vitest config, so a local `npm run coverage` only reports a figure.
@@ -229,7 +252,9 @@ Coverage uses the `v8` provider with `text-summary` and `lcov` reporters. Its `i
 - `get_principal` returns `DEV_USER` (an assert in `conftest.py` keeps `DEV_USER_ID` equal to `TEST_USER`).
 - `get_pool` returns `_SentinelPool`, an object that raises `AssertionError` on any attribute access.
 
-Because routers resolve the pool through `Depends(get_pool)`, that single override covers every router. A unit test that reaches the database fails loudly, so the rule is: monkeypatch the `repositories/` function rather than the pool. The `client_for` fixture wraps `make_app` in an `httpx.AsyncClient` over `ASGITransport`.
+Routers take `PoolDep`, which builds a `CallerPool` over `Depends(get_pool)` (`app/db/pool.py`), so that single override covers every router. A unit test that reaches the database fails loudly, so the rule is: monkeypatch the `repositories/` function rather than the pool. The `client_for` fixture wraps `make_app` in an `httpx.AsyncClient` over `ASGITransport`.
+
+When the test is *about* a repository function's SQL rather than a route, use the `recording_pool` fixture instead of monkeypatching. It returns the `RecordingPool` class: construct it with one list of rows per query you expect, and its `connection()` answers each `execute` with the next list, records `(sql, params)` in `calls` (`pool.sql` and `pool.params` are the first call's), and fails on any query beyond the scripted ones. This lets a test assert the query text, its bound parameters and how many round trips a function makes without a database.
 
 An autouse fixture, `_plain_buckets`, deletes `STORAGE_BUCKET_SUFFIX` from the environment before every test, so a developer's shell (for example a `-local` suffix from `.env`) cannot rename the buckets the storage and vault tests expect. A test that wants a suffix sets it explicitly through `Settings(storage_bucket_suffix=...)`.
 
@@ -241,11 +266,20 @@ These two files mix DB-free tests with `integration`-marked classes (check the d
 
 - **Storage client** (`test_storage.py`, against `httpx.MockTransport`): storage is enabled only when both `supabase_url` and `supabase_service_key` are set; a disabled client makes no request at all; failures are return values (`None` or `False`), never exceptions. `storage.owned_split` trusts a path only inside the row's own folder (`org-vault/<org_id>/...` only for that exact org id, so `org-vault/33/` does not match org 3; `staff-sources/` only for a non-public row with no org; `source-archive/` for the archive), so a row cannot claim another org's file. `vault_key` cuts long names but keeps the extension, because the vault reads a file's type from its key.
 - **Bucket migration and suffix**: file-level checks on `db/migrations/0020_storage_buckets.sql` (both buckets created, both private, guarded by a `pg_namespace` check for plain Postgres, idempotent via `ON CONFLICT`), and a check that the vault bucket's allowed MIME types in migration 0055 equal `storage.VAULT_TYPES`. With `storage_bucket_suffix="-local"` every call (upload, download, sign, remove, list, move, trash) names the suffixed bucket while rows and callers keep the plain name; the suffix is dropped automatically when `database_url` points at the same Supabase project as the storage URL, so staging data keeps the plain buckets.
-- **Vault routes** (`test_vault.py`, via `client_for`): a member gets a signed upload URL whose key leads with the org id (the RLS predicate); a type the vault cannot read is 415 before any URL is minted; a non-member and an unknown org both get 403 (existence is not leaked); unconfigured storage is 503. Confirming an upload refuses a key in another org's folder (403) or the archive bucket (400), a missing object (404), an already-recorded path (409, never read or removed), and a file whose bytes do not match its extension (`_bytes_match`; the object is removed and the response is 415), including a file just under the 50 MB limit. A file that cannot be read back gets 503 with no row and the object kept so the confirm can be retried; NUL bytes are stripped from extracted text. Downloads return a signed link, and another org's private document or a row pointing outside its org's folder is a 404, not a 403. Delete is staff-only and maps `DocumentInUse` to 409, `FileNotRemoved` to 502 and `RowNotRemoved` to 500; `_remove_vault_file` never removes a path outside the caller's own vault folder.
+- **Vault routes** (`test_vault.py`, via `client_for`): a member gets a signed upload URL whose key leads with the org id (the RLS predicate); a type the vault cannot read is 415 before any URL is minted; a non-member and an unknown org both get 403 (existence is not leaked); unconfigured storage is 503. Confirming an upload refuses a key in another org's folder (403) or the archive bucket (400), a missing object (404), an already-recorded path (409, never read or removed), and a file whose bytes do not match its extension (`_bytes_match`; the object is removed and the response is 415), including a file just under the 50 MB limit. A file that cannot be read back gets 503 with no row and the object kept so the confirm can be retried; NUL bytes are stripped from extracted text. Downloads return a signed link, and another org's private document or a row pointing outside its org's folder is a 404, not a 403. Delete is staff-only and maps `DocumentInUse` to 409, `FileNotRemoved` to 502 and `RowNotRemoved` to 500; `_remove_vault_file` never removes a path outside the caller's own vault folder. A repository-level delete that RLS quietly refuses (zero rows) touches no file, and a commit that fails after the file went raises `RowNotRemoved` and logs the path of the lost file. The same file also holds the document list's paging tests (see [Server-side paging](#server-side-paging-test_pagingpy-and-the-list-tests)): `list_documents` passes its filters through `fetch_page`, and `GET /api/documents` answers with the `{items, total, limit, offset}` page.
 
 The `integration`-marked classes prove the SQL these tests otherwise monkeypatch: `TestWhoMayTouchAnOrgsVault` (a member reads and writes, a steward reads but cannot write, an outsider gets nothing, staff write without membership) and `TestDeleteVaultUpload` (row and file go together; a document with chunks, or used by a proposal as its draft, template or budget, is refused before the file is touched; only a private `vault_upload` is deleted). They use `_PoolOf` from `test_storage.py`, which dresses the fixture's connection as a pool so the repository runs inside the rolled-back transaction.
 
 `test_deleted_documents.py` (`pytestmark = pytest.mark.integration`) pins the audit trigger from migration `0053_deleted_documents.sql`: every `DELETE FROM documents` writes the whole old row, as `to_jsonb`, into `deleted_documents` whoever deletes it and however, and a delete the repository refuses (`FileNotRemoved`) logs nothing.
+
+### Server-side paging (`test_paging.py` and the list tests)
+
+Every list screen is paged in Postgres through `repositories/paging.fetch_page` (design in [Data and Migrations](../architecture/data-and-migrations.md#server-side-paging); the RFP list is in [RFP Watch](../architecture/rfp-watch.md)). The tests pin it at three levels, and all but the last need no database:
+
+- **`test_paging.py`** drives `fetch_page` with a `recording_pool`. It appends `LIMIT %(limit)s OFFSET %(offset)s` and adds `limit` and `offset` to the bound params; reads `total` from the first row, so a non-empty page costs exactly one query; an empty first page is total 0 with no second query; a page past the end runs one `SELECT count(*) AS total FROM (...) listed` with the original params so the list's total is still reported (0 for an empty list). The SQL must end in `ORDER BY ... id` (an `id` with `DESC` or `NULLS LAST` still counts), and `fetch_page` raises `ValueError` matching `ORDER BY` **before any query** for a missing unique tie-breaker, a trailing `;`, its own `LIMIT`, a trailing comment (including one that happens to end in `id`) or an `ORDER BY` only inside a subquery. A parametrized test then calls each of the ten paged list functions (`contacts`, `documents`, `funders`, `meta.list_tags`, `meta.list_locations`, `orgs`, `partner_lines`, `programs`, `rfps`, `scores`) and relies on that guard, so a new or edited list whose sort does not end in a unique id fails; add a new list function to the `LISTS` table.
+- **Per-resource tests** check that a list passes its filters and its `limit` and `offset` through `fetch_page`, again with `recording_pool`: `test_rfps.py` (`status`, `deadline_before`), `test_scores.py` (`org`, `rubric`) and `test_vault.py` (`list_documents` with `org`, `doc_type`, `user_id`; the exact param set is asserted). Their route tests monkeypatch the repository to return `(rows, total)` and assert the `{items, total, limit, offset}` envelope; `GET /api/scores` answers 422, not a silent clamp, for an out-of-range `limit`, and `GET /api/registry` for `limit` 0 or 101 or a negative `offset`.
+- **`test_registry.py`** (unit) covers the `GET /api/registry` route: query parameters become a `Filters` value (`type=cso` is kind `org`, any unknown type is `all`), research counts are read for the page's rows only and not at all for an empty page, a failed research read leaves the page up, and the row's themes lead with the tags most of its programmes carry with lenses left out. `test_registry_filters.py` parses `frontend/features/registry/rows.ts` and requires its `NORTH_EAST` list to equal the backend's, because the SQL filter and the browser must agree (it skips if the frontend is not checked out).
+- **`test_registry_sql.py`** (`integration`) runs `registry_page_sql` against Postgres, inside the rolled-back `db` fixture with a throwaway `world` of three CSOs and two funders whose names carry a random token, so `q=<token>` isolates them on a seeded database. It pins ordering (CSOs first, then funders, each A to Z ignoring case), every filter (kind, theme, population, SDG, `where` as `ne`, `out` or one state, registrations for CSOs only, funder type and approach for funders only), search over aliases, programmes and states inside a word, combined filters, and that `total` counts every match whatever the page. The cards and dropdown counts cover the whole Registry only on the first page: a later page returns empty `counts` and `facets`, and an `EXPLAIN` of its SQL shows the facet counting cut from the plan. Registrations are read through the owner pool for the page's orgs only (one query, `org_id = ANY(%(ids)s)`), not at all for a page of funders, and a registrations filter asks only for the orgs it keeps. A last test requires `entity_tag_domains` to give the same domains as a recursive walk up the tag tree.
 
 ### Coverage tests (`test_cov_*.py`)
 
@@ -277,7 +311,7 @@ Integration tests connect to `TEST_DATABASE_URL`, defaulting to `postgresql://sa
 
 Isolation is by rollback. The shared `db` fixture in `conftest.py` opens a non-autocommit connection and rolls back afterwards; `test_rls.py` runs each test inside `connection.transaction(force_rollback=True)`. Test rows never persist. The exception is `test_agent_rls.py`, which needs a real pool (the agent's SQL executor reads `app.db.pool.pool`), so it commits rows tagged with a per-run `MARKER` and deletes them in a `finally` block.
 
-The marker is applied either per file with `pytestmark = pytest.mark.integration` (`test_rls.py`, `test_agent_rls.py`, `test_sql_integration.py`, `test_migration_integrity.py`, `test_deleted_documents.py`, `test_import_undo.py`, `test_news_rls.py`, `test_news_store.py`, `test_news_stories_sql.py`, `test_profile_facts_sql.py`) or per test (`test_caller_pool.py`, `test_news_pipeline.py`, `test_storage.py`, `test_locations_seed.py`, `test_taxonomy_seed.py`, `test_vault.py` and a few import tests). Files with per-test marks mix DB-free and DB-backed cases, so check the decorator rather than assuming a whole file needs Postgres. Applying the marker consistently matters: `-m "not integration"` only excludes what is marked.
+The marker is applied either per file with `pytestmark = pytest.mark.integration` (`test_rls.py`, `test_agent_rls.py`, `test_sql_integration.py`, `test_registry_sql.py`, `test_migration_integrity.py`, `test_deleted_documents.py`, `test_import_undo.py`, `test_news_rls.py`, `test_news_store.py`, `test_news_stories_sql.py`, `test_profile_facts_sql.py`) or per test (`test_caller_pool.py`, `test_news_pipeline.py`, `test_storage.py`, `test_locations_seed.py`, `test_taxonomy_seed.py`, `test_vault.py` and a few import tests). Files with per-test marks mix DB-free and DB-backed cases, so check the decorator rather than assuming a whole file needs Postgres. Applying the marker consistently matters: `-m "not integration"` only excludes what is marked.
 
 The data under test must already be loaded: run `make up` (which migrates) and `make seed` first. CI builds the same state without Docker (baseline SQL, migrations, `seed.seed`, `seed.taxonomy_seed`) and lists skips with `-rs`; `test_locations_seed.py` and `test_taxonomy_seed.py` mix DB-free file checks (for example 36 states and 784 districts in the LGD files) with `integration`-marked seed tests that run in a rolled-back transaction. `test_migration_integrity.py` asserts seeded facts, for example at least 96 `documents` rows (a floor, because the importer adds more), exactly 29 `graph_ingest_log` rows, stable seed-order ids (`kabil` = 9, `bdf` = 10, `axis-bank-foundation` = 1, `tata-trusts` = 4) and that the `documents` id sequence has advanced past the restored rows. It fails if migrations and seeds drifted apart. See [Data and Migrations](../architecture/data-and-migrations.md).
 
@@ -393,6 +427,7 @@ Schema changes are protected by three separate checks: the catalog-drift tests a
 
 - Unit-test a router with `client_for(router)` and monkeypatch its repository function. If code under test touches the pool, the sentinel will fail it.
 - Proposal rules belong in pure-function unit tests over a `work` dict (`work.apply`, `trace.check`, `steps.exit_check`); a new agent tool also needs adding to the pinned tool list in `test_proposal_agent.py`, and a new editing rule must be mirrored in `test_rls.py`.
+- A new or changed paged list needs its sort to end in a unique `id` and to be added to `LISTS` in `test_paging.py`; assert its filters and paging params with `recording_pool`, and keep SQL-behaviour tests (as in `test_registry_sql.py`) in the integration tier. A frontend list built on `ListPage` hooks is tested with a mocked fetcher and a `first` page, as in `RegistryClient.test.tsx`.
 - A DB-backed test must carry `pytest.mark.integration`, skip on `OperationalError`, and roll back.
 - Moving code between `ask/`, `ingest/`, `proposals/`, `agentkit/` and `core/`, adding a lazy import or a file past 800 lines is checked by `test_architecture.py`; fix the structure rather than extending its allow-lists.
 - A frontend component test goes in a sibling `__tests__/` folder as `.test.tsx` (jsdom, shared Next mocks); a pure module gets `.test.ts` (node). New source files under `lib/`, `features/` or `components/` count toward coverage even when untested.

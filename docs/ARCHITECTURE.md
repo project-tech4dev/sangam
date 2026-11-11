@@ -53,6 +53,9 @@ Generated map: [platform](../openwiki/architecture/platform.md).
 - **Code boundaries are rules with a test**: CLAUDE.md's "Code boundaries" lists them and `tests/test_architecture.py`
   checks them, one rule per refactor phase (`docs/features/2026-11-05-backend-refactor-plan.md`). R6: nothing in `app/`
   is defined without a caller outside tests.
+- **A paged list goes through `repositories/paging.py::fetch_page`, and its SQL ends in `ORDER BY …, <table>.id`**, the
+  listed table's own id: without a unique last key, tied rows (two contacts named "Asha") swap between page queries.
+  `fetch_page` refuses SQL not ending in an id, but cannot tell a joined table's id from the row's own.
 - **Boot raises when the SQL catalog and the live schema disagree**, on purpose: a catalog that is wrong produces
   confidently wrong answers.
 

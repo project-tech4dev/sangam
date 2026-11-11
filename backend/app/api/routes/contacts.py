@@ -28,8 +28,7 @@ async def list_contacts(
         pool, limit=page.limit, offset=page.offset,
         org=org, funder=funder, kind=kind, verified=verified,
     )
-    return Page(items=[ContactOut.model_validate(r) for r in rows],
-                total=total, limit=page.limit, offset=page.offset)
+    return page.build_page(rows, total, ContactOut)
 
 
 @router.get("/{contact_id}", response_model=ContactOut, summary="Contact detail")

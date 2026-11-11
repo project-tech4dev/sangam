@@ -219,6 +219,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-10 · Dependabot alerts with no PR of their own: `next` 16.4.6 (RCEs in `use cache` and SVG image optimisation), aiohttp 3.14.5, langgraph-checkpoint-postgres 3.2.0, and `@hono/node-server` 2, `graphql-scalars` 2 and typescript-estree's `minimatch` 11 as overrides past CopilotKit's and typescript-eslint's ranges.
 - 2026-11-10 · (unmerged) · CodeQL alerts fixed: Pitch's gap, citation and amount regexes run in linear time, its Wikipedia check matches the host rather than a suffix, and the Registry brief strips HTML comments until none is left.
 - 2026-11-10 · #360 · `entity_tags` reaches a tag's domain through its parent and grandparent (the taxonomy is domain → theme → sub_theme) instead of walking every tag, and counts programmes in one grouped join; the Registry index uses `entity_tag_domains`, with no programme count. A Registry page over 2,000 orgs: 885 ms → 25 ms.
+- 2026-11-11 · #366 · The ten paged lists read through one `fetch_page` and answer through `PageParams.build_page`. Each sorts on a unique id (eight did not, so tied rows could repeat or vanish between pages), a page past the end reports the list's real total instead of 0, and `fetch_page` refuses SQL that does not end in `ORDER BY … id`.
 
 ## Tracing and evals
 
@@ -266,6 +267,7 @@ Plans that shipped in part, and what is left. Check here before assuming a plan 
 
 | Plan | Shipped | Left |
 |---|---|---|
+| `2026-11-03-registry-server-paging.md` | #360, #366 | Every paged list counts all its matching rows on each request (`COUNT(*) OVER ()`), which for funders builds every row's arrays first. A Registry page builds an index of every entity and then queries the page's details again, and the place and theme rules are written twice, in SQL and Python: fold the details into the index's one query. |
 | `2026-10-15-rfp-watch.md` | M1 (#228), M2 (#231), M3 (#232), M4 (#246) | The staging exit gates; the design-system sync of the Ask page. |
 | `2026-10-11-drop-copilotkit.md` | M1 (#168), M2 (#169) | **#178 removed `emit_raw_events=False`, so raw events stream again** (`core/lifespan.py`). M3 (drop CopilotKit from the frontend) and M4 (from `pyproject.toml`) not started. |
 | `2026-10-13-import-researcher-contract.md` | M1–M4 (#194–#197) | M5: backfill KABIL and Axis on staging. |

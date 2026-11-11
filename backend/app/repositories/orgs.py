@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from psycopg_pool import AsyncConnectionPool
 
+from app.repositories.paging import fetch_page
+
 LIST_SQL = """
 SELECT o.id, o.slug, o.name, o.cohort, o.source_name, o.source_url, o.fetched_at,
        di.id_value AS darpan_id,
@@ -29,19 +31,15 @@ WHERE (%(q)s::text IS NULL OR o.name ILIKE '%%' || %(q)s || '%%' OR similarity(o
   AND (%(tag)s::text IS NULL OR EXISTS (
         SELECT 1 FROM org_tags ot2 JOIN tags tg2 ON tg2.id = ot2.tag_id
         WHERE ot2.org_id = o.id AND (tg2.slug = %(tag)s OR tg2.label ILIKE %(tag)s)))
-ORDER BY o.name
-LIMIT %(limit)s OFFSET %(offset)s
+ORDER BY o.name, o.id
 """
 
 
 async def list_orgs(pool: AsyncConnectionPool, *, limit: int, offset: int,
                     tag: str | None = None, state: str | None = None,
                     district: str | None = None, q: str | None = None) -> tuple[list[dict], int]:
-    params = {"limit": limit, "offset": offset, "tag": tag, "state": state,
-              "district": district, "q": q}
-    async with pool.connection() as conn:
-        rows = await (await conn.execute(LIST_SQL, params)).fetchall()
-    return rows, (rows[0]["total"] if rows else 0)
+    params = {"tag": tag, "state": state, "district": district, "q": q}
+    return await fetch_page(pool, LIST_SQL, params, limit=limit, offset=offset)
 
 
 async def get_org(pool: AsyncConnectionPool, slug_or_id: str) -> dict | None:
