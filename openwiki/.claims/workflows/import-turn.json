@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:4dde52e2768f054df25799cd1ae6b77943650461985d2a2384b61731c1b27465",
+  "pageVersion": "sha256:7eb459394e10faf66df92a4a31f92c1c341567050f45183ba85c72e553724632",
   "claims": [
     {
       "id": "claim_6e780f0bc0e24d0c8f01570655142673",
@@ -413,7 +413,7 @@
       "statement": "app/core/extract.py (which replaced ingest/office.py) is a pure bytes-to-text helper: docx_paragraphs returns paragraphs and table rows (a | b | c, merged cells once) in order, pptx_slides returns slide text, text_lines splits overlong lines, and xlsx_markdown renders each sheet's first 200 rows. It is used both for an upload's content_md (docx, pptx, xlsx, pdf; a damaged file leaves text None but keeps the hash) and by the vault reader for .docx, .pptx and text files.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/documents.py#L157-L187",
+          "resource": "repo://backend/app/api/routes/documents.py#L156-L186",
           "version": "repo-lines-v1:sha256:c3137d21086f45c67430ed45497d4dd2d9b2ebf2e109fadf41010646183967ba:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM5MjhhMjEwM2NmMDIzNzQyZTA3ZmEwN2IxYzQxZmZmMGIxMWNmZGIyMTUwNzg0ZDEzNWM4NmUzOWMzMDY4ZjQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmOWM5NTMxZmJjNWM3MDkyY2I1MTMzYTdjYWRlNmIwNDQ2MzIyMmE5ODVjZDllZTE5ZDVhZmU5YWY0MWYyNjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjdkZjJmNzI5ODk0ZWZjMmFhY2FhMzZlNDc0OTMzMzY1ZDEyN2E0NjIzYTg1NTBiMmRhZTFlYjU0NmQzZjM2M2MiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmNjdkYTVhMDM1NmEwNzRkZDgzOWQ2OGFhMmNjNTg3MWU0NGUyZjJjMTgzMjU4NmJiNDVkZTNkN2M2MmYzNzUifQ"
         },
         {
@@ -467,8 +467,8 @@
       "statement": "Per docs/CHANGELOG.md 'Not finished', researcher-contract M5 (backfill KABIL and Axis on staging) is not done while M1-M4 (#194-#197) shipped; programme-themes step 5 write_funder_tags_from_programs (PR #172) is unmerged and no backend code defines it; the import-guided review follow-ups remain open; and Ask's SQL and Import still run on the owner pool, with the Ask fix on an unmerged branch.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L262-L275",
-          "version": "repo-lines-v1:sha256:c7c10e3602c6d6793323c5f6e07736efd5d05431c7f8e1a83bdf988c8debf6a8:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0OTBhMDcxMGU0MjExNDJiNzFmMzlkYzcwOGFkZDA0YWEzNThkNTdhNjFiMmQzZmE4ODkyNzhjMGU4YTkyNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjNWExYWU4MDYxODU3OGJjNWVlZTU5NmQwYzdhNWNhMDI3OGM1NjBmNmNhMTE5NGI2ZTlkNjAzZWY4ZTc5NzIifQ"
+          "resource": "repo://docs/CHANGELOG.md#L264-L289",
+          "version": "repo-lines-v1:sha256:1ee8cce57de559a1130c19ca7e85bde0e3fa5487b14c5ccd455642e1c8f99662:eyJzZWxlY3RlZExpbmVDb3VudCI6MjYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQwMTVhNzI1NDkwYjk3NzgxM2YwNDhlMDE1YTBjMjNhMThlNjM2M2FkMDAzODEwZGNhNDk0M2YwMjY2MDA1NjMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -585,6 +585,6 @@
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-10T13:16:49.280Z"
+    "at": "2026-11-11T11:11:22.403Z"
   }
 }

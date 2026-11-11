@@ -12,6 +12,8 @@ sources:
     resource: repo://backend/app/api/routes/documents.py
   - id: openwiki-source-11c734346bddf773fd80ed0e
     resource: repo://backend/app/api/routes/ingest.py
+  - id: openwiki-source-91785d98839df33f9eae6ec6
+    resource: repo://backend/app/api/routes/news_runs.py
   - id: openwiki-source-319a08aaeaf88078bae3e2e9
     resource: repo://backend/app/ask/agent.py
   - id: openwiki-source-4c1427c2f37a53fce3022d75
@@ -76,6 +78,10 @@ sources:
     resource: repo://backend/app/ingest/tools/research_tools.py
   - id: openwiki-source-01018d1868720c2e42fdafe4
     resource: repo://backend/app/ingest/tools/vault_tools.py
+  - id: openwiki-source-bbb88a9dc2dd928de209ddbb
+    resource: repo://backend/app/integrations/storage.py
+  - id: openwiki-source-697868bd3a418ce8115944eb
+    resource: repo://backend/app/repositories/documents.py
   - id: openwiki-source-f298183777e9f6b64bb1b60f
     resource: repo://backend/tests/test_agent_middleware.py
   - id: openwiki-source-62d4dd57642429b3aa7980e3
@@ -84,14 +90,22 @@ sources:
     resource: repo://backend/tests/test_import_undo.py
   - id: openwiki-source-92d175544a8e6396abecbd87
     resource: repo://backend/tests/test_ingest.py
+  - id: openwiki-source-c9ec0e3b8ff5c20601084273
+    resource: repo://backend/tests/test_vault.py
   - id: openwiki-source-88fdf568b0f25b1d21f041da
     resource: repo://docs/CHANGELOG.md
   - id: openwiki-source-a44fe58bbddbee96fe925ba2
     resource: repo://docs/INGEST.md
-generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
+  - id: openwiki-source-68343c164ffd0ec31796e83b
+    resource: repo://frontend/features/ingest/components/__tests__/ImportApproval.test.tsx
+  - id: openwiki-source-d6037beaa11ae38e613a17e5
+    resource: repo://frontend/features/ingest/components/ImportApproval.tsx
+  - id: openwiki-source-9e86dbac2cec46334e85282e
+    resource: repo://frontend/features/ingest/ScoutChat.tsx
+generated: { by: "openwiki/0.7.2", at: "2026-11-11T11:11:22.403Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-10T13:16:49.280Z
+    at: 2026-11-11T11:11:22.403Z
 ---
 
 # Sangam Import (Scout)
@@ -185,6 +199,18 @@ There are three pauses.
 3. **`promote_research`**, through `SaveQuestions` on the catalog-writer. The pause carries a preview of the funder's open questions, planned rows and a coverage line (built by `catalog/save.write_preview`). The person's answers arrive as an `edit` whose args hold `decisions`. Any `decisions` the model wrote itself are overwritten, so only a person can set them.
 
 The run resumes with `Command(resume={"decisions": [...]})` from the Import screen. The frontend side is described in [Frontend](frontend.md).
+
+### The `ImportApproval` card
+
+`frontend/features/ingest/components/ImportApproval.tsx` is the card for pause 2. `ScoutChat.tsx` mounts it with the thread's agent id (`sangam-import-<threadId>`). It calls `useInterrupt` with `renderInChat: false`, and its `enabled` predicate (`pausedImport`) is true only when the interrupt holds a `run_import_now` action, so a `choose_sources` pause renders nothing here. The card has three variants, picked from the `sources` argument of the paused call:
+
+| `sources` contains | Card | Extra detail |
+|---|---|---|
+| `funder_calls` | "Check open calls?" | Who is read (named funders or every funder) and a rough per-funder cost line. No plan endpoint is called. |
+| `tavily_news` | "Pull the latest news?" | One plan line fetched from the staff-only `GET /api/ingest/news-runs/plan?names=&feeds=` (searches, checks, estimated cost, unmatched names). A failed fetch shows "Could not work out the plan; approving still runs the pull." |
+| anything else | "Write this import to the catalog?" | The goal, funders, years and sources (empty values read as "whatever was published most recently", "the most recent", "every registered source"). |
+
+Each button resolves the pause once, with `{decisions: [{type: "approve"}]}` or `{type: "reject"}`, then both buttons disable. `PauseSignal` reports the paused state to the screen via `onPaused`. The card has no edit path, which matches `run_import_now` allowing only approve and reject.
 
 ## One turn
 
@@ -374,6 +400,18 @@ Import is for Sangam staff and for stewards of an organisation. Within that grou
 - **`POST /api/ingest/threads/{thread_id}/ask-live`** answers a question asked while a run is still going. `live_status.answer` reads the run's checkpoint (the request, ticked sources, launched researchers, their returns and the todo plan), the caller's research saved since the run began, and the Working board's per-researcher counts, then asks the utility model for a `status` or `instruction` reply using `prompts/live_status.md`. It never touches the running graph, and it is limited to the caller's own `import-` threads.
 - **`python -m app.ingest.reshelve`** (dry run by default, `--yes` to move) renames archived documents from their fetch-time key to the catalog name `funders/<slug>/<year>-<filename>`, reusing `catalog/promote_documents._shelve`. It catches objects archived before promotion learned to rename them.
 
+## Doc Vault uploads
+
+What the `vault-reader` reads is put there through `backend/app/api/routes/documents.py`, which is not part of the agent graph. An upload is three calls, none of which carries the file through the API:
+
+1. `POST /api/documents/uploads` checks the extension against `storage.VAULT_TYPES` (415 otherwise), then that the caller may act on the organisation (`repo.org_id_for_member(..., write=False)`: a member, a steward or staff). "No such org" and "not your org" give the same 403. It returns a signed upload URL into the `org-vault` bucket, valid two hours.
+2. The browser uploads straight to Storage.
+3. `POST /api/documents` records it. The `storage_path` must be a vault key inside the caller's own org folder, must not already be recorded (409) and must exist in Storage (404). The route downloads the object (up to the 50 MB bucket ceiling) to hash it, and `_bytes_match` checks the leading bytes against the extension. On a mismatch it deletes the object and answers 415. Text is extracted by `_extract` (see below) and NUL bytes are stripped before `repo.insert_upload` writes a private `documents` row with `status='received'`.
+
+`GET /api/documents/{id}/file` mints a 10-minute signed link only for a document the caller can read, and only if the stored path lies in the row's own org folder. Otherwise one 404 covers "missing" and "not yours". `DELETE /api/documents/{id}` is staff-only. `repo.delete_vault_upload` deletes the row first so foreign keys are checked, refuses with 409 when chunks, extraction logs, `document_links` or a proposal draft still reference it, then removes the file inside the same transaction. A failed file delete rolls the row back (502). A commit that fails after the file is gone is a 500, and deleting again finishes it.
+
+`backend/tests/test_vault.py` covers these: signed URLs and membership, the byte-signature check, files already recorded never being removed, the delete-ordering failure cases, and steward-read versus member-write.
+
 ## Office text extraction
 
 `app/ingest/office.py` no longer exists. The text helpers now live in `app/core/extract.py` (pure bytes to text: PDF, Word, Excel, PowerPoint and text files) and are shared by several callers:
@@ -394,12 +432,13 @@ The supervisor indexes five skills. The subfolder keeps the pull skills out of i
 
 ## Unfinished and stale
 
-From the CHANGELOG "Not finished" table and `docs/INGEST.md`:
+The shipped history is in [the changelog](../../docs/CHANGELOG.md); its "Not finished" table (rechecked against the current file) lists what is left. The Import-related rows, all still open:
 
 - The researcher-contract plan (`2026-10-13-import-researcher-contract.md`) shipped M1–M4. **M5**, a backfill of two organisations on staging, is not done.
 - The programme-themes plan shipped steps 1–4. Step 5, `write_funder_tags_from_programs` (PR #172), is unmerged.
-- The access plan shipped Phase 1. The CHANGELOG still says Ask's SQL and Import run on the owner pool, but the code has moved on: `ask_access` sets `agent_caller`, so Ask's SQL runs as the caller. Import deliberately keeps the owner pool, because it writes the catalog. This is why every Import tool checks scope itself.
 - `2026-10-09-import-guided.md` shipped in #130, but its review follow-ups list is still open.
+- The RFP Watch plan's staging exit gates are unfinished (see [RFP Watch](rfp-watch.md)).
+- The access plan shipped Phase 1; Phase 2 is not done. **The changelog row is stale on one point.** It says Ask's SQL and Import still run on the owner pool, but `ask_access` now sets `agent_caller`, so Ask's SQL runs as the caller. Import deliberately keeps the owner pool, because it writes the catalog. This is why every Import tool checks scope itself.
 - `docs/INGEST.md` is out of date on the record (brief, not one row), the pauses, the tool modules (five), `StaffLastLock`, who may use Import (staff and stewards, via `require_scout`, not any signed-in user), the researcher's order, the matcher order, districts, the NGO path, undo's table count, the `/ingest` endpoint wiring, the source count (80, not 79) and the known gaps (the registry-check tool and `csr_sector_id` now exist). It also predates the module split described at the top of this page.
 
 ## Where to change things

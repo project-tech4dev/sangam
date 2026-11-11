@@ -1,9 +1,13 @@
 ---
 type: architecture
 title: Frontend
-description: How the Next.js app in frontend/ is laid out, how screens live in the address bar (URL state hooks), how it reaches the backend (server-component REST versus the CopilotKit/AG-UI chat proxy), how the Ask workspace (sidebar, the now-empty coming-soon gate, Funder Match, RFP Watch and the five-step server-backed Proposals view), home page and navbar, Import/Scout (role-gated tasks, approval cards) and registry screens work, and the auth, caching, testing and design rules that govern it.
+description: How the Next.js app in frontend/ is laid out, how screens live in the address bar (URL state hooks), how it reaches the backend (server-component REST versus the CopilotKit/AG-UI chat proxy), how the Ask workspace (sidebar, the now-empty coming-soon gate, Funder Match, RFP Watch and the five-step server-backed Proposals view), home page and navbar, Import/Scout (role-gated tasks, approval cards) and registry screens (server-paged list, profiles) work, and the auth, caching, testing and design rules that govern it.
 tags: [frontend, nextjs, copilotkit, ag-ui, url-state, ask-workspace, sidebar, coming-soon, funder-match, rfp-watch, home-page, proposals, scout, supabase-auth, design-system, vitest]
 sources:
+  - id: openwiki-source-e962a60de608d42004eac41b
+    resource: repo://backend/app/api/routes/registry.py
+  - id: openwiki-source-75dfe6dd359f71f41900608d
+    resource: repo://backend/app/repositories/registry.py
   - id: openwiki-source-a2371d6362e5db4bc834ad03
     resource: repo://CLAUDE.md
   - id: openwiki-source-b79fbbd921df689b4bbdc82f
@@ -52,6 +56,8 @@ sources:
     resource: repo://frontend/components/layout/Nav.tsx
   - id: openwiki-source-8a730a31d9601b8167c21bdf
     resource: repo://frontend/components/layout/NavBar.tsx
+  - id: openwiki-source-0fdaa6836f51e708a4ee3903
+    resource: repo://frontend/components/ui/__tests__/ListPage.test.tsx
   - id: openwiki-source-a4bca626c20b13a635ed5933
     resource: repo://frontend/components/ui/ListPage.tsx
   - id: openwiki-source-24408c4513e55a7d3b655c58
@@ -64,8 +70,6 @@ sources:
     resource: repo://frontend/features/ask/lib/comingSoon.ts
   - id: openwiki-source-2e0a58168f5f8380d443d207
     resource: repo://frontend/features/ask/lib/pendingQuestion.ts
-  - id: openwiki-source-a8f99e6160f3d28094133820
-    resource: repo://frontend/features/ask/lib/rest.ts
   - id: openwiki-source-a16dba5c681382ec4e6646a7
     resource: repo://frontend/features/ask/lib/sources.ts
   - id: openwiki-source-2b36bea836157065e381133d
@@ -90,10 +94,14 @@ sources:
     resource: repo://frontend/features/ask/views/funder-match/MatchCard.tsx
   - id: openwiki-source-46b81f1c20a0d436a481779f
     resource: repo://frontend/features/ask/views/FunderMatchView.tsx
+  - id: openwiki-source-6403fe71e82889a42a2c9674
+    resource: repo://frontend/features/ask/views/media/MediaView.tsx
   - id: openwiki-source-a6acd51674a7bb40ec0a9785
     resource: repo://frontend/features/ask/views/proposals/api.ts
   - id: openwiki-source-9cc887a15e7c8cad20fab1bc
     resource: repo://frontend/features/ask/views/proposals/FinishCard.tsx
+  - id: openwiki-source-b5a20695e60b4a18dc687d13
+    resource: repo://frontend/features/ask/views/proposals/ProposalList.tsx
   - id: openwiki-source-8cacc219834a1a9bfcb026c2
     resource: repo://frontend/features/ask/views/proposals/ProposalShell.tsx
   - id: openwiki-source-06a29b607574f6671b63dd92
@@ -152,6 +160,8 @@ sources:
     resource: repo://frontend/features/ingest/lib/useRunPause.ts
   - id: openwiki-source-9e86dbac2cec46334e85282e
     resource: repo://frontend/features/ingest/ScoutChat.tsx
+  - id: openwiki-source-38d04c2b4bf88d756b2dc190
+    resource: repo://frontend/features/registry/api.ts
   - id: openwiki-source-e5fc790dec21bd0006a245a5
     resource: repo://frontend/features/registry/brief/parseBrief.ts
   - id: openwiki-source-5262cd09f4d6c80a75191a96
@@ -194,6 +204,8 @@ sources:
     resource: repo://frontend/lib/api/auth-headers.ts
   - id: openwiki-source-a7ad07fd0be7b9dc7a997ff0
     resource: repo://frontend/lib/api/client.ts
+  - id: openwiki-source-2d49b42b08914606aa9caf47
+    resource: repo://frontend/lib/api/rest.ts
   - id: openwiki-source-0e36de0775c7002217233ff1
     resource: repo://frontend/lib/api/types.ts
   - id: openwiki-source-4c6b88fce133b6d2e3039743
@@ -222,10 +234,10 @@ sources:
     resource: repo://frontend/vitest.config.mts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-11-10T13:16:49.280Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-11T11:11:22.403Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-10T13:16:49.280Z
+    at: 2026-11-11T11:11:22.403Z
 ---
 
 # Frontend
@@ -241,7 +253,7 @@ The frontend is a Next.js 16 / React 19 app (`frontend/`, deployed as the Vercel
 | `app/` | Routes only: pages, layouts, route handlers. Nothing that is not a route belongs here. |
 | `features/` | One folder per screen: `ask`, `auth`, `home`, `ingest`, `registry`, `resources`, `settings`, `taxonomy`, `terms`. |
 | `components/` | `ui/` display primitives (and the `ListPage.tsx` list pattern) and `layout/` site chrome (`Nav`, `NavBar`, `Footer`). |
-| `lib/` | `api/` (server REST client, types, auth headers), `supabase/`, `devAuth.ts`, `AgentProviders.tsx`, `useAgentChat.ts`, the URL-state helpers `url.ts`, `useUrlTab.ts` and `useUrlThread.ts`, `format.ts`, `safe-next-path.ts`. |
+| `lib/` | `api/` (server REST client `client.ts`, browser REST helper `rest.ts`, types, auth headers), `supabase/`, `devAuth.ts`, `AgentProviders.tsx`, `useAgentChat.ts`, the URL-state helpers `url.ts`, `useUrlTab.ts` and `useUrlThread.ts`, `format.ts`, `safe-next-path.ts`. |
 
 `docs/ARCHITECTURE.md` §9 states the rule: `app/` holds routes only and everything else goes in `features/`. (The same section's "Proposals live in `localStorage`" bullet is out of date: proposals are server-backed, as described under [Proposals](#proposals).) Cross-folder imports use the `@/` alias. `frontend/CLAUDE.md` is only a pointer: to this page for facts, to `docs/ARCHITECTURE.md` §9 for rules and to `docs/DESIGN_SYSTEM.md` for any UI change.
 
@@ -288,7 +300,7 @@ Caption: server components call REST directly, chat goes through the Next proxy 
 2. **Chat, via the proxy route.** The chat UI never calls the backend itself. `AgentProviders` points CopilotKit at `/api/copilotkit`; the route's `CopilotRuntime` registers three `HttpAgent`s from `@ag-ui/client`: `sangam_agent` → `AGENT_URL` (Ask, `/agent`), `sangam_ingest` → the same URL with `/agent` replaced by `/ingest` (Import) and `sangam_proposal` → `/proposal` (the per-proposal Sangam Pitch chat). The route uses an `InMemoryAgentRunner` and declares `maxDuration = 1800` to match `backend/vercel.json`, because an Import turn streams for 15–20 minutes. `GET`, `POST`, `PATCH` and `DELETE` all go to one `createCopilotRuntimeHandler` mounted at `basePath: "/api/copilotkit"`.
 
    **Only the routes the chat client calls are served.** The runtime would also answer for its in-memory store of every thread (`threads/*`, `memories/*`, `inspector/*`) to any caller, and the route is not behind the session gate. The handler's `onBeforeHandler` hook therefore runs `allowRoute` (`lib/copilotkit-access.ts`), an allow-list of exactly `info`, `agent/run`, `agent/connect`, `agent/stop` and `agent/suggest`; anything else throws a `404` `Response`, which the runtime returns as is (`transcribe`, `annotate` and `cpk-debug-events` included). Chat history is read from the backend's `/api/threads`, never from the relay. `lib/__tests__/copilotkit-access.test.ts` pins both lists, so a CopilotKit upgrade that adds a route stays closed until someone opens it on purpose.
-3. **Client-side REST.** Anything a browser component needs after load (thread lists, history, Import panels, Funder Match, proposals, vault, settings) is a plain `fetch` to `NEXT_PUBLIC_API_URL` (default `http://localhost:8010`) with `authHeaders()`. Many modules re-declare the `API` constant locally; `features/ask/lib/rest.ts` provides the shared `call()` helper (JSON in/out) that throws `ApiError` carrying `status` and `body`, so callers can act on a 409's detail.
+3. **Client-side REST.** Anything a browser component needs after load (thread lists, history, Import panels, Funder Match, proposals, vault, settings) is a plain `fetch` to `NEXT_PUBLIC_API_URL` (default `http://localhost:8010`) with `authHeaders()`. Some modules re-declare the `API` constant locally; the shared browser helper is `lib/api/rest.ts` (it moved there from `features/ask/lib/rest.ts`, which no longer exists, so the Registry and Ask views share one module). It exports `API` (`NEXT_PUBLIC_API_URL`), `call()` (JSON in/out, with `authHeaders()` attached) which throws `ApiError` carrying `status` and `body` so callers can act on a 409's detail, and `getMe()` (`/api/me`). Funder Match, RFP Watch, Media, proposals, Import approval cards and the Registry's paged fetch (`features/registry/api.ts`) all go through `call()`; Doc Vault uses `API` and `authHeaders()` directly because it also talks to Supabase Storage.
 
 ### The `AGENT_URL` convention
 
@@ -297,7 +309,7 @@ Caption: server components call REST directly, chat goes through the Next proxy 
 ## Auth and headers
 
 - **Session refresh and gating.** `proxy.ts` (the Next 16 replacement for middleware) runs `updateSession` from `lib/supabase/middleware.ts` on all paths except static assets and images. It creates a fresh Supabase server client per request, calls `getClaims()`, and redirects a signed-out visitor on `/import` (the only entry in `PROTECTED_PREFIXES`) to `/auth/login?next=…`. `/ask` is public by design.
-- **Missing Supabase keys.** If `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is absent (a bare local run), `updateSession` returns `NextResponse.next` at once: the proxy passes every request through and does not redirect, so it never fails on its own. Nobody can sign in, and the failure shows up downstream, consistently as "signed out": `/ask` treats a failed Supabase client as signed out (`isSignedIn()` catches the error and returns false) and renders the preview; `/import` is no longer guarded by the proxy, but its `apiGet("/api/me")` rejects (no Supabase server client can be built, or the backend refuses the anonymous call), the page's `.catch` turns that into `null`, and it redirects to `/ask`; and the sign-in dialog (`features/auth/login-form.tsx`) says the Supabase keys are not set and hides the Google button.
+- **Missing Supabase keys.** If `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is absent (a bare local run), `lib/supabase/middleware.ts` passes requests through when keys are absent (`updateSession` returns `NextResponse.next` at once), so the proxy never redirects and never fails on its own. Nobody can sign in, and the failure shows up downstream, consistently as "signed out": `/ask` treats a failed Supabase client as signed out (`isSignedIn()` catches the error and returns false) and renders the preview; `/import` is no longer guarded by the proxy, but its `apiGet("/api/me")` rejects (no Supabase server client can be built, or the backend refuses the anonymous call), the page's `.catch` turns that into `null`, and it redirects to `/ask`; and the sign-in dialog (`features/auth/login-form.tsx`) says the Supabase keys are not set and hides the Google button.
 - **Local dev login.** `DEV_LOGIN` in `lib/devAuth.ts` is true only when `NEXT_PUBLIC_SUPABASE_URL` is unset **and** `NEXT_PUBLIC_DEV_AUTH=1`. The navbar sign-in button then becomes a `<select>` of the seeded `admin`/`steward`/`member`/`stranger@local.test` users, which writes the `sangam-dev-as` cookie, and `/ask`, `serverAuthHeaders()`, `authHeaders()` and `AgentProviders` use `Bearer dev:<email>` instead of a Supabase token (no cookie means no header). A backend honours it only with `SUPABASE_URL` unset and `DEV_AUTH` on; see [Auth, roles and RLS](auth-roles-rls.md).
 - **Where the token goes.** Server REST uses `serverAuthHeaders()`; browser REST uses `authHeaders()`; chat uses the token held by `AgentProviders`, which reads the session once, follows `onAuthStateChange`, and passes `Authorization: Bearer <token>` as the `CopilotKitProvider` `headers`. The backend validates this one bearer token everywhere.
 - **Open-redirect guard.** `/auth/callback` exchanges the OAuth `code` for a session and uses `safeNextPath` so only same-origin paths are honoured.
@@ -305,18 +317,44 @@ Caption: server components call REST directly, chat goes through the Next proxy 
 
 ## Caching
 
-`apiGet` makes signed-out reads cacheable: in production (`NODE_ENV === "production"`), when no `Authorization` header exists, it fetches with `next: { revalidate: 300 }`, so anonymous registry pages come from Next's data cache and survive a cold backend. That request carries an `x-sangam-build` header (the Vercel deployment id or commit SHA) so the cache key changes on every deploy and a new deploy never renders the previous one's API shapes. Signed-in requests, and all development requests, use `cache: "no-store"`. Pages that depend on the session (`/ask`, `/import`) set `dynamic = "force-dynamic"`. Client-side fetches are always `no-store`. A profile page loads with one server-side backend call (`/api/funders/{slug}/profile` or `/api/orgs/{slug}/profile`); only the partner groups behind "show more" are fetched later from the browser (see [Registry profiles](#registry-profiles)).
+`apiGet` makes signed-out reads cacheable: in production (`NODE_ENV === "production"`), when no `Authorization` header exists, it fetches with `next: { revalidate: 300 }`, so anonymous registry pages come from Next's data cache and survive a cold backend. That request carries an `x-sangam-build` header (the Vercel deployment id or commit SHA) so the cache key changes on every deploy and a new deploy never renders the previous one's API shapes. Signed-in requests, and all development requests, use `cache: "no-store"`. Pages that depend on the session (`/ask`, `/import`) set `dynamic = "force-dynamic"`. Client-side fetches are always `no-store`. The Registry list follows the same rule: its server-rendered first page is a plain `apiGet` (so it is cached for signed-out visitors and uncached when signed in), and every later page is a browser `call()`. A profile page loads with one server-side backend call (`/api/funders/{slug}/profile` or `/api/orgs/{slug}/profile`); only the partner groups behind "show more" are fetched later from the browser (see [Registry profiles](#registry-profiles)).
 
 ## Registry list and rows
 
-`/registry` (`app/registry/page.tsx`) makes one server `apiGet` of `GET /api/registry` (`RegistryOut`, a list of `RegistryRow`) and hands every row to the client component `RegistryClient`, which filters and pages entirely in the browser: bucket cards (All / CSOs / Funders), a `FilterRow`, a `SearchBox` and `useShowMore` (20 per page), the shared list pattern. The filters are **URL state**, so Back from a profile returns to the same list: `filtersFrom(useSearchParams())` reads them (`?type=cso|funder` is the bucket, which keeps the old `/orgs` and `/funders` links working; every other filter keeps its own name) and each change goes through `setUrlParams(filterParams(patch), "replace")`, where a default value drops its param. Typed search text is kept in local state first so the caret never waits on the address, and the address gets a copy. `features/registry/rows.ts` holds the presentation rules: `kindLine`, the one-line `signal`, `matches`, which decides what each filter keeps (the Registrations filter applies only to CSOs; Funder type and How to approach only to funders; "Works in" can mean the eight North-East states), and it re-exports `Filters` and `DEFAULTS` from `filtersUrl.ts`. Changing the bucket resets the CSO-only and funder-only filters.
+The Registry is **paged, filtered and searched on the server** (plan: `docs/features/2026-11-03-registry-server-paging.md`, part of the registry-speed work). The browser no longer receives every organisation and funder; it gets 25 rows at a time. The old every-row response (`RegistryOut`) is gone, `GET /api/registry` returns a `RegistryPage`, and the backend runs one SQL query (`registry_page_sql` in `backend/app/repositories/registry.py`) that applies the filters and search, orders CSOs first and then funders, each A→Z, and adds research counts to the returned rows only. Schema and migration background is in [Data and migrations](data-and-migrations.md).
 
-A row (`Row` in `RegistryClient.tsx`) was reworked to carry more of what the filters read:
+```mermaid
+sequenceDiagram
+  participant P as app/registry/page.tsx (server)
+  participant C as RegistryClient (browser)
+  participant H as usePagedList
+  participant B as GET /api/registry
+  P->>B: apiGet registryQuery(filters from URL, offset 0, limit 25)
+  B-->>P: items, total, counts, facets
+  P->>C: first
+  C->>H: resetKey, load, idOf, {limit 25, first}
+  Note over H: opening key uses first, no fetch
+  C->>H: filter pick, or search after 250 ms
+  H->>B: call() via fetchRegistryPage (offset 0, new key)
+  C->>H: scroll near the end (ListMore)
+  H->>B: call() with offset = rows fetched
+```
+
+- **Server first page.** `app/registry/page.tsx` reads the filters from `searchParams` (`filtersFrom(firstParams(...))`), calls `apiGet<RegistryPage>("/api/registry?" + registryQuery(f, 0, PAGE))` and passes the result to `RegistryClient` as `first`, so the HTML holds `PAGE` = 25 rows (the constant is in `filtersUrl.ts`). A link such as `/registry?type=funder&theme=Education` therefore renders already filtered.
+- **Client paging.** `RegistryClient` feeds `usePagedList` (the offset sibling of `useCursorList`, in `components/ui/ListPage.tsx`). The reset key is the query string for the filters being asked, so a change starts again from offset 0 and an answer for an older key is dropped; `first` is used for the opening key without a second fetch. Later batches come from `fetchRegistryPage` (`features/registry/api.ts`, a `call()` from `lib/api/rest.ts`) with the bearer token. Duplicate ids are not shown twice, and `ListMore` counts `fetched` rather than `items` so a dropped duplicate cannot strand the "load more" trigger. A failed batch shows its message in a `role="alert"` block.
+- **Counts and dropdown options come from the server, once.** The backend sends `counts` (the bucket cards) and `facets` (each dropdown's options, as `{value, count}`) only on the first page (`offset` 0), and they cover the whole Registry whatever the filters. `RegistryClient` reads them from `first`, so they stay fixed while the person filters or scrolls. The "Works in" list is the eight North-East states that appear in the `where` facet, and the "How to approach" filter exists only when the `approach` facet has `open` or `invites` (and only on the Funders bucket).
+- **Filters are URL state**, so Back from a profile returns to the same list: `filtersFrom(useSearchParams())` reads them (`?type=cso|funder` is the bucket, which keeps the old `/orgs` and `/funders` links working; every other filter keeps its own name) and each change goes through `setUrlParams(filterParams(patch), "replace")`, where a default value drops its param. `registryQuery` builds the API query from the same names with defaults left out and the search text trimmed.
+- **Search delay.** Typed text is kept in local state (and copied to the address) so the caret never waits; the server is asked about it once typing pauses for `SEARCH_DELAY_MS` = 250 ms. A dropdown pick, bucket pick or "Clear filters" is asked at once. Search is a substring match anywhere in the entity's name, aliases, districts, states, programme and partner names, so a fragment like "dalgu" finds Udalguri.
+- **Which filters apply to whom.** The Registrations filter appears only on the CSOs bucket; Funder type and How to approach only on Funders. Picking a bucket resets those three (`reg`, `ftype`, `approach`) to their defaults.
+- **Presentation only in `rows.ts`.** `features/registry/rows.ts` holds `kindLine`, the one-line `signal` and `NORTH_EAST` (kept in step with the backend's list by a test); it re-exports `Filters` and `DEFAULTS` from `filtersUrl.ts`. The in-browser `matches` and `present` rules are gone, so a filter change is made in the backend SQL (`_where`), not in the frontend.
+- **Types.** `lib/api/types.ts` defines `Page<T>` (`items`, `total`, `limit`, `offset`), `Facet`, `FacetedPage<T>` (adds `counts` and `facets`) and `RegistryPage = FacetedPage<RegistryRow>`; `RegistryRow` no longer carries `search`, which the route excludes from the response.
+
+A row (`Row` in `RegistryClient.tsx`) carries what the filters read:
 
 - **Domains first.** The tag line shows each theme domain the row reaches, in the backend's order (most programmes first), with "Others" forced last; a row with none shows an italic "Themes not tagged yet" gap tag. Domain tags and SDG chips share the line.
 - **Theme filter explains itself.** With a Theme set, an extra "In <domain>:" line lists the sub-themes that put the row in the results (first three, then "+N more"), and the matching domain tag gets `data-active`.
 - **Serves line.** Up to three population tags (`.reg-tag[data-tone="population"]`) with "+N more"; a filtered population is moved to the front and marked `data-active`.
-- **Approach signals.** For funders, the one-line `signal` can read "open call now" and "invites partners" (from `RegistryRow.open_call` and `intake_mode === "invitation_only"`), and the "How to approach" filter (Open call now / Invites partners) is offered only when at least one loaded row has that property. The funder profile's Mandate tab lists `open_calls` from the single profile payload, or "No open call found".
+- **Approach signals.** For funders, the one-line `signal` can read "open call now" and "invites partners" (from `RegistryRow.open_call` and `intake_mode === "invitation_only"`), and the "How to approach" filter (Open call now / Invites partners) is offered only when the server's `approach` facet reports at least one funder with that property. The funder profile's Mandate tab lists `open_calls` from the single profile payload; when eligibility text exists but no call does it says "No open call found".
 - Styling for these (`.reg-row-line`, `.reg-row-label`, `.reg-more`, the `data-active` edge) is the `tokens/registry-row.css` slice of `globals.css`.
 
 ## Registry profiles
@@ -358,7 +396,7 @@ These views use client REST (`call()`), not the agent. Both Funder Match and RFP
 
 **RFP Watch** (`RfpWatchView`, `views/rfp-watch/`) is the Ask view for open calls for proposals, matched by the backend to the chosen organisation's theme domains. It loads `GET /api/rfps/feed?org=` and changes a call's state with `PATCH /api/rfps/{rfp_id}/matches/{org_id}` (`flagged`, `saved` or `dismissed`). The feed carries `can_act`, so people who cannot act (only the org's members and admins and staff can) see a read-only note instead of Save / "Not for us". Buckets are For you (open calls), Closing soon (deadline within `SOON_DAYS` = 30 days) and Saved (kept even after the deadline), narrowed by search and a theme filter and sorted soonest deadline first. A dismissed call, or an unsaved closed one, is removed locally; saved ones stay. Empty states point to Funder Match ("Most CSR money is given without an open call"), and an organisation with no theme domains is told no call can be matched. `CallCard` shows days left (urgent at 14 days), amount band, places and matching themes, only renders an `http(s)` link from model-extracted URLs (`safeHref`), and "Ask about this call" calls `onAsk` with a prepared question, opening a new Ask chat. Calls arrive in the feed from Scout's open-calls pull (see [Import / Scout UI](#import--scout-ui) and [RFP Watch](rfp-watch.md)).
 
-Lists across the app use the pattern in `components/ui/ListPage.tsx`: `BucketCards`, one `FilterRow` of dropdowns, a `SearchBox`, and `ListMore` with `useShowMore` (client-side paging) or `useCursorList` (server keyset paging). `CLAUDE.md` and `docs/ARCHITECTURE.md` §9 require a new list page to reuse it rather than invent its own pills or stats.
+Lists across the app use the pattern in `components/ui/ListPage.tsx`: `BucketCards`, one `FilterRow` of dropdowns, a `SearchBox`, and `ListMore` with `useShowMore` (client-side paging, used by the proposals list), `useCursorList` (server keyset paging, used by Media & Signals) or `usePagedList` (server limit/offset paging with an optional server-rendered `first` page, used by the Registry). `CLAUDE.md` and `docs/ARCHITECTURE.md` §9 require a new list page to reuse it rather than invent its own pills or stats.
 
 ### Proposals
 
@@ -405,7 +443,7 @@ Proposals are **server-backed**, shared by everyone in the organisation, and dra
 
 ## Tests
 
-The frontend has a Vitest suite (`npm test`; `npm run coverage` as CI runs it, gated by `codecov.yml`). `frontend/vitest.config.mts` defines two projects: `*.test.ts` run in node for pure modules (`workspaceUrl`, `filtersUrl`, `rows`, `sources`, `access`, `rest`, the proposal `steps`), and `*.test.tsx` run in jsdom with `frontend/tests/setup.ts`, which mocks `next/navigation` (a mutable `navigation.search`, so a test can set the address) and `next/link`, so a test that renders must be `.tsx`. The tests worth knowing when changing the screens: `lib/__tests__/url-hooks.test.tsx` and `back-navigation.test.ts` (the URL-state contract: push versus replace, defaults out of the address, invalid ids ignored, round trips), `features/ask/__tests__/AskWorkspace.test.tsx` (which view is up and what the sidebar and views write to the address), the Funder Match, RFP Watch and proposal tests (`ProposalShell.test.tsx` covers advance, rename, delete, research and conflict handling), `features/ingest/__tests__` (Scout, pause cards, run-pause), `features/registry/__tests__` and `features/auth/__tests__` (including a login form with no Supabase keys). Type errors surface in `npm run build`, not in `next dev`.
+The frontend has a Vitest suite (`npm test`; `npm run coverage` as CI runs it, gated by `codecov.yml`). `frontend/vitest.config.mts` defines two projects: `*.test.ts` run in node for pure modules (`workspaceUrl`, `filtersUrl`, `rows`, `sources`, `access`, `rest`, the proposal `steps`), and `*.test.tsx` run in jsdom with `frontend/tests/setup.ts`, which mocks `next/navigation` (a mutable `navigation.search`, so a test can set the address) and `next/link`, so a test that renders must be `.tsx`. The tests worth knowing when changing the screens: `lib/__tests__/url-hooks.test.tsx` and `back-navigation.test.ts` (the URL-state contract: push versus replace, defaults out of the address, invalid ids ignored, round trips), `features/ask/__tests__/AskWorkspace.test.tsx` (which view is up and what the sidebar and views write to the address), the Funder Match, RFP Watch and proposal tests (`ProposalShell.test.tsx` covers advance, rename, delete, research and conflict handling), `features/ingest/__tests__` (Scout, pause cards, run-pause), `features/registry/__tests__` (`RegistryClient.test.tsx` mocks `fetchRegistryPage` and feeds a `RegistryPage`, so it pins that picks are asked of the server at once and counts and options come from the response; `filtersUrl.test.ts` covers the URL and query rules), `components/ui/__tests__/ListPage.test.tsx` (`usePagedList`: first page without a fetch, next offset, stale answers dropped, errors) and `features/auth/__tests__` (including a login form with no Supabase keys). Type errors surface in `npm run build`, not in `next dev`.
 
 ## Planned change: dropping CopilotKit (not shipped)
 
@@ -414,7 +452,8 @@ The plan's motive is operational: the relay's `InMemoryAgentRunner` buffers ever
 ## Gotchas for changes
 
 - A new route-level page needing the user's data should be `force-dynamic` and use `apiGet`; anonymous-cacheable pages must not depend on the session, because `revalidate: 300` is applied exactly when there is no `Authorization` header.
-- New browser fetches should use `authHeaders()` with `NEXT_PUBLIC_API_URL`; never put the token in a server-cached request.
+- New browser fetches should use `call()` from `lib/api/rest.ts` (or `authHeaders()` with `NEXT_PUBLIC_API_URL`); never put the token in a server-cached request.
+- A new list that can grow should page on the server: reuse `usePagedList` (offset) or `useCursorList` (cursor) with `ListMore` and put filter rules in the backend, as the Registry does; do not ship every row and filter in the browser. A backend filter added without a matching URL param in `filtersUrl.ts` is invisible to Back and shared links.
 - Anything that wraps the agent hooks needs `AgentProviders` above it, and the agent must be registered (`isReady`) before `useInterrupt` cards are mounted — `ScoutChat` and `TellSangam` render them only once `isReady`.
 - A new CopilotKit route method the chat client starts calling is a 404 until it is added to `SERVED` in `lib/copilotkit-access.ts` (and the test); do not open the `threads/*` or `memories/*` routes, which would serve other users' runs from the relay's memory.
 - A new chat agent needs a registration in the proxy route, a matching `prefix`/`runtimeAgentId` pair for `useAgentChat`, and (if it reads screen context) an exact context description string shared with the backend.

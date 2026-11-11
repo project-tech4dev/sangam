@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:f142dcf6f5ceb1c887f928fbd4705dcb2b2a1e18193876d8d438f9846fbbe5e6",
+  "pageVersion": "sha256:2df780a940c3b1beb1126c3360be2462a5e5c21860fee1a452d32113fce34804",
   "claims": [
     {
       "id": "claim_c4947d35c7ba4e6884cb28e5433237e6",
       "statement": "The chat wire is still CopilotKit: the drop-CopilotKit plan's M3/M4 are not started (CHANGELOG), package.json still depends on @copilotkit/react-core and @copilotkit/runtime (~1.75.2) alongside @ag-ui/client 0.0.59, AgentProviders still mounts CopilotKitProvider at /api/copilotkit, and app/api/copilotkit/[[...slug]]/route.ts still exists.",
       "evidence": [
         {
-          "resource": "repo://docs/CHANGELOG.md#L269-L269",
+          "resource": "repo://docs/CHANGELOG.md#L272-L272",
           "version": "repo-lines-v1:sha256:ce918338140671c522aea2286534a41bd9c886bc48f49408f3f880f954b45251:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiY2U5MTgzMzgxNDA2NzFjNTIyYWVhMjI4NjUzNGE0MWJkOWM4ODZiYzQ4ZjQ5NDA4ZjNmODgwZjk1NGI0NTI1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODAyNjZmYzM0ZTM1MDgxMjlkZDZmY2I0YjY5NTBiMWQ0MjM2NDA3MjFjMjM2MGJlZjU2YWJiMjRiMDI1MGNiNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWYwMDNmMjEwYzJkNzY3ZTIyNTEzMTdhODViMjkzN2ZhYzBmNmM3OTZlNjUzZTU5NDczMTUzZGZjOTY1Zjc2MyJ9"
         },
         {
@@ -80,19 +80,27 @@
     },
     {
       "id": "claim_48acfea2e11748d99e8648f0f79e6d56",
-      "statement": "Client components do REST with fetch to NEXT_PUBLIC_API_URL using authHeaders() (Supabase session token, or Bearer dev:<email> in dev-login mode), with a shared call() helper in features/ask/lib/rest.ts that throws ApiError carrying status and body so callers can read a 409's detail.",
+      "statement": "Client components do REST with fetch to NEXT_PUBLIC_API_URL using authHeaders() (Supabase session token, or Bearer dev:<email> in dev-login mode), with a shared call() helper in lib/api/rest.ts (moved from the now-removed features/ask/lib/rest.ts) that throws ApiError carrying status and body so callers can read a 409's detail; the same module exports API and getMe, and Funder Match, RFP Watch, Media, proposals, Import approval and the Registry's paged fetch use it.",
       "evidence": [
         {
-          "resource": "repo://frontend/features/ask/lib/rest.ts#L1-L21",
-          "version": "repo-lines-v1:sha256:945b785375848df7730ba80dd0129be1dba8279f7e6e39712318215eee491a5d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhMjliYzg4MzJkMmJhZDY4ZDZmMjA2ODYxMDNmMmI2NjBiNzM0NDFmZmRmYWI3YTBiYzk5NjhkMGM2YTVkODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NjNkZGE3YTJiYzNmZmY5MTZiNDJjMGRmMTRlZjBkYzVjZDVhODE1MzFlOWY4ZTRlYzIxN2MxNjkzNjQ3MmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://frontend/features/ask/views/funder-match/api.ts#L1-L3",
+          "version": "repo-lines-v1:sha256:c96cef8df75f41f8f159542d47d0d301c2df78d198bdc672e82262b1dc952696:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWE3NzM0MDZiOTE5YmIyNzBkNTZjMjUwMWUyOWI1MGE2OTY4YzgyOTVjYmRjZjYwN2FlZmE5Yjk1MmNjMTk1OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzNiNGEzZjM5NWY3NzIzODk2ODc0ODFlNDM5N2E1NDg5OTNlY2E3YTQ2ZWE1ZGE3ZDI1YTg0ZmYxYjkwYTYxZSJ9"
         },
         {
           "resource": "repo://frontend/features/ingest/lib/threads.ts#L1-L36",
           "version": "repo-lines-v1:sha256:8e07d09f611e3a013e4083349225fdce9b89fd21fa3c96ea45e6d2a2de6908bf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ1ZmYzZTg1ZDY3MTVhN2E5ZDBmNmMxYjMyZjMwY2Q4Y2IxNDRjYzc5YzhhYmFlOTUzZWExMzc4ODlmYWUyZGUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE0YmJlNjRkMzBjYmIwOWI4ZWQxOTBkNjAwYzY1M2I3YWFhZTQ2ZGM0MjM5M2NjNmU0ZjE0YTA0YWVlMzQzMWUifQ"
         },
         {
+          "resource": "repo://frontend/features/registry/api.ts#L1-L6",
+          "version": "repo-lines-v1:sha256:85278dbbed9a8c45fab0c2c16abdbdabe84717c055f82ca398d261cb3611a4f7:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjIyOGY3MDk3NDE2NDczMzgwMjFhYzJiMWU3OWUzYTdiM2U5MGE0YjljYzUxYzA5ZjRmZDZiZDlmNDBhZmJiYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzNkMDg5M2I0ZDQ3YTUwMTg4MDk4ZWMxYWIyMGZkZmY0MDlhMzJkYzYxODhlZjMwZjIwOTZlZTI1MmI4MmViZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
           "resource": "repo://frontend/lib/api/auth-headers.ts#L1-L12",
           "version": "repo-lines-v1:sha256:52c4bdd48d979a59c2230de618fc3b662cba533a8f54e49c89973b053d4147c7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjExZDZiNGYxNjgzOTI0NGU3MmFlMDg1YjI2N2UzY2VhODJiOGU4NGEyZDlmYzI4MTJmNzY0ZDc2NjczNDU2MmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/lib/api/rest.ts#L1-L21",
+          "version": "repo-lines-v1:sha256:945b785375848df7730ba80dd0129be1dba8279f7e6e39712318215eee491a5d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhhMjliYzg4MzJkMmJhZDY4ZDZmMjA2ODYxMDNmMmI2NjBiNzM0NDFmZmRmYWI3YTBiYzk5NjhkMGM2YTVkODgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc1NjNkZGE3YTJiYzNmZmY5MTZiNDJjMGRmMTRlZjBkYzVjZDVhODE1MzFlOWY4ZTRlYzIxN2MxNjkzNjQ3MmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -352,15 +360,23 @@
     },
     {
       "id": "claim_a4730b4abff6471da9902c9d85d8caee",
-      "statement": "Frontend code is organised as routes-only app/ (everything else goes in features/), one features/ folder per screen, components/ui and components/layout, and lib/; list pages share the BucketCards/FilterRow/SearchBox/ListMore pattern in components/ui/ListPage.tsx, with useShowMore for client-side paging and useCursorList for server cursor paging, and new list pages must reuse it.",
+      "statement": "Frontend code is organised as routes-only app/ (everything else goes in features/), one features/ folder per screen, components/ui and components/layout, and lib/; list pages share the BucketCards/FilterRow/SearchBox/ListMore pattern in components/ui/ListPage.tsx, with useShowMore for client-side paging (proposals list), useCursorList for server cursor paging (Media & Signals) and usePagedList for server limit/offset paging (Registry), and new list pages must reuse the pattern.",
       "evidence": [
         {
-          "resource": "repo://docs/ARCHITECTURE.md#L251-L263",
-          "version": "repo-lines-v1:sha256:7f06f26182074d55a8b6f7079424920e19643835c92a9cce1b6c636760a0a852:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMmZmNGU1M2MwYmNiNGViOTUzZDNhZDQxNzM5NzY1MzA1M2I3ZDE2ODE1YWUzZGIyOGU2ZmZlNDA2M2ZiMjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM4MzdhMzlhMGRkOTgxMmIxOGIxNWNjZGIxMzEyMjk5NzIzNDQ1NjRiYzBkNmU2ZWMxNmIyNTVhNTFlMzYyOTciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5OGQxMDIxNzVkZWZhODkzOTQ4YjU3OThhYTJmZDVjMTI4N2I0MmI1N2E2OWFiMzIxY2VlNTc1MDA0NjFhMmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg2NzEyMTEyMzQwMWZhNDQ1OGI4ZGZhN2E3NjNmMjFmOTFiMGJhZjA4ZWRkNWEyNzc0MzQyNjllYWViZmIzOTkifQ"
+          "resource": "repo://docs/ARCHITECTURE.md#L264-L264",
+          "version": "repo-lines-v1:sha256:516d6b757df1ee6ace5f5f9baca5f64e89119e18afc766723a5d50dfbc03a313:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTE2ZDZiNzU3ZGYxZWU2YWNlNWY1ZjliYWNhNWY2NGU4OTExOWUxOGFmYzc2NjcyM2E1ZDUwZGZiYzAzYTMxMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNTE2ZDZiNzU3ZGYxZWU2YWNlNWY1ZjliYWNhNWY2NGU4OTExOWUxOGFmYzc2NjcyM2E1ZDUwZGZiYzAzYTMxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjFkNmFjMzBiYTViODc2YTMzYWYwM2FiNmI3MGM4MjNhNzJlY2FiYTc3ODg5NzhkNmUxZWE0MmJjN2IxOTBiOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzdjYTQxOWRiMzJhMDE2ZDc2MWM1OWI3MWFhMmY2NGFmOTc4YzZjNTFkYjVmZTQ1Y2EyMWIxZmY2MTRhMWI3MyJ9"
         },
         {
-          "resource": "repo://frontend/components/ui/ListPage.tsx#L9-L151",
-          "version": "repo-lines-v1:sha256:c294d9996002d9a50f509c6408a7c055a7f1b0a3e567cb2f0a5322e450763079:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjYTM1NzIxODA2NDY2ZjRlYzAyMDhhYjdkNmUzM2E5MzQ3ZDNlYTk0ZjE2ZTcxNWUzMzJkMWFlMjFjOGJiYzMxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI5ODU0OTYzZTYzMzc1YzM3OGZjYmE2YjkwOGRiMTFhNjYwMWE0ZTIyMWM0OWMyMGFlOGEzMzc1MjJkODI0YWYyIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJhZmVmZjAyMmYyMGUyMGFiOWZlYmY3YjllN2ViODgzYWNmN2EyMmEzOWQwZGQ1MGI3OGQyYjg2YmFmMzQwZTc5IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiI4ZGQwMDkwNzk0OGFiODdjNGVjMDU5MDRhZGYyNjM5MmI1ZmUwMDg5NWMxZjI3OTViZWQ5YTE2ZDdkMDc4YzMyIn0"
+          "resource": "repo://frontend/components/ui/ListPage.tsx#L93-L216",
+          "version": "repo-lines-v1:sha256:56e083428aaab4f61c5ce6a53187758ef92895c7e0f4204aaa544c0ef38aebe1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTI0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJmM2NjZWVlNzU3MGE3NzYzNWU2ZmRhMzlhMzNmNTQyN2VmN2Q1NWE0Y2FhMjBjZTAyZWYxN2MwY2JjYjRlZDIzIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwOTRmYzBjMTczZDFlYzNmYzUwMWQ3ZGZhOTI4NTUwMWM1MjdjZmI0NzEyNTgzZGEzY2MzNjE4MDU2NmI0YmUzIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJmNzQ3NDMxYTgwZWI3ZWNhMzNiN2I3ZGFmMGM1ZjJhNDhkZDFhZTllOTRmOGZjMjVhNTBlM2YwOTkwODllNjUwIn0"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/media/MediaView.tsx#L40-L40",
+          "version": "repo-lines-v1:sha256:9adbdcc6803e0dc7553556edc0316ec0ff2e17efbf674ce04f9b18f34e57991b:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWFkYmRjYzY4MDNlMGRjNzU1MzU1NmVkYzAzMTZlYzBmZjJlMTdlZmJmNjc0Y2UwNGY5YjE4ZjM0ZTU3OTkxYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWFkYmRjYzY4MDNlMGRjNzU1MzU1NmVkYzAzMTZlYzBmZjJlMTdlZmJmNjc0Y2UwNGY5YjE4ZjM0ZTU3OTkxYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2QxNTc5MmMzNzg5MDljYTRjNmRiZmJhOWNhNzllZmMzMDAxYTE0NGFlZDYzYjZhNjU4NjVjNzBmOTlmNmRlNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmQ3MTM1NGRhYmI0MDMzNWMzY2E1YjQ5YzQzNDUxYjg3YTI5YjUyZDI5NGQ1ZDVlM2FkMzliZDFmZGMzMTQyNiJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ask/views/proposals/ProposalList.tsx#L41-L41",
+          "version": "repo-lines-v1:sha256:b3f3cd05c6ff5be4f8dea1fdf738306728ca0638c14c88ce978866cc03c42adf:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjNmM2NkMDVjNmZmNWJlNGY4ZGVhMWZkZjczODMwNjcyOGNhMDYzOGMxNGM4OGNlOTc4ODY2Y2MwM2M0MmFkZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjNmM2NkMDVjNmZmNWJlNGY4ZGVhMWZkZjczODMwNjcyOGNhMDYzOGMxNGM4OGNlOTc4ODY2Y2MwM2M0MmFkZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjVkNjI4MDJiZGU2MDFlNjcxNjNkNGYzNWU2YjU2NTQxMmJhNWI5NzY3NzJiNGNiZTYxNmJkNjQyOTIxOWVlMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzQ5OTFkYjFhOWFiMzhmMzU2NjE2ODVkZjk4YjIxYzk4MmYyOGZmOTE4YWQ1OTBhYzQ3ZTRmZDRiZmE5MzNjNSJ9"
         }
       ]
     },
@@ -692,23 +708,27 @@
     },
     {
       "id": "claim_eb89e96163714fa0aebde71cc0ee5674",
-      "statement": "/registry makes one server apiGet of GET /api/registry and RegistryClient filters, searches and pages (20 at a time) entirely in the browser using rules in features/registry/rows.ts (kindLine, signal, matches), where the Registrations filter applies only to CSOs and Funder type / How to approach only to funders; the filters are URL state (filtersFrom reads ?type=cso|funder and the other params, changes go through setUrlParams with replace and defaults drop their params), with typed search text held locally first.",
+      "statement": "/registry is server-paged: the server page reads the filters from searchParams and makes one apiGet of GET /api/registry for the first 25 rows (PAGE) passed to RegistryClient as `first`, and the browser asks the server for later batches and for every filter or search change; RegistryClient no longer filters or pages in the browser. features/registry/rows.ts keeps only presentation (kindLine, signal, NORTH_EAST) and the filter rules live in the backend SQL. The Registrations filter shows only on the CSOs bucket and Funder type / How to approach only on Funders, and picking a bucket resets those. Filters are URL state (filtersFrom reads ?type=cso|funder and the other params, filterParams drops defaults, changes go through setUrlParams replace, registryQuery builds the API query from the same names).",
       "evidence": [
         {
-          "resource": "repo://frontend/app/registry/page.tsx#L1-L15",
-          "version": "repo-lines-v1:sha256:c9de1312e860076dc4d434a643284dd7bf52fd482181af9ebd2c6f1801f318f9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkNjU2YmE5MWJjYjM2OTIxMjgyYjE5MzQxMmJjZTczZGM0MmIyMTdhNGIyMTQyNzY0ZjFkODcwZDJjNzcxMGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://backend/app/repositories/registry.py#L337-L395",
+          "version": "repo-lines-v1:sha256:d72a8bcbb8fde0b744889ecf7808b8623c6aa165a9447d430cd120835f0c6fe1:eyJzZWxlY3RlZExpbmVDb3VudCI6NTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlNmZhNmU3NWU5YjNiZDVkNTA3ZGRjMGY3NjJhOTMzZThkOGJlNGM5YzQzNDQ0NzQwYTYyODM1YjY3Yzc2YzEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxNjU5ZjkwMDRlNzIzY2FhMTc4ODdmYWUyMmE1MGVkYjg0MWM0MDAzMDAyZDg3MDJkNjE3MzFlMTY1ZTdkZWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQ2NDY0YTcwNWNhZDQzNzcxNDYxOTk0YWZiNzg4ODljNmVkOGM3MGI3N2ZjNzNiNGVmOTdkNjM5YjlkN2U0NmEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzY2VhY2FkMDgxOWYxMDQ1MDE1ZTI5MTk4Y2IxNjZiMzRiZjE5ZmM2YWZmNzNjM2IzZDIyZDFlOTM2Yjg4OTgifQ"
         },
         {
-          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L77-L198",
-          "version": "repo-lines-v1:sha256:22258901c704ebbf301fee077198a4bb80ac26fde456a97839613a76d90d3d36:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIyLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI3YjFjMWM3MzQ1NTUzZjcyMjZhM2Q5MTE3OGUxODA1YzE4ZDYyYzZkNjA2NmFjMjEyODg1NDczMGJiOTMzZDU0IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwOTRmYzBjMTczZDFlYzNmYzUwMWQ3ZGZhOTI4NTUwMWM1MjdjZmI0NzEyNTgzZGEzY2MzNjE4MDU2NmI0YmUzIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+          "resource": "repo://frontend/app/registry/page.tsx#L1-L17",
+          "version": "repo-lines-v1:sha256:f08a9f374e6d4eb36f1186d8529a6eb5ab8d73488dd591dcc52ab7f780eaf237:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0ZDhmZjc4YmRhNzA0YzQzMDEzZTk0ZmE4YzcxYmIxMDQ5ODc2ODNhZTRmOTQ0ODZiZWZkNjlmNTc1YzViNTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://frontend/features/registry/filtersUrl.ts#L1-L31",
-          "version": "repo-lines-v1:sha256:0f6641799baecc39286ca534283c36a78f921a57a98dfb5c4875865236472c00:eyJzZWxlY3RlZExpbmVDb3VudCI6MzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3N2VkY2ZiZjA2MmRiMWFmNDQ0MGQyN2IxMWRmNzVkMTZjODAzZjIzZmZkZjgwNDNlYWY5YjhhYmYzYWU3YjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L76-L198",
+          "version": "repo-lines-v1:sha256:64fd3c5a4ab5e9ed045b06958c2ad1f91a9bd96ff11ada1e56639fb7fd4a7fad:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlZGUxMTQxMzEyZDI2NmE3YjAyNDRjMjg0Mjc3NWUxYmU5MjRmZDM0MTQ4YWMxNzIwYzMwMDFmYWI5OTIwYjhhIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI1YTI0MmY2YmI4NDVmYTI1ZDBmMzZkNWQwN2VjYWM3NWQ5ODliMTY1NjdlNDcyYmQxNjY5OTc2ZTJkM2NmNTBkIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIwOTRmYzBjMTczZDFlYzNmYzUwMWQ3ZGZhOTI4NTUwMWM1MjdjZmI0NzEyNTgzZGEzY2MzNjE4MDU2NmI0YmUzIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIwNDIyMDI3N2YzYjQ1MjQxMGVkZmMyZWM5OGQ5N2E5Y2YyNmY4YTg1YmY4YjAyODkxMmNmZDEwNjFjZWE3YTkwIn0"
         },
         {
-          "resource": "repo://frontend/features/registry/rows.ts#L1-L77",
-          "version": "repo-lines-v1:sha256:c609bb7ee00066ddc2dac428a5dbdd9e88bc2427eb8260928386cace03dd3134:eyJzZWxlY3RlZExpbmVDb3VudCI6NzcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0M2NlMzAyMjcwZmI3OTJjMzlkNGE1NTQ5NTc5Yjc1MWVjNTIxZjQyYTJkNGQ0NTU1NTRjNWE1MmMyYWExMTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmYTIxMjY3NjI4NDVlYTlkNmYxMWM3MzJhZGY3ZDYwZDlhZGYyMjFiM2FmMDA1NDMzYzBhOGEzYjYzMGM3YzYifQ"
+          "resource": "repo://frontend/features/registry/filtersUrl.ts#L8-L49",
+          "version": "repo-lines-v1:sha256:082e94c7a69238f543ed8d13faf40ad889c8b093e7a4fe88182fbc73772e97d1:eyJzZWxlY3RlZExpbmVDb3VudCI6NDIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImI5Y2QzNTY0ODRhMGEwN2QyOTgxMjZiNjhhYWZhOWNhYjE0MzJmYTAzYWM5M2M2NTZkNTBkZmUyZmE3ODk1NzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNkNjRiNmNhZGQyNjFlMjJmZDYzNGY0NGMyZmRjODA3YWVhNDNjMzQxNGVlNWIxZmY0M2MzMjkyZWQwMTIyNjkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/registry/rows.ts#L1-L49",
+          "version": "repo-lines-v1:sha256:979b648d22911b4a13be6045bcf8b47fd7d57d9b19cdb386b08c1192dc62c4fe:eyJzZWxlY3RlZExpbmVDb3VudCI6NDksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjNjQ0YTVmODg4ODk1NTRmYmQ0Y2ZmYjQ4ZmY5YTE2NTk4YmZiZDk5YWVmYmIxNDQ2MzQ3MjY0M2VhMTA0NjYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -721,7 +741,7 @@
           "version": "repo-lines-v1:sha256:0923058cdf3ddb07bb4ee52f52a2d3e77a33a7c208254da764a7f59931d9fd6f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkN2I1OWYyYTIxN2U0YzlhMTQ3NWE0YmQ0Nzg5OWI3NGQ3YmY2NDBlZjk2MzlhMmE3MDk4MWQzZWQxYjliODAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk5NWIxMTUwOTgxNjgyNzE5M2EyMmMwNmNlNmI1ZWQ1MmEwYTYzZjI0MjlhNjZhNjA2MzM5YTkzYTRjYjNjZjkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkN2RmYWYzZjYxNzVmZTdmMDUwZGFiN2NmZGQxMjVjNGVjYTNiZmRkYmVjMTYxODYwOTc5YmQzZDhjN2JlNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjhiZGJlYmRhMjIxMDYxNjI5ODU5MzI0MjBkMTA0NWM0MDA3MjJiZDE1MzE4OGYxYzc0OTBkNmJmN2ZkZGYwMDEifQ"
         },
         {
-          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L19-L75",
+          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L18-L74",
           "version": "repo-lines-v1:sha256:98a1c14dfe45591edbf634be47a1a4caff758483f965b8fd00b16850773dfc5f:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI5Yzk0OGE5ZDRiMTRmMjAzNjY1MzUzYzdiNTIyODNmMTgwYjhiZjU0ZmRiYTQ0ZmY3YjdkYTBiZGQ4M2E3ZWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNhMDU5OWQ2YzU0ZGQ4NjFjYjBjYTliMTc4N2I4NjEwMTQxNGJiYTdlOGUwM2UwM2E4MmM4N2VmYzI2OGVjOGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFkMDYzNzk4MGJiZGUxMzE4ZTU5NGEwMTY1OTAxMDFkNTI4MGJiYWIyOTg5NTJlYmE3Mjg3Mjc4Y2NjN2JlYTgifQ"
         }
       ]
@@ -902,27 +922,27 @@
     },
     {
       "id": "claim_7207a73e9e554feea787b621aa16a18a",
-      "statement": "Registry rows and profiles surface funder approach: RegistryRow carries open_call and intake_mode, the row signal line can say 'open call now' and 'invites partners', the 'How to approach' filter is offered only when some loaded row has an open call or invitation-only intake, and the funder profile's Mandate tab lists open_calls from the single profile payload.",
+      "statement": "Registry rows and profiles surface funder approach: RegistryRow carries open_call and intake_mode, the row signal line can say 'open call now' and 'invites partners', the 'How to approach' filter is offered only when the server's approach facet reports an open call or invitation-only funder (and only on the Funders bucket), and the funder profile's Mandate tab lists open_calls from the single profile payload.",
       "evidence": [
         {
-          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L95-L152",
-          "version": "repo-lines-v1:sha256:3efdd3499b9ff825263ea079df30e8adb6e7e7bd9b04c1ec30596a563c67ca49:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwYjcxZTA1NjdmMTk2ZGZkZTgxMTI2ZjE2OTBkYmExOTJkN2EwMjM1NGE5NDMzYzFhNTRhMDc3ZmRjMmY4N2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImM1MTU2Y2Q0YmE1Zjk0ODRkZjU3NGE3NDI4ZmI2MmMwZDE2MGNjMzE5MWU4NDEwMTQ0NWVmMzdiODZiN2JmMGMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE2NTY4ZmYxNGY4YzIyMjcwZDhjZDI3NTBkYTU5MzA0ZDVmZjk2NjQzN2M1N2ViNWI4NzA2YjBjZmE2ODNkYWUifQ"
+          "resource": "repo://backend/app/repositories/registry.py#L322-L331",
+          "version": "repo-lines-v1:sha256:dd7b4be56353cb2206310c613756f7acf3d1e76b589da8e3dcc3b96550e21837:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiZjdiODZjMzA0NmM2ZDY5MDQ1NTM5Zjc5MTE1ZWIxNzM4MTYyMDY0YzYwNWNmYzExMzI4ODQ2YmMwYmNiOGQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEzMDNlY2RkNGE0ZDEwZjE5YzczZmQ0MmZkMTI0MzdmZDMzNTRhODI2ODE2MDVkYTUyNTVhOTdhMzkwNjhkYmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE5ZmExZDRiNmNiYjMxYzc3Nzg3OTJhZDE0ZjM5YTU4ZGZmYjA2MDVkN2ViMTUxOTgxYjg1NmVkNjRkMmNmNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijg1YWJlZjIwZWEzMmQwMDU1M2JlNGExNzhjMTNkN2FiNjc4OWYwYTc1YmQ4OTIzZmRlODZhMzBkM2RkMmI2NzIifQ"
+        },
+        {
+          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L105-L159",
+          "version": "repo-lines-v1:sha256:bb83db3e9b711c0a92d4869f78d885e93677e66dc0d08f6bba056dbfc2247c01:eyJzZWxlY3RlZExpbmVDb3VudCI6NTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjYTE3Mzk4MTgzZDZjYjY5YjcwMTQ3NzFlNjE1NDIzNWM3MmEwZjE0YzIwODMwYzA3ODgyYmRiMmIzNDNhNDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhMmZmNTdkM2MwNzhhZWZkMzc5OTJlYzQ3ZTdlZjNhOTc0YTk0NDNiNTU2OTc5NjcyYWY1ZWE3MTMwNTU2ODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc2MzJiZWE1MTNhMjgxZWRhYTQ0YTdmYjkyNzM3ZWM3NDhmMjg1MWNlNmJjZDY2NjExYmFiMzQzNThiOTI0N2MifQ"
         },
         {
           "resource": "repo://frontend/features/registry/profile/FunderProfileTabs.tsx#L27-L32",
           "version": "repo-lines-v1:sha256:00a0eb0a0e14391ae8342dc3b59152898a98d45d68717102df0e072c5db34ced:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTAyMGU4NDRhZmZkZGU1M2NiMDJlMmRlZTg0ZjY1ODU0Y2M2YTA5ZWQyMzdiY2QwMTU2MDRkYWYyNDBhMGQzYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzEzMDA0ODQ3ZTA0ZDg4NDEyZjk0ZWFiNmIwNTY0OWQ2MmIwNDIzZDA0OWJiNGIzMjdhODE2MzE2ZDY0NDNjYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNWFlNzljYjc2ZjQ4YjlhNDVkNjc4NWI1MDU3Y2YyYjJjYzM4NTZjYjVjODk2NmVmMWM2Y2NlOWZkZDY3NzIyOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTJjY2RiYjRlY2RiYjgzZjgzYmM5YTI0MzVkNWY5ZGRlNGUxNDg3NGVjZWUzMzMwMWNlMWRjNjUzNTllMzgwNyJ9"
         },
         {
-          "resource": "repo://frontend/features/registry/rows.ts#L27-L50",
-          "version": "repo-lines-v1:sha256:0b4bfe4b95acd037ce275f7e0bfb03a3c422de743bd707972aa85aee6fa6d29e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyYTUxZTU2NGU1MTdmYzI4NTI3Nzk4YWQ3MTdmYjU3M2RlYWYyNTczYzE4MGZhNTdmMmQxY2UxNzJiMDA4MjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc2Mjg3MTJiZjUyMTY4NjVhNzc3YTk4NGM3MzY4MTVmZDg1MWYxMDI1YTI5ZDA2ZDRiMmQxNDBjMDA1MTcxNDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjE1NGNiZWEyOWE2Y2VmNzVjNjNhY2Y1YjkyYzM4YTZjMjQzYmI3MTllMGM2ZmNiZTdjMzZiYzg1NzM2N2U1NjIifQ"
+          "resource": "repo://frontend/features/registry/rows.ts#L26-L49",
+          "version": "repo-lines-v1:sha256:0b4bfe4b95acd037ce275f7e0bfb03a3c422de743bd707972aa85aee6fa6d29e:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUyYTUxZTU2NGU1MTdmYzI4NTI3Nzk4YWQ3MTdmYjU3M2RlYWYyNTczYzE4MGZhNTdmMmQxY2UxNzJiMDA4MjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijc2Mjg3MTJiZjUyMTY4NjVhNzc3YTk4NGM3MzY4MTVmZDg1MWYxMDI1YTI5ZDA2ZDRiMmQxNDBjMDA1MTcxNDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         },
         {
-          "resource": "repo://frontend/features/registry/rows.ts#L70-L74",
-          "version": "repo-lines-v1:sha256:dfee3ea7fc7016c1942e7e259e2ba63e3921c46f88c43f71d15d92df4a209cb1:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTE0OWIxNDhhYzUyZmQzNWNmNTg0NDBmNDRlNzc2OTgyMjkyYmZjYjE2MzZmMTM1YTRmOTVhZTYzNmY4NjM0NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjdlNTc4OGQ1ZDlkNzNkMjRhODFkYmMwYTVhNzRiZmE4MmM5YzNiM2FmOTllNTJhZjc5NmU5MGI0NjhhOGEzZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzYzM2VjMjRhYjk2ODhhM2Q0MTc0ZmU0MzE1MTdhOTZhM2Q4ZGZlMDQxMWVmMzg5M2RiNzkyZTc1ZWE2NGRjNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWViZDg5YTBmNjVjN2M3MmZmODM4MDkwMmE1YjY5ZjllMWMyYzRlNmZhZjU1OTFiYzk1OGRlNGE5MmZkZmI1MSJ9"
-        },
-        {
-          "resource": "repo://frontend/lib/api/types.ts#L251-L268",
-          "version": "repo-lines-v1:sha256:3b5cb1dc609158affde2dc22045520ddcfc31f85d38f83ec6a51516a6d9b9874:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY4N2MyMDMxZWEwNjJmNThiYzVjODE4ZWUwOTlmNDkzOGJlNzRhODhiZDUzYmNiMmFkNGZlYmY2Mjg0MGI2MzkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFhMWQxYTYzMzkwMjI5Yzc5ODM0N2U4M2EwNDA1NDQxYzk0MDAwMzUyODRhZDE2OGMxYmY2Y2RmMWQ3MGEzNzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU2NDQ0Njc2ODhiMjExMzc5OTg2Yjg4NmU4YTRmYWJmMjZhYzU4NTEwNTdjYWQ0NmEzYWJiMTkxYTdmNzQ1MWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkyNTFkMmRiZDVlOWI2M2NhZjgyZmM4OTQ3NGM3NDVjMjc2ZTNkZTUwMTRkMWU3NDlkZWQwZTc1MTM5ZTRmNGYifQ"
+          "resource": "repo://frontend/lib/api/types.ts#L250-L276",
+          "version": "repo-lines-v1:sha256:7858776c635a97e7094ce0a764b5330be9a9b8a87f93c40041f9679159e6049d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlNzg0ODExZDY2MTJiYjI4YTExMjEyMGU3NDE3NWUzZmU1MWFjYjNkNjQ0Y2Q1YzNlYzIwYjdiYTYwYmJiMmMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3YmUwMjQ2MDIxMzVjZTNkMDhiNjViMmQ4YjQ3M2E1MWM2ZjAzMmVhNWMxZjA0NjdmZmNmNmUyNTkyZWIzMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImEzZTU2MDgyMjhhZDZlMzA1MWFiMDYxNjgxYmEwYzgzYTVhYjRjZGFhMzQ1ZWE3MmEzOTFhNmUwYWFiYjU2NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
     },
@@ -972,15 +992,15 @@
       "evidence": [
         {
           "resource": "repo://docs/ARCHITECTURE.md#L256-L259",
-          "version": "repo-lines-v1:sha256:a87140901466bc5ef9c7d07aecc7b236d47d8a3fd43209a9830a7801ca0b2a2a:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGMyZTZjNTg5YTBmNDMwYzdhNjZjNWEwNDRmNDAyYjYyYTNiZmYzMDBhYWM4OTQ3OThhNDM2MDk0ZGY4YTIyNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNWFhYTkxOTIxOWZlZTE5Y2IyNTI2Yzk5MTc0YTgwMTJkMDM4MTIzZDk5N2M5MGEyMjhhMjgzOWE0ZDJlODI3NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmJiYzZkYzc0OTE0ZTkxZjdmYWMwMzA4OGYyYjdhZWFlNTc2Y2UwYzdiY2ZmZDVkMmNjYjEzYjg3ZTM5ZTVkZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDZhZGRhY2QwYzZiNjJmYmY1ODQ5MjA0ZWNlZmI3NzFiZDQzMWNlNDdiYjk1MWU3MmNhODJkNTEzZWNjYjI1NCJ9"
+          "version": "repo-lines-v1:sha256:f98978ca78cc2972d2745b6db37cd8d58d4a362eb33b2d66af6b465dfb940bfd:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTAwZGViM2NjOTA3ZjM2MjAzMzRkOGU1ODU1YzZmY2ZkZjIyYjkxMGNjZTk4OTIzNGU1YzhkNGMxODhhODliMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGMyZTZjNTg5YTBmNDMwYzdhNjZjNWEwNDRmNDAyYjYyYTNiZmYzMDBhYWM4OTQ3OThhNDM2MDk0ZGY4YTIyNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjQ3M2QxMjYyNDY4NDljNGM2ZWMwZmVkNjVkZmNmZDQ2NGZmNjQ4Njc3ZDc0NWEzNGQ0OWFkMTgxZDk5YzM3YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDZlYWFhMDdlYjFjYTNkYTNjYmE2ZmE2OTc5YTUyMTUzNzlhNGM4YmY3NGI5ZGE2NjdjOTA5YTEwZWJlNTRiZiJ9"
         },
         {
           "resource": "repo://frontend/features/ask/AskWorkspace.tsx#L97-L113",
           "version": "repo-lines-v1:sha256:899318c9d224b25f66717b2254e38977c50a2afea5d1f8979c27fbddd22a635e:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAwM2RiN2Q3NGY1NTlmYjhhNzA3Njk2MTZiNTFkYmU2NDE2ODIyMWY1YmRmYzAxY2FkYWIwYjdkZmY4OTQ3YzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJjNjk4OTQxNzg0MjhmNDg1NzE5NTE4NTQ3OGE2ZTJlY2YwZGMyZjUyOGRkN2QyZmJkYzNkYzczZjRkNGQ0NmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImE2MGVlOWViYmZlNTUyMGIwZTAyZmEwYWM0YmYwZjNhOWIyN2VhYTZiNjg4YmU0NjI0MmUxNDg3NzMzMzI2NGQifQ"
         },
         {
-          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L77-L86",
-          "version": "repo-lines-v1:sha256:8428d7d9d069113831f5099e7512589f763e7ff68b29b226ba5efa690aebeff5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdiMWMxYzczNDU1NTNmNzIyNmEzZDkxMTc4ZTE4MDVjMThkNjJjNmQ2MDY2YWMyMTI4ODU0NzMwYmI5MzNkNTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyYTJjYjI1YTEyMmI0NDIyMWE2MjM0ZWM2NjBhN2I1ZmI3ZjliZGU3YjNiOWUyYjNjNTU5YTBkOTZmYWM3MzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3MDU2ODFkNDQxZTRlNzNkNDhjZTAyY2ZlMzMxNjI4MmZjYWQxNTM5ZDRiZDdiMTFmZDdkMmJhMTMwN2VhZDgifQ"
+          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L76-L91",
+          "version": "repo-lines-v1:sha256:0581da2720872bd4608d6871773c5f00ba582530fabe0c65ab226be155b7b811:eyJzZWxlY3RlZExpbmVDb3VudCI6MTYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVkZTExNDEzMTJkMjY2YTdiMDI0NGMyODQyNzc1ZTFiZTkyNGZkMzQxNDhhYzE3MjBjMzAwMWZhYjk5MjBiOGEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyYTJjYjI1YTEyMmI0NDIyMWE2MjM0ZWM2NjBhN2I1ZmI3ZjliZGU3YjNiOWUyYjNjNTU5YTBkOTZmYWM3MzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NGZjMGMxNzNkMWVjM2ZjNTAxZDdkZmE5Mjg1NTAxYzUyN2NmYjQ3MTI1ODNkYTNjYzM2MTgwNTY2YjRiZTMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjJhMWJlMDk0NjljYzRiMTE3ZWM2OTAyMDg5ODNhNjdhMGYzMTRiMmU5ZWQzM2QwN2U2NTY2OTI4MjJlM2E1NzMifQ"
         },
         {
           "resource": "repo://frontend/lib/url.ts#L1-L32",
@@ -1181,10 +1201,78 @@
           "version": "repo-lines-v1:sha256:1d6cfead63ad264c21c3f73627d8738b2e6908f8ff3089f00b110d26ee1440de:eyJzZWxlY3RlZExpbmVDb3VudCI6OTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxMzNlOWQzODIzZDAyNDNmY2NkM2M2MTk1NWM4N2FhMGQyNjg5NGQyYTFiOGVmMjBkMDcwOGRmM2JmODRiYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI4ODIxZTc2NzgyZjgxNDQxNmUxOTVhMGIyMzAzZWQwZmM3ZGYyZmUzYWZmY2RiYjA4MjZiYjc4MzdmYjU4YTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_72a60c56475148658aae156bde78219e",
+      "statement": "usePagedList (components/ui/ListPage.tsx) is the offset twin of useCursorList: it is keyed by a resetKey so a filter change restarts at offset 0 and a stale answer is dropped, it uses an optional server-rendered `first` page for the opening key without refetching, skips duplicate ids, exposes `more` only while rows remain and no load is running, and reports `fetched` so ListMore's trigger is not stranded by a dropped duplicate.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/components/ui/ListPage.tsx#L154-L216",
+          "version": "repo-lines-v1:sha256:547e2a59344eb8038dd8487b580d6e092694640ffdf6f0192953c15c46c3f87f:eyJzZWxlY3RlZExpbmVDb3VudCI6NjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYzZjAyYWUxNGYxZDU2ZTBlZjlkZWI4MGU0NWUyYWU1M2MxYjA3ZDI4MDhiYWQ0MjE4ZTIzY2RkODg4YzllMTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkyMDQwZTA5NWE5NGUyYWRhNzRlNDIxZjM3MTg3NTFhOTFhODEwYmZkNjZmNDhmNGU5MzljN2I3NDgwZWI2NzAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY3NDc0MzFhODBlYjdlY2EzM2I3YjdkYWYwYzVmMmE0OGRkMWFlOWU5NGY4ZmMyNWE1MGUzZjA5OTA4OWU2NTAifQ"
+        },
+        {
+          "resource": "repo://frontend/components/ui/__tests__/ListPage.test.tsx#L169-L250",
+          "version": "repo-lines-v1:sha256:62e382e08afacaca9a46e2d33a20d8763406361990a67cda5b8bfb18627787af:eyJzZWxlY3RlZExpbmVDb3VudCI6ODIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjczMWViNmUyODk4MWExZGIxODg1NWZhMDE1ZWI5ZmY4YjMxOWUzMTQ4YTEwYTcyZjM5MTYzNjJmMmZlYTFmOGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3NzlkMTE4ZDZlM2NiZjQ1MDUzOTc0OGRlZTdhNDMwN2FjYmU2NDQ2Y2JhMjk3ZjI3NjBmYTVkMGJiYTFiYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_67b7adfc0869460aa836ddf6c630c078",
+      "statement": "The Registry's bucket counts and dropdown options come from the server and only on the first page: the backend returns counts and facets only when offset is 0, covering the whole Registry regardless of filters, and RegistryClient reads them from the server-rendered `first`, so they stay fixed while the person filters or scrolls; the 'Works in' options are the North-East states present in the where facet.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/repositories/registry.py#L372-L406",
+          "version": "repo-lines-v1:sha256:1b3d55dfa8cc584512b20a31178f095e1e5a1e393865e2da600a9df51ce7727c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzMWNhMmExYTM2NzUyYjYzYzA1ODRmZTMyODM5YzVmYmJlYzQ1NDg5MzRiNmVjNzc3MmQ3MzQ2OGUxZjEwZmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3NmM0OWJhYThmMTE3NDUwNjMyYzE0ZjZhYzUyZWE0YWY2MDZlMjkxMTg2MmVjYmMwN2E0ZGY4MzlhMTQ4ODAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJlMmQ3NDlkODUwNDUxZmNlZTViZTY1Njk2OGJkZmMyNjE0MzI2ZWNhYmNhMTE1MDg1NDNiZDM5MDMxYzEwNGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L105-L114",
+          "version": "repo-lines-v1:sha256:06c1c0fbf51d01889d25730210fffd70dc4364287d1e8ecd5ac31330d1b78c29:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjVjYTE3Mzk4MTgzZDZjYjY5YjcwMTQ3NzFlNjE1NDIzNWM3MmEwZjE0YzIwODMwYzA3ODgyYmRiMmIzNDNhNDgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQyYTJjYjI1YTEyMmI0NDIyMWE2MjM0ZWM2NjBhN2I1ZmI3ZjliZGU3YjNiOWUyYjNjNTU5YTBkOTZmYWM3MzkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlhMmZmNTdkM2MwNzhhZWZkMzc5OTJlYzQ3ZTdlZjNhOTc0YTk0NDNiNTU2OTc5NjcyYWY1ZWE3MTMwNTU2ODMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjA1ODk4OTI4YjIyOTExYTIxYjhkZTFmMDRlOWE1ZGQ3ZTJiODQxZGY0ZDc4NzM5Njk3NzhjZmY5YTEyZTEzYTcifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_b8ba08b826154cc2825b16f43e48e66f",
+      "statement": "On the Registry, typed search text is held locally and copied to the address while the server is asked about it only after SEARCH_DELAY_MS (250 ms) of no typing; dropdown, bucket and Clear picks are asked at once; later batches go through fetchRegistryPage (call() in lib/api/rest.ts) from the browser, and search matches anywhere in the entity's name, aliases, districts, states, programme and partner names.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/repositories/registry.py#L311-L320",
+          "version": "repo-lines-v1:sha256:71fcd304b7d8e8d823dd87612a97027e9cbf3338829d50410a17177ce08669bb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiMWM1ZmUzZWY1OWVmYmNkMWY0ZDc4NmQwNWY5Y2M1NDAxMzllNjdkYzM4MGYzNWEwZDJjNGIzMGM0YWRjZjgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxMjM2ZGRmN2NjZjcwN2NjMTlmMmIzZmFlYzAxZmNlNDE3ZDQ3NThmYmQ5Y2E5OGQ5ZWYzMWY5NjZlODE4ZTAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVjM2NkNjJhNmJiYjdmODU2NWM4MjU5NjRkNDhkZWFiOGZhYzNlNDc5ZTMzMGY2ZmU3NmI0NjRjZmY5ODJmZDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgxMWNjMjVjZWM2Y2RlZmFkYTIwOTI2MTY1OGZhNzExNTIwN2VhMGY3YTJhNzk2MDMzZWQ1NzAyMjJhMTE5ZWUifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/registry.py#L367-L368",
+          "version": "repo-lines-v1:sha256:92fe545e5c70920cfb6c6824e7ac38681ee564c0ede2d33234a664e22bcc072c:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZGYzMjk1MWM1NTgwMjE3MmIxYTNjZDBjM2RhZDU1NDkxMzk3NTE3NDk1ZGQ5ODQ1YWMwYWI3ZmIwNmM4NWE3OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjc2MjkxODYyMzk2MmM2MjViNjFjOTYyOTAxZWFjNDExZDlhMjlhMDNjZTYyNzc2YjMzYjUxMzBlNTYwOGNiYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODU5MmExODZlMWEzMTlhNjQ5ODJjZGMxYWNkZTIwYjgxZGZhYTM2Yjg1ZGI4MWRlMGJhYjdiOGZmZDVlODI3ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMmUyZDc0OWQ4NTA0NTFmY2VlNWJlNjU2OTY4YmRmYzI2MTQzMjZlY2FiY2ExMTUwODU0M2JkMzkwMzFjMTA0YiJ9"
+        },
+        {
+          "resource": "repo://frontend/features/registry/RegistryClient.tsx#L15-L103",
+          "version": "repo-lines-v1:sha256:aa01639c3b16035659ed86e19feb77bf4131617199197d183a9b9ed2c361ec95:eyJzZWxlY3RlZExpbmVDb3VudCI6ODksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY1MzZhYmRjYWU2NzYxYjhiMWJlYmY3MzAxMjUxMGM4OTA2YjQ4NTRmMGZiYzk0ZjI4Yzk2ZmEwMzhmNzEyZmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1ZWYwMWJjMDhkYmMzYjYzZTRlNzVlYTNkMjZhNWI5NDE4OTE4NzdlMjdhZDg5MTMyOWM4NDExZDdkOGRjNGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjhkOGM0NzBjNWMyNzBmN2E0Y2JmZDYxZGNjM2I0MjZlZjJkOTY2NTU0NGI4OWRkMDY4YTBjZGI3Yjc1N2JlOTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImQ5MWE2ZGM0NjA1YzEyM2M5NTMxNzhjYWEzMzI0NmNjYjgwOWU5ZDhjMjlmNDFiNTU1ZmFhNTNkMmUzZjBkZDEifQ"
+        },
+        {
+          "resource": "repo://frontend/features/registry/api.ts#L1-L6",
+          "version": "repo-lines-v1:sha256:85278dbbed9a8c45fab0c2c16abdbdabe84717c055f82ca398d261cb3611a4f7:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjIyOGY3MDk3NDE2NDczMzgwMjFhYzJiMWU3OWUzYTdiM2U5MGE0YjljYzUxYzA5ZjRmZDZiZDlmNDBhZmJiYyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzNkMDg5M2I0ZDQ3YTUwMTg4MDk4ZWMxYWIyMGZkZmY0MDlhMzJkYzYxODhlZjMwZjIwOTZlZTI1MmI4MmViZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_2e3537dbfd8a4befb95fab0854bcc088",
+      "statement": "GET /api/registry returns a RegistryPage (FacetedPage<RegistryRow>: items, total, limit, offset, counts, facets) built by one SQL query that applies the filters and search and orders CSOs first then funders A→Z; research counts are added to the returned rows only, a failure there is logged and the page still returns, and each row's search text is excluded from the response. The frontend mirrors this in Page<T>, Facet, FacetedPage<T> and RegistryPage in lib/api/types.ts.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/registry.py#L20-L47",
+          "version": "repo-lines-v1:sha256:e6b083b1728d876c5d6ff27bab30657ba659c885a4c958f64b33186245a6be8b:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhkMGI1MzE2N2M5YzMzYmNmMWUwOWU5ZTk2ZTliZTY4YTBlNjcwZjY5Y2RmNjIyYzcxNmRhYjFjMmZiMmEyNmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkNzE4ZTRlNTJkNTM0NzAwOTBjYzA3OTk4ZTBhZDVlZjM5MGQ5MzhhMWJkNDU0NWM3MGY0MDExYWZhM2EzMTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjM4MjlkNDllZGFiMmI1NWE1NTgxNGJiYjZjMmQzMmRlZTkwNTBjNjM1MjhlMWUzMDYyZWMzNGQyZGY5ZmNjNDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/registry.py#L372-L395",
+          "version": "repo-lines-v1:sha256:242bbc4066b7a74a2875468bd00e1600f5ba5b3023f5724fd6046b17ec85dae9:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQzMWNhMmExYTM2NzUyYjYzYzA1ODRmZTMyODM5YzVmYmJlYzQ1NDg5MzRiNmVjNzc3MmQ3MzQ2OGUxZjEwZmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYxNjU5ZjkwMDRlNzIzY2FhMTc4ODdmYWUyMmE1MGVkYjg0MWM0MDAzMDAyZDg3MDJkNjE3MzFlMTY1ZTdkZWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjJlMmQ3NDlkODUwNDUxZmNlZTViZTY1Njk2OGJkZmMyNjE0MzI2ZWNhYmNhMTE1MDg1NDNiZDM5MDMxYzEwNGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImYzY2VhY2FkMDgxOWYxMDQ1MDE1ZTI5MTk4Y2IxNjZiMzRiZjE5ZmM2YWZmNzNjM2IzZDIyZDFlOTM2Yjg4OTgifQ"
+        },
+        {
+          "resource": "repo://frontend/lib/api/types.ts#L259-L276",
+          "version": "repo-lines-v1:sha256:2d3d764bc123c1c4295ccfd66ea3c430fa427a6e984c6435e80f4995d6f3907f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMyN2EyMzY0NDU1N2JhMTYyYmI3YTU2M2M1MGM3Nzk2Njg2MWJlZGNkY2ViMDFlMDgzMjk0Mjg1YTU2MTY5MzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc3YmUwMjQ2MDIxMzVjZTNkMDhiNjViMmQ4YjQ3M2E1MWM2ZjAzMmVhNWMxZjA0NjdmZmNmNmUyNTkyZWIzMGMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImU3M2I4YjJhYzZlM2M1MTkxM2ZmZmRhZTc5YjIxYjQ0ZDNmNjcwOTU4MDYyMzFkNzcwMjliODA0ZTRiY2I1Y2UiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-10T13:16:49.280Z"
+    "at": "2026-11-11T11:11:22.403Z"
   }
 }

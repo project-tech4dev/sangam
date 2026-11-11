@@ -10,8 +10,14 @@ sources:
     resource: repo://.github/workflows/ci.yml
   - id: openwiki-source-6766b7a0c14857435d2077c9
     resource: repo://.github/workflows/deploy.yml
+  - id: openwiki-source-6dcfc1451bcbf8009d0484a9
+    resource: repo://backend/app/core/config.py
+  - id: openwiki-source-933c62fa2383d76225c96eb5
+    resource: repo://backend/app/core/egress.py
   - id: openwiki-source-e136029ec7d24feaceb8ce72
     resource: repo://backend/app/core/lifespan.py
+  - id: openwiki-source-51ead927cc43f35e220ea627
+    resource: repo://backend/app/db/checkpointer.py
   - id: openwiki-source-48da13ff10650a1cb4ac7718
     resource: repo://backend/app/db/migrate.py
   - id: openwiki-source-26b852c215c1dc4649cbde36
@@ -22,6 +28,8 @@ sources:
     resource: repo://db/migrations/README.md
   - id: openwiki-source-0481f770819c385f3b507020
     resource: repo://docker-compose.staging.yml
+  - id: openwiki-source-b79fbbd921df689b4bbdc82f
+    resource: repo://docker-compose.yml
   - id: openwiki-source-e2b923750735c644bf0f22f5
     resource: repo://frontend/app/api/copilotkit/%5B%5B...slug%5D%5D/route.ts
   - id: openwiki-source-a0ebc66d448ae6aa5723800b
@@ -30,10 +38,10 @@ sources:
     resource: repo://Makefile
   - id: openwiki-source-0908473e2445de9a37b6928f
     resource: repo://scripts/smoke.sh
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-11T11:11:22.403Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
+    at: 2026-11-11T11:11:22.403Z
 ---
 
 # Deploying by Hand
@@ -97,17 +105,18 @@ The workflow uses `concurrency: group: deploy-${{ github.ref }}` with `cancel-in
 
 **The workflow does not migrate.** Migrations are never applied by a deploy, a build or `make up` against a managed database. They are an explicit separate step: `make migrate ENV=staging` (see [Writing a Migration](./writing-a-migration.md)). `ENV=staging` here only points your local tooling at the managed database. It deploys nothing, and it is the same database the deployed app serves.
 
-`ENV=staging` selects the `docker-compose.staging.yml` overlay, which sets the backend container's `DATABASE_URL` from the `STAGING_DB_*` block in `.env` (host, port, user, password, name, `sslmode` defaulting to `require`), or from `STAGING_DATABASE_URL` if you set that instead. The overlay uses `:?` guards, so an empty block fails with a readable message rather than quietly connecting to localhost. The role needs `CREATE` on the `public` schema and the `vector` and `pg_trgm` extensions ([.env.example](../../.env.example)). Avoid `make up ENV=staging` as a deploy step: it runs your own containers against the shared data, and `make up` skips its automatic migrate for any ENV other than `local`.
+`ENV=staging` selects the `docker-compose.staging.yml` overlay, which sets the backend container's `DATABASE_URL` from the `STAGING_DB_*` block in `.env` (host, port, user, password, name, `sslmode` defaulting to `require`), or from `STAGING_DATABASE_URL` if you set that instead. The overlay uses `:?` guards, so an empty block fails with a readable message rather than quietly connecting to localhost. The role needs `CREATE` on the `public` schema and the `vector` and `pg_trgm` extensions ([.env.example](../../.env.example)). Avoid `make up ENV=staging` as a deploy step: it runs your own containers against the shared data. `make up` only runs its automatic migrate for `ENV=local` with the bundled `postgres` service enabled, so it skips it for any other ENV and when `COMPOSE_PROFILES` no longer includes `localdb`.
 
 Run migrations **before** dispatching the deploy:
 
-1. `make migrate-status ENV=staging` to see what is pending, then back up if it is a destructive change. Migrations are forward-only and run in filename order, each in one transaction.
-2. `make migrate ENV=staging`.
+1. `make migrate-status ENV=staging` to see what is pending, then back up if it is a destructive change. Migrations are forward-only and run in filename order, each in one transaction. The status output also reports the LangGraph checkpointer's version (`checkpointer vN of vM`).
+2. `make migrate ENV=staging`. This applies `db/migrations/*.sql` and then, only if those succeed, LangGraph's own checkpoint tables (`app/db/migrate.py` calls `PostgresSaver.setup()`).
 3. Dispatch the Deploy workflow.
 
 Why this order:
 
-- The backend refuses to boot against a schema it does not match. The lifespan runs `_verify_sql_catalog`, which raises `RuntimeError` when the SQL tool's allowlist (`catalog.py`) disagrees with the database. Deploying code that expects a table or column before migrating gives a backend that fails on cold start.
+- The backend refuses to boot against a schema it does not match, in two ways. The lifespan runs `_verify_sql_catalog`, which raises `RuntimeError` when the SQL tool's allowlist (`catalog.py`) disagrees with the database. It then opens the checkpointer with `open_checkpointer`, which raises `RuntimeError` ("run make migrate") when the database's `checkpoint_migrations` version is not the one the installed langgraph expects. Deploying code that expects a table or column before migrating gives a backend that fails on cold start.
+- **A langgraph upgrade needs a migrate too, with no `.sql` file involved.** The checkpoint DDL no longer runs at boot, because concurrent cold starts would race. So a deploy that bumps `langgraph-checkpoint-postgres` in the backend's dependencies must be preceded by `make migrate ENV=staging`, even when `db/migrations/` has nothing new. `make migrate-status` shows it as `pending`.
 - Migrations are additive by default, so an already-running older backend keeps working on a migrated schema. That is what makes migrate-then-deploy safe. A destructive migration breaks that assumption, so plan it as a two-step change.
 - The one rollout order the repo spells out (for the auth plan) is migrations, then backend, then frontend. The workflow does not enforce backend-before-frontend, because it starts both jobs together. If a frontend change depends on a new backend endpoint, deploy backend alone first (see below) or expect a short window where they disagree.
 
@@ -126,18 +135,20 @@ The dispatch form has no inputs, so there is no switch for one project. The `cha
 - **Python bundle limit is 500 MB.** The backend's dependencies are about 256 MB, so adding a heavy dependency is a deploy risk. This is why Storage is called over plain `httpx`.
 - **Request bodies are capped at a few MB** on Vercel Functions, which is why large uploads go straight from the browser to Supabase Storage on signed URLs.
 - **`NEXT_PUBLIC_*` is inlined at build time.** Changing one in the Vercel dashboard has no effect until the frontend is redeployed. Dispatch the workflow again. It deploys both projects regardless.
-- **Backend env changes apply on the next deploy.** The backend reads its Vercel environment, which overrides the code defaults, so set or clear variables (model tiers, `DATABASE_URL`) before you dispatch.
+- **Frontend dependencies are installed by Vercel at build.** `frontend/package.json` (including its `overrides` block for security pins) and its lockfile are what the remote build uses. CI runs `npm run lint`, `npx tsc --noEmit`, `npm run coverage` and `npm run build`, so a green CI is the nearest thing to a pre-deploy check of the frontend manifest.
+- **Backend env changes apply on the next deploy.** The backend reads its Vercel environment, which overrides the code defaults, so set or clear variables (model tiers, `DATABASE_URL`) before you dispatch. Blank values are treated as the default (`Settings` maps an empty string to the field default), so clearing a variable is safe. `STAGING_DB_*` is for local tooling only and does nothing on Vercel, because the backend reads `DATABASE_URL`.
+- **Outbound fetches are guarded.** The backend's research and news fetches go through `app/core/egress.py`, which refuses private, loopback, link-local and internal addresses before and after DNS, on every redirect hop. TLS verification stays on, using certifi plus the bundled `app/core/certs/intermediates.pem`. Nothing here needs deploy configuration, but a site that fails to resolve to a public address, or whose chain is not trusted, is refused on the deployed backend exactly as locally.
 - **Keep-warm cron.** `backend/vercel.json` also defines a cron that calls `GET /health` every five minutes (`*/5 * * * *`) to keep roughly one backend instance warm.
 
 ## Post-deploy checks
 
 Both jobs reporting green only means Vercel accepted the build. Then check:
 
-1. `curl -sI https://sangam-backend-one.vercel.app/health` returns 200 with an `x-vercel-id` that starts `bom1::`. `/health` is an open path, so no token is needed. It also proves the lifespan got through its checks, including the SQL catalog verification, because a cold instance runs the lifespan before answering.
-2. The backend's boot log reports pool size, gate slots, and whether tracing and the graph are on. Look for `SQL catalog drift` errors if the backend does not come up, since that is the migrations-not-applied signature.
+1. `curl -sI https://sangam-backend-one.vercel.app/health` returns 200 with an `x-vercel-id` that starts `bom1::`. `/health` is an open path, so no token is needed, and its body carries the connection pool's counts. It also proves the lifespan got through its checks, including the SQL catalog verification and the checkpointer version check, because a cold instance runs the lifespan before answering.
+2. The backend's boot log has one line, `Sangam backend ready`, reporting process age, connect+catalog time, boot time, model, research-at-once, db-pool and gate slots. Look for `SQL catalog drift` errors or a `run make migrate` checkpoint error if the backend does not come up, since those are the migrations-not-applied signatures. A `Storage is Supabase project ... deployed buckets` warning means the backend's database is not the Storage project's own and no `STORAGE_BUCKET_SUFFIX` is set. The Langfuse and LangSmith tracing lines are **not** in the boot log: agents are built on the first request that needs one (log line `Agents built on first use`), so tracing state appears only after the first Ask, Import or Pitch call.
 3. Open the frontend (`https://sangam-six-beta.vercel.app`) signed out. Public pages should render, and `/import` should redirect to sign in.
 4. Sign in and load a data-backed page (the registry). This exercises the frontend-to-backend path and the database.
-5. For a change that touches chat or Import, run one short Ask turn. The proxy to the backend has the 1800 s ceiling, so that path is the one a limit mismatch breaks.
+5. For a change that touches chat or Import, run one short Ask turn. This is also the first thing that builds the agents on a cold instance, so it is where a model, tracing or graph configuration problem first shows up, and the proxy to the backend has the 1800 s ceiling, so that path is the one a limit mismatch breaks.
 6. Confirm the backend env still has `DATABASE_URL` (session pooler), `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` and `ALLOWED_ORIGINS`, and that `DEV_AUTH` is unset.
 
 `make smoke` is not a production check. It defaults to `localhost` URLs and authenticates with `Bearer dev`, which only works when `DEV_AUTH` is on, and that must never be set on a deployed backend. See [Vercel and Supabase Specifics](../operations/deploy-and-vendors.md#checking-a-deployment) for the full checklist.
@@ -150,7 +161,8 @@ The workflow has no rollback step. Vercel keeps earlier deployments, and the das
 
 | Symptom | Likely cause |
 |---|---|
-| Backend returns 500 or fails on cold start right after a deploy | Migrations were not applied first, so the catalog check fails. Run `make migrate ENV=staging`. Redeploy only if the code also needs it. |
+| Backend returns 500 or fails on cold start right after a deploy | Migrations were not applied first, so the SQL catalog check or the checkpointer version check fails. Run `make migrate ENV=staging`. Redeploy only if the code also needs it. |
+| Cold start fails with "checkpoint schema vN, this langgraph expects vM: run make migrate" | A langgraph upgrade shipped without `make migrate`. Run it, with no new `.sql` file needed. |
 | A changed `NEXT_PUBLIC_*` value is not visible | Env edited without a fresh frontend deploy. |
 | Long Import runs cut off at a fixed time | The two `maxDuration` values differ, or extended duration is not enabled on the Vercel plan. |
 | Run is waiting and nothing happens | An earlier dispatch on the same ref is still running. Deploys queue and are not cancelled. |

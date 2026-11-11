@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:ff542057a9238e89fea56b8512f192aca34f29669b7099d4568318cd67475224",
+  "pageVersion": "sha256:d7a4f40fa2dacbf96d000494b05a32845b56d8dbe767768cfba115bdad334492",
   "claims": [
     {
       "id": "claim_4cb3c62ff0f34116ae33de01c60bd2ef",
@@ -445,8 +445,8 @@
           "version": "repo-lines-v1:sha256:66ab1d7d590a26a0b13d05db51e64400c84ff230ef20b20d7f06cedf83206c00:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWUyZDNlOTQwOTc2NzRlNDNmMWY0NjFiNmU3ODVmYmNjZDQ0OTNkNjI2ZmU4OGJjZWQ1MzBiZTA4NjRmNDkzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRmMjBmNTk3YTMxMTIzMThiM2M5MWY1NTkyNWMzMGRkZjQ3NTBlZDYwZGVkNjY4ZDFmYWUxZGFmNzYyYmY4ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L262-L276",
-          "version": "repo-lines-v1:sha256:8556607e8be9494f2a0a504c58b8e278d985b3cdcab8468b311624888605f88c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAzYTY0MDEyMGUyNzRkZWIwZTM2MDM3ODkzYjMzMjAzNzZkMThmNWJmMjM1NTE2ODc2MTAwN2VjMzNjZjQ1NmMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkzZjA3OGRiYjkxY2Q2MjZhZjdiMWFkYzkzNjcxNjQyZTZmMGZlYTBlY2Y5MmI3OTY0YWY0NDZlZWFmNWY1NWUifQ"
+          "resource": "repo://docs/CHANGELOG.md#L264-L278",
+          "version": "repo-lines-v1:sha256:7cfac96f1bf3ed3c775fc230190f9cd6f3fb9d5870de1da3b5c57060678c4875:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkzMjFiNDQyYWM0YTE2NTY1YjhlYjQ5MWEyNGNiNGM0Yzk3ZmY3MGY1OWVmODcyYWRmOGMwNjg0NGE4MGMyYmUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI0OTBhMDcxMGU0MjExNDJiNzFmMzlkYzcwOGFkZDA0YWEzNThkNTdhNjFiMmQzZmE4ODkyNzhjMGU4YTkyNjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwMWYyZWMxNzU5M2MxMDU0ZWI0NjM2N2Q4NDUzZWYyNGExNzNjZTk2YjcxMTdkOTFmOWE2OGQ0NGZlZjhiMDEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjFjNWExYWU4MDYxODU3OGJjNWVlZTU5NmQwYzdhNWNhMDI3OGM1NjBmNmNhMTE5NGI2ZTlkNjAzZWY4ZTc5NzIifQ"
         },
         {
           "resource": "repo://docs/INGEST.md#L9-L27",
@@ -491,7 +491,7 @@
       "statement": "The text helpers moved from ingest/office.py to app/core/extract.py, a pure bytes-to-text module (docx paragraphs with table rows as 'a | b | c'; pptx slides; text lines; xlsx sheets as markdown capped at 200 rows each; PDF text). Document upload extraction uses it to fill content_md (a damaged file yields no text but the upload is kept; CSV, text and image uploads get none, and bytes not matching the extension are refused with 415), the vault reader uses it for Word, PowerPoint, text and PDF files, and read_document_pages uses docx_range and extract_pdf_text for downloads.",
       "evidence": [
         {
-          "resource": "repo://backend/app/api/routes/documents.py#L118-L187",
+          "resource": "repo://backend/app/api/routes/documents.py#L117-L186",
           "version": "repo-lines-v1:sha256:bf8f2983c28433f9dad9d8f6a0d745bf4272cd9b50a5f8cd3a48f1f8f8315e5a:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcwMjg1ZmYwMjc2NWZjODZjNzM0ZGFiODU1YWE3ZGY0ZTE1NTI1MTdhMzg5MzcwYmEzNGE2MTM5NTg2MzhjODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmOWM5NTMxZmJjNWM3MDkyY2I1MTMzYTdjYWRlNmIwNDQ2MzIyMmE5ODVjZDllZTE5ZDVhZmU5YWY0MWYyNjQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImNjNzMyNGYyYjMyZGIxNGU4NDYyZDhlZTc4ZTdhMTMzODYzYjk3MzQ5MTUwMDY0ZDE0YzU2NmZlZThhYzVmOTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRmNjdkYTVhMDM1NmEwNzRkZDgzOWQ2OGFhMmNjNTg3MWU0NGUyZjJjMTgzMjU4NmJiNDVkZTNkN2M2MmYzNzUifQ"
         },
         {
@@ -653,7 +653,7 @@
           "version": "repo-lines-v1:sha256:dd61a7e929a8abdfa993b0a87cff82cdd52f7d5777b8aeb12436a35d76f9f848:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjY1OGQ1MzBjMjIzMWIwYWNlMTZiNWEzOWRiYTI1MzJhYmFkMmQzN2JmMjQ1YWFiMjU3MTIzZWNkOWMxNTdhNDUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk1NTMzN2I5OTU1MmU4ZTc5M2U4Njk1NzA5YzEwMDU2ODFmOWI1NzFjOTNiMmZkMGE5NDQyMGFkOGRmNTA0OWUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYyMDA5N2U0YWE1MDA2OGJhMTU3ZjlhMjczOWZhZDg2OTk1ZTFlMGNkY2NkYWRjNTg5N2MyMDM0Yzc0ZDNlZmEifQ"
         },
         {
-          "resource": "repo://docs/CHANGELOG.md#L256-L258",
+          "resource": "repo://docs/CHANGELOG.md#L258-L260",
           "version": "repo-lines-v1:sha256:fccb7dd2dc6bd3a6b67bf6558a155ddb39561209d2abd3715b06c7ae7784d3c4:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDRhYjBiZWU1NjY4NThkMWM3YTU5OTVkMTc0NjdmYTRiMzA2OTA0YjFlZmM0NTZiMmU1OTBiNTgzMDZlZTAwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGQ1NmE3NDkwOWZiZDZiN2QwMDhmMWUwNTNmM2NhZTc0ZjczYjdjZTFiMWY5Nzk3ZDQzMGE1NDZlYTUyZjdjYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjVjOTQ0NTJmZDgxYWVhZWE5MTUyOTEyYTdiOTc3ZTExZmRlODgwZjM1MTc3MGY3ZmRiOTYzYzhhMDRhOTBhYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDAxZjJlYzE3NTkzYzEwNTRlYjQ2MzY3ZDg0NTNlZjI0YTE3M2NlOTZiNzExN2Q5MWY5YTY4ZDQ0ZmVmOGIwMSJ9"
         }
       ]
@@ -681,10 +681,72 @@
           "version": "repo-lines-v1:sha256:7690038fa5bf782e4c2fbf47da06998bee58acb0a5707f66db8473014966b4b4:eyJzZWxlY3RlZExpbmVDb3VudCI6ODgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFiZTg1NzVjNjNjMmJjZmFmNTVhOWM0NDk0YmQ0ZTU0ZTY2YTdiMzk0YTRmMjhiOWEzYTViNzdjODY5ZmI0MzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg4ZmVjMGE3MmZiOGU0M2JmOTc1N2YwZjRiNWVlMDIwY2QwNDA0MDc1ZDVhZDI3YmEzZmQ2Y2FjNjQ2YTg5ZTYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkNDEzNDBjYzIzOWExNTljZTliNjAyMmU5ZjYzMjI4MzJlMmVhZDc2Y2FlOWU0NzU0ZDIxMGViOGZiNmQ1ZTgifQ"
         }
       ]
+    },
+    {
+      "id": "claim_a2c9195bea26490ab2f8698eb6e346f4",
+      "statement": "ImportApproval renders only when the paused interrupt is a run_import_now action, in three variants chosen from its sources argument (funder_calls open-calls card, tavily_news card whose plan line comes from the staff-only GET /api/ingest/news-runs/plan, otherwise the write-to-catalog card). Each button resolves the pause once with an approve or reject decision; there is no edit path.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/news_runs.py#L13-L16",
+          "version": "repo-lines-v1:sha256:5755e02ee3256b15e079f4c80742b7a07d71c09eee5465ea8c6b459929940e53:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDMwYjZlYzVjOGMyMmY4YzdkMWY0NTI4MWYzODJiMDRkZmNhYmJkYjM3MjgwYjJiMmE1ZmM4OTdlMzEzNDk1MyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGYyNjI0NThmY2YyZjYxOGE3MGY1MzM5ZDM3YTBhZWFlNDQ2MzBjMmExN2VjNDdkNjlkYWQ0NmQ4M2ZjY2U1YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTRhYTU5NTJjMjk1ZDZiM2E4YzkzZjJhNDI1ZDYyNTZlNDFiMGJlOTNhZTg2Y2RhMGJjZTMyNWUzY2Q2OTRmMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTljNzI1MDc5MWE4ZmMxOThlNjg1NjVmYjVlZjQyMmM1OTk3NjE2MzdhN2FkMzA0ZDVjOTk5ZDdmNzFlNjlmYSJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/ScoutChat.tsx#L300-L300",
+          "version": "repo-lines-v1:sha256:0ba5f312db2fdb770ff44bc1e0a5c12003c198cc9ec45b50eea686dd09caf7f8:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGJhNWYzMTJkYjJmZGI3NzBmZjQ0YmMxZTBhNWMxMjAwM2MxOThjYzllYzQ1YjUwZWVhNjg2ZGQwOWNhZjdmOCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGJhNWYzMTJkYjJmZGI3NzBmZjQ0YmMxZTBhNWMxMjAwM2MxOThjYzllYzQ1YjUwZWVhNjg2ZGQwOWNhZjdmOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzVmMzY1OTY3ZDlmZWZmYWJjMDJhYTIxOTc2MWY3NGE5OTk0Nzg3ZWY2MDAzMThjOTY4OWU1ZDk3MTI2NjE5MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTUwM2Y5Nzk3ZmNiZDEyMmY4NDI2ZTk3MGJmNWY3YWQ0ODQzOTRjMzc2MTcxYTIzZjBmNzEzMzZkOGY0N2FlNyJ9"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/components/ImportApproval.tsx#L9-L161",
+          "version": "repo-lines-v1:sha256:c0430f26abd7b9a84ef5a7b0275bc95bab251e6bd9149c17dd19301fb01feaf9:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUzLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0Yjg5M2UyMmY1ZjFkZThkYzlhNmVhZDU5ODIwNjZhYTk4NzA5NzY3NDkxNjg0YTZiMDQ0MmVjODE1ZDY1MmNjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiI0MTJjYTM0NWNjZjc1YmY5YzA4MDZiY2U2OTViZThkZTgwOGI3OTk4NDI1MWE3YTU0ZDIwMmNmNjEwMWRkNDUxIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJkNjhkYjhhNGVjODI0YmJkZmIxMDkyY2I1ZTIzNjMxNjk1MGU5MDZlYjA4YjgzMzBiZDg0YWQwZWJkNTc5YThmIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        },
+        {
+          "resource": "repo://frontend/features/ingest/components/__tests__/ImportApproval.test.tsx#L46-L128",
+          "version": "repo-lines-v1:sha256:06ce90f370fa50051da766f377854c1c212eb606313b30b59ac0c51b7220f96f:eyJzZWxlY3RlZExpbmVDb3VudCI6ODMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIwMzE4YzAwNzc4Mzk4ZjRlMmNhNDI5ZDI1NGMwOTY4MjYyNWJkMzVlZDg1NjcyNzRhYzdmM2FmMjhiNGJiOWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY2ZjViNDBiMTU4NDU3ZDE3ODY0ZjIxNzkwNzg2ZGQ1YTJlY2RiNjRiNjZhNjUxZjc4OGQ0ZTI1Y2QzMzAzZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI3NzlkMTE4ZDZlM2NiZjQ1MDUzOTc0OGRlZTdhNDMwN2FjYmU2NDQ2Y2JhMjk3ZjI3NjBmYTVkMGJiYTFiYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_3a9e7da7985841ea86cf445ce22a8a93",
+      "statement": "A Doc Vault upload is three steps that never pass the file through the API: POST /api/documents/uploads mints a signed org-vault upload URL after an extension check and org access check (same 403 for unknown and foreign orgs); the browser uploads to Storage; POST /api/documents verifies the path is in the caller's org folder, not already recorded and present, reads it back, checks leading bytes match the extension (deleting the object and answering 415 otherwise), extracts text, and inserts a private 'received' documents row.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/documents.py#L53-L186",
+          "version": "repo-lines-v1:sha256:d1000230ab14f59b97cddcc1ca90f0c04605f8cb6877f9564b3c1aa0482da3de:eyJzZWxlY3RlZExpbmVDb3VudCI6MTM0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjMWQyM2NlNGIwZjhlMmE0ZjY2NzVkNWYwY2ZhOWIxMjJlMDljZmQzMzViNzA3ODNiNDg3ZjExYmYyYmQ4YTk3IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIzZjljOTUzMWZiYzVjNzA5MmNiNTEzM2E3Y2FkZTZiMDQ0NjMyMjJhOTg1Y2Q5ZWUxOWQ1YWZlOWFmNDFmMjY0IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIxNDMyZTJjNGI3ZDBjNDBhYTMzYWJjMjFkOTZmNjBhYzY0MTc2NzQzNTc0ZmFiNzFkMzAxYjBjNzY4Y2QzMzZjIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJkZjY3ZGE1YTAzNTZhMDc0ZGQ4MzlkNjhhYTJjYzU4NzFlNDRlMmYyYzE4MzI1ODZiYjQ1ZGUzZDdjNjJmMzc1In0"
+        },
+        {
+          "resource": "repo://backend/app/integrations/storage.py#L36-L58",
+          "version": "repo-lines-v1:sha256:510c1f03e71d155fab471cadce00603ece248162d9537c2d130c7f96451b4bb0:eyJzZWxlY3RlZExpbmVDb3VudCI6MjMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU2YWE0ODFiODZkMmNmY2Y5N2IyOTI0Zjg0NTFkMWVmZTlkZWExNWVkOGEyM2M3YmRiNmU1YjEyNTk0MTBiZWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ3ZjllNzFjNDEwNzQ5MWY3N2Y2NGE5NTg2NmEzYWUyZmRiOGM4ZGRhMzU2OTUxM2I2ZTc2M2U0ZDk1Yjc0MDkiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjkxMmIzOWIwMTE4NTlkOTMwZDkyNmJjNGE0ZWIxOGU3MWE3MjRjMzA4NjgxODU2ZjllOTVhOGU0YTY1YzAyNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjMyOGUwZWQyMDhmZmFkMjU2MDIzN2I5MmRiYmFhOTBmYjdhMWRkNDkwNDJkOTA5OTNmYmI4NTQxN2QzYThlMGIifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/documents.py#L42-L102",
+          "version": "repo-lines-v1:sha256:bdc43e1f9d49886e4ab926fe58d7ff4c57556cf4e32941071c9a1ffe912f18fd:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc2YWMxZjE4ZmM2NTBjNDhhMDFjODUyMjdmNDk4NzJjNzg5M2MzNTE2NzljMWU4ZTdkZDc3NjNmMTkzYzBmMmQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImRiNDU0MWI1NTA1NjQwMjZkNTQ1NjNiMGM3YzgzOTdmYWVhNzAzZjdmZmFmZTBkNTY3MjNjMDhmY2Q3MzU4NTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3ZGE5ZjI4Mzk5MmE3MGZhOTlmYWFlNDQ1YmFlNDM4YzkxODM2ZDgwYTM4ZGFiMDhjNzcxNmFlYjMzMjcwY2EiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZlNDJkOWYxMjIyYzM0Zjc5MGRmYjY0NGM2NjFmMjljMTg0NzI4NGY0OTk3Nzk4MTQ5MmUyMWUzZTY0NzExNDEifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_vault.py#L47-L264",
+          "version": "repo-lines-v1:sha256:6a8fd7483753e1d3ec97e19ca0c3d76c653e23882cbbe3020a1b9636dbf54ebe:eyJzZWxlY3RlZExpbmVDb3VudCI6MjE4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI5YjRmMDdiYTYxZjhiNDYwMTE5ZDE0MWFjMTIyMzNiMGM1OWQ5NmMxOGIwYTdiYzRkNmZkZjEwNDliMDhkOTcxIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmMzNmMTA0OThhNGMxMTk5MTBmN2U3NTM0YTcxMTE0NTBiMTI5NjY4N2Q0NTVjMjEwZTBlYTI0OWZkNjMxZjQ5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJiOTFhNGNlMjIzODhmMjRmMWE1ODRjODRlYWY2OWQ3MTVlYjY0Nzc1YzkxMWJmMDU0MjQzNmNmYjkwNDEwMWFkIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjZmVlYzRmYzBkYjU1NGViNjIxNDY5ZjY5MDc3MjAwNmI0YmMxNGIwNGI3Njc1NWU0NWE5NjM0MDliNzg3MTg1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_6e3beb4d41604862b5cfffc2ce568715",
+      "statement": "Doc Vault file links and deletion are access-scoped: GET /documents/{id}/file returns a signed link only for a readable document whose path lies in its own org folder (one 404 for missing and not-yours), and staff-only DELETE removes the row first so foreign keys are checked, refuses with 409 if chunks, extraction logs, document_links or a proposal draft reference it, and rolls the row back if the file cannot be removed (502); a failure after file removal is a 500 that a repeat delete finishes.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/api/routes/documents.py#L189-L236",
+          "version": "repo-lines-v1:sha256:0ca0a671129087a37941ca8575825d6d168fdb5611d2790a27f16174a2893460:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijg3NjM2OWZlN2UzNmMwNWU2MWY3OTE5N2VkZTFiMjQ4MjQzODg5YTYzNmQwYzlhNTU3NDkxYjhlMDg3N2U4MDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjkwNTYwOWJjNzY0ZTljMDU5MjZmOTllNzAyOTk3MDQwZDAyMmQ3YjVhM2FiYWRmYjgwMTI2ZWM1ZmM0OTJjNzIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxMTIwMmYyYjdiMzMxM2ZjZTYxZTgzOWMwNmIwZmQ5Yzg3NDI1MjQzNjFmZjMxMDUwOThjYTZlNzE3YjI0YTAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/app/repositories/documents.py#L178-L234",
+          "version": "repo-lines-v1:sha256:a450f2203ae3da88d11815a515c026fee43746fc97d78143fef70e0ab19def73:eyJzZWxlY3RlZExpbmVDb3VudCI6NTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhYzIzMzAyYWEwNmY0NjQ1MTNiMmExMjc0MGEwNzYwNTk2N2EyYmEzN2I3YzkyMzQxMjI2NWFkMjI5NzM0YzQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMwZTJhNDY1MDA5NWZhOTVkMGUyYmI0MWIyZGIyOTA5NGQzNDA0ZDI4Y2UxMjMzOWVjODhiYjRiNWM1YmU4ZjYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyYTg4MTBmMjlmMTI2OGI3ODBjNzA1ZDU0ZmMyODE3NDAzODJmNjliMzJiOTNhYjQ1MzE2MDdiMjQwMTkxNjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_vault.py#L357-L404",
+          "version": "repo-lines-v1:sha256:c4f535dd464c750433c6053b0d86a1b155c34dc16243707b0a8f7496af1bcfeb:eyJzZWxlY3RlZExpbmVDb3VudCI6NDgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNkMTM3YzM0NDM2ZjRlOWZiYjRlODVkYWVmNjZhMzYxMzMwYjgxY2EzZGNkZTI5ZGJkZjYzMjk2ODg4YTM5MWQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5YWRiMGQ0Zjk0ZjIzNmM2OGMyZDAzZjQyNGJkZTUwMmU0YWE3ZGFlOGFlODA2MGJmY2RiMmU2Y2YyYzljYWEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI1YjY3ODM4OGY0ZDE3OWY0M2E5MjYwZThhNTYzOTQxNGQxODAzNWJkOWEzZGE0ODYxMGI4Y2RmMjllMDllOTEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImRiNjE1NzdmM2VjYjlmNGZjMDZhMmU3OWM3MWQ1NTQ3M2E4NDJmZTUyM2NkNWZiMmJhMDU4NDllYmViMzRlYTAifQ"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-10T13:16:49.280Z"
+    "at": "2026-11-11T11:11:22.403Z"
   }
 }

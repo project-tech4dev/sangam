@@ -3,9 +3,6 @@ type: system architecture
 title: RFP Watch (open calls)
 description: How Sangam finds, reads and stores funders' open calls for proposals, matches them to organisations by shared theme domain, serves them through /rfps routes, shows them in the RFP Watch screen and starts the pull from Scout or the make targets.
 tags: [rfp-watch, open-calls, ingest, rfps, rfp-matches, scout, calls-pull, rls]
-verified:
-  - by: openwiki/0.7.2
-    at: 2026-11-05T19:29:31.538Z
 sources:
   - id: openwiki-source-bb520e58d272c5fe6ee64d79
     resource: repo://backend/app/api/routes/rfps.py
@@ -33,16 +30,24 @@ sources:
     resource: repo://backend/app/ingest/tools/pipeline_tools.py
   - id: openwiki-source-92830c579a4b35108978ae40
     resource: repo://backend/app/repositories/funder_matches.py
+  - id: openwiki-source-ba18d0cbe843f3b2c07ce30c
+    resource: repo://backend/app/repositories/paging.py
   - id: openwiki-source-7883f648138e78c1e5c84c85
     resource: repo://backend/app/repositories/rfps.py
   - id: openwiki-source-8b5590d38dd10784b7da1f6d
     resource: repo://backend/app/schemas/rfps.py
   - id: openwiki-source-e863856c857e426d63a2b3d8
     resource: repo://backend/tests/evals/test_import_calls.py
+  - id: openwiki-source-0b6953f97e2ec38da8aae61d
+    resource: repo://backend/tests/test_cov_ingest_tools_pipeline.py
   - id: openwiki-source-73a27a577369ed3d4a74c9b3
     resource: repo://backend/tests/test_cov_pipeline_calls.py
   - id: openwiki-source-804c17c1cdc7ceed1bf73c82
     resource: repo://backend/tests/test_cov_repositories.py
+  - id: openwiki-source-7bddfb21b7b68785fcb8051a
+    resource: repo://backend/tests/test_cov_routes_members_rfps.py
+  - id: openwiki-source-ca30f17cb9dd7937a8d05058
+    resource: repo://backend/tests/test_paging.py
   - id: openwiki-source-03cd5f1c2ac1a4db6357df24
     resource: repo://backend/tests/test_rfps.py
   - id: openwiki-source-ae9507c4a442eab54c70e7da
@@ -75,9 +80,18 @@ sources:
     resource: repo://frontend/features/ingest/lib/toolLabels.ts
   - id: openwiki-source-9e86dbac2cec46334e85282e
     resource: repo://frontend/features/ingest/ScoutChat.tsx
+  - id: openwiki-source-5aab7733935be9ebdc565c78
+    resource: repo://frontend/lib/api/auth-headers.ts
+  - id: openwiki-source-2d49b42b08914606aa9caf47
+    resource: repo://frontend/lib/api/rest.ts
+  - id: openwiki-source-f92593a15af29a6fd1dcc83a
+    resource: repo://frontend/lib/supabase/middleware.ts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-11-05T19:29:31.538Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-11T11:11:22.403Z" }
+verified:
+  - by: openwiki/0.7.2
+    at: 2026-11-11T11:11:22.403Z
 ---
 
 # RFP Watch (open calls)
@@ -178,20 +192,27 @@ Access is row-level security from `0027_rls.sql`: `rfp_matches` rows are readabl
 
 | Route | Notes |
 |---|---|
-| `GET /rfps` | Paged list with `status`, `deadline_before` and `tag` filters, ordered by deadline (nulls last). Any signed-in user. |
+| `GET /rfps` | Paged list with `status`, `deadline_before` and `tag` filters (`tag` matches a tag slug or, case-insensitively, its label), ordered by deadline (nulls last), then id. Any signed-in user. |
 | `GET /rfps/feed?org=<slug>` | The screen's read; declared before `/{rfp_id}` so `feed` is not parsed as an id. Requires a user and runs as the caller, so RLS hides another org's matches and the feed comes back empty. `org` is optional: without it the route uses the caller's first organisation by name (`FIRST_ORG`, shared with Funder Match). An unknown slug gives 404, and so does no organisation at all ("You are not a member of an organisation"). |
 | `GET /rfps/{id}`, `GET /rfps/{id}/matches` | Detail, and the orgs flagged for a call (404 when the call does not exist). |
 | `PATCH /rfps/{id}/matches/{org_id}` | Body `status` in `flagged`, `saved`, `reviewed`, `dismissed` (anything else is 422) and optional `match_notes`. Stores the caller's user id as `matched_by`. 404 when no visible row matches the pair, which includes rows RLS does not let the caller update. |
 
 `Feed` carries `org_id`, `org_slug`, `org_name`, `can_act` (may this caller save or dismiss: the org's members and admins, and staff), the org's `domains`, `last_pulled` (newest `fetched_at` among `calls-` rows) and `items`. An item is included when it is **saved, whatever became of the call**, or when it is not dismissed and the call is open with a deadline of today or later. Items are ordered by deadline, and each carries its places and the themes shared with the org, rendered like "Livelihoods · Skilling for jobs" (a bare domain only when no theme under it is tagged).
 
+### Paging
+
+`list_rfps` goes through `repositories/paging.fetch_page`, which every paged list shares. The SQL must select `COUNT(*) OVER () AS total` and end in an `ORDER BY` whose last key is the row's `id`, so tied rows cannot move between pages; `fetch_page` raises `ValueError` before querying otherwise (no trailing `LIMIT`, `;` or comment). It appends `LIMIT`/`OFFSET`, reads the total from the first row, and when a page past the end comes back empty it runs a plain `count(*)` so `total` is still the list's size. `GET /rfps/feed` is not paged: it returns every item for one org in one response. `match_score` exists on `rfp_matches` and in `RfpMatchOut`, but `flag_matches` never sets it (matching is rule-based), so `GET /rfps/{id}/matches` orders by score with nulls last and in practice returns unscored rows.
+
 ### Tests
 
-- `backend/tests/test_rfps.py` covers the PATCH route (happy path, unknown pair 404, invalid status 422) with the repository stubbed.
+- `backend/tests/test_rfps.py` covers the PATCH route (happy path, unknown pair 404, invalid status 422) with the repository stubbed, plus `list_rfps` using the `recording_pool` fixture from `conftest.py`: the filters, `limit` and `offset` reach the SQL parameters and `(rows, total)` come back from `fetch_page`.
+- `backend/tests/test_cov_routes_members_rfps.py` covers the other routes with the repository stubbed: `GET /rfps` passing filters and a null `deadline_before`, `GET /rfps/feed` (with `org`, without it, and an unknown org giving 404), and detail and matches (404 for an unknown call).
+- `backend/tests/test_paging.py` covers `fetch_page` (LIMIT/OFFSET, totals past the end, refusal of SQL that does not end in `ORDER BY … id`) and checks that `rfps.list_rfps` and every other paged list sort on a unique id.
 - `backend/tests/test_cov_pipeline_calls.py` covers the pull with fakes: extraction validators and title/length limits, `pick_page` refusing an ungiven URL, `find.candidates` (own-domain filter, missing key, search failure), `read_page` failures and feed parsing, `pull_one` outcomes (nowhere to look, pinned note, past/undated/open split, a failure as a report line), `_write` extra places and tags, `run` ordering and the CLI's confirmation exit.
 - `backend/tests/test_cov_repositories.py` has a database test for `flag_matches` (a second run adds nothing), `feed`, `update_match` (a dismissed call leaves the feed) and `_themes`.
 - `frontend/features/ask/views/__tests__/RfpWatchView.test.tsx` covers the screen (buckets, filters, save and dismiss, read-only, empty states, org switching).
-- No backend test covers `_calls_pull` in `run_import_now`, and none drives `GET /rfps/feed` through HTTP. `backend/tests/evals/test_import_calls.py`, despite its name, is not about this pipeline: it checks the Import eval harness's tool-call budgets on a scripted run.
+- `backend/tests/test_cov_ingest_tools_pipeline.py` covers `_calls_pull` inside `run_import_now` with `pull.run` stubbed: named funders resolved to slugs with unknown names and other source keys reported, no known funder reading nothing, and an empty list meaning everyone.
+- The route tests stub the repository, so the `feed` SQL is exercised only by the database test in `test_cov_repositories.py`; no test drives `GET /rfps/feed` through HTTP against a real database, so the RLS filtering described above is not tested end to end. `backend/tests/evals/test_import_calls.py`, despite its name, is not about this pipeline: it checks the Import eval harness's tool-call budgets on a scripted run.
 
 ## The screen (`RfpWatchView`)
 
@@ -202,6 +223,10 @@ Access is row-level security from `0027_rls.sql`: `rfp_matches` rows are readabl
 - **Card:** funder, title, days left, rupee band, places, shared themes and a "Read the call" link, shown only for `http(s)` URLs (`safeHref`) because the URLs were extracted by a model. Actions are Save/unsave (`saved` ↔ `flagged`), **Not for us** (`dismissed`, labelled "Remove" on a saved closed call) and **Ask about this call**, which starts a new chat. When `can_act` is false the card shows a read-only line.
 - **Empty states:** an org with no domains is told it has no theme, so nothing can match; an org with no open calls is pointed to Funder Match, since most CSR money moves without an open call.
 - A dismissed call, or an unsaved one that has closed, is dropped from the local list the way the server would drop it; failures show an inline error.
+
+`rfp-watch/api.ts` holds the two calls: `getFeed(org)` and `setStatus(rfpId, orgId, "flagged" | "saved" | "dismissed")`, both through `call()` in `lib/api/rest.ts`. `call()` sends `authHeaders()` (a `dev:` bearer under `DEV_LOGIN`, otherwise the Supabase session token), parses the JSON body, and throws an `ApiError` carrying the status and the response's `detail`, which is what the inline error shows. The screen never sends `reviewed`, although the API accepts it.
+
+When the Supabase keys are absent (a local run), `lib/supabase/middleware.ts` passes requests through without gating anything, so `/ask` still renders; nobody can sign in, so the feed has no session token to send unless `DEV_LOGIN` supplies one.
 
 ## Running it
 

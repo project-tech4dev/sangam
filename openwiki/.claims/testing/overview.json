@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:b0b77966baa9e393a7a0ef9a9f97758ad83d48183c0982ed3d7b509a96c6d319",
+  "pageVersion": "sha256:fe3322c3b4b6d61a350adb7a5792c09f818b5f64414429ea5838d1fa8b1d730a",
   "claims": [
     {
       "id": "claim_544ac8ca894544f68a8354ec2736f9ce",
@@ -11,8 +11,8 @@
           "version": "repo-lines-v1:sha256:2e8cd58860c303ba9a4b4d42fc00c448054f25c1aaeb1982ae44aca718d824c2:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDVhYzBmNzliYzAzN2FiM2U4YzI3ODNiMWZhZjVkMTk2MjhiZmQzNTU0MmE4NGVhZmNkODQ1OGI5OTZmOWFhNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOWQ0YTY2ZWVjNmY0MjJlYmYwOWVjOTRmYzU2YjQzN2MyNmNkMGU5MGFiODhkMmQ5NTg3ODIzYzk4NzRmMWRlOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzU1M2FkMzFhYTE4NWI1MjMyMTYwMWMxYjFjMDhmMzdjMWRmMjJmYTBkNjc5MTRlMjYxYzdjY2NkZjUyMDMwNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMTZmZTM1NWU5Mzc4NjQ4MDMzZDMwZWNkNWQ0NDk0ZWM0ZmU5OGVkMmZmMDc3ZDFmNjUzMmRiMDVlZDgzZjExOSJ9"
         },
         {
-          "resource": "repo://backend/tests/conftest.py#L20-L52",
-          "version": "repo-lines-v1:sha256:069dfeefeb1754ad7622dcf9a34ce29a62a4d95f493b812942818ca7724121ba:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3OTMwM2ViYzcxMTAzYmJjNWJlMTM5NzQxZTgyOGVjMDExZTA4NWY4ZjEzZDUzODVjNTg0NTQ2M2QyYTA3ODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiODgzMjhlYjRlNDMxNjUwNjliNGJiMWZkNGJiMjA1OTFiMDNkOTU3ZGRhY2YzMWMyNjU2ZTAwOTE3NTQ2NTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5YzAwYWQ2ZTE4ODA2OWYxZjM3OWRhYjE3MDlmZTYxYmY1MGY4MmEyZjM1ODQ0ZTI0OTQ5NTVlMzIwNTdiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNlNjgxNDk4N2M2NTM0MTc2YmMwZTBlNWEwZGIzOWM0ZTRmMDc1ZmYwZTJlZjczNGI0YWRlMWMyMjNkOTQ5MmQifQ"
+          "resource": "repo://backend/tests/conftest.py#L21-L90",
+          "version": "repo-lines-v1:sha256:3359fa1d294a081cc96541e7bd9629131cb3613dbebc59f4dd07cd51142c77a0:eyJzZWxlY3RlZExpbmVDb3VudCI6NzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE3OTMwM2ViYzcxMTAzYmJjNWJlMTM5NzQxZTgyOGVjMDExZTA4NWY4ZjEzZDUzODVjNTg0NTQ2M2QyYTA3ODIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImZiODgzMjhlYjRlNDMxNjUwNjliNGJiMWZkNGJiMjA1OTFiMDNkOTU3ZGRhY2YzMWMyNjU2ZTAwOTE3NTQ2NTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImI5YzAwYWQ2ZTE4ODA2OWYxZjM3OWRhYjE3MDlmZTYxYmY1MGY4MmEyZjM1ODQ0ZTI0OTQ5NTVlMzIwNTdiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNlNjgxNDk4N2M2NTM0MTc2YmMwZTBlNWEwZGIzOWM0ZTRmMDc1ZmYwZTJlZjczNGI0YWRlMWMyMjNkOTQ5MmQifQ"
         }
       ]
     },
@@ -25,7 +25,7 @@
           "version": "repo-lines-v1:sha256:54d1ee390a40efc6f3918cdef8c6fc469ca4a299929154a08f298eb998a224ce:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODY3NmU2NDE0NjVhNjU1MWU5ZTljZmZkN2ZhYTFlNmE0MmY5YjcyNDgwOTgxM2M5MDNkN2VkY2I1MmYzMDA2ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjk0MTZlMDlmNzhiYTMxNmMwMzI1NjgyMTNiODU1ZWU3NTZlNDE1NjVkOTE4ZjA5NTE5YzgxZmQ2MjBmNDA2MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDdkNGZjZTFkMzU3ZjU3NjQwMTQzYmJjN2Q1ODI1ZDkzZmU5YzQ2OGYwZjMyNmY1NjliMjdjOWQzZTZkNjllMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjgzYmNiNGQzMTU4NGRjNmJhNjZiZjE2NjUzMzA3ZDhiYTI4YWI3N2VlNTcwMDMyYWVlNTU0OGExNjg1NTFlZSJ9"
         },
         {
-          "resource": "repo://backend/tests/conftest.py#L57-L75",
+          "resource": "repo://backend/tests/conftest.py#L95-L113",
           "version": "repo-lines-v1:sha256:134bfa082634455b3ae619d9cc95413ec1f80637d903f687bfddff5036176419:eyJzZWxlY3RlZExpbmVDb3VudCI6MTksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImEwOTc3MGMxOWU4ZGVhMThkODRhNGQ0ZTExZDNmYjA3ZGI1NjYzMjc2ODMyYmIxNGFlYWFjNzg4OTVkN2MzZjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjhjMjU4NzdiMjhlNGM2NjBhNzU4MTQ3ODRkZGRkYjBhZGMyMDliMGIwMTk1M2ViZGMzMWUzZDNlNjQ1MTU4ODAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjYyODdkYTIwMTBhY2Q4YmVmNDM4MmJhNzZlZDVlYTQwZmZlMjQ5ZjI0MGUzMjcyNTczOWYzNzQ3NTdjMmJhOGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgxYzE0MjZiZWE3ZmFiYTA1YTEyYzFlMWM4NjBkYTY3YzYxNzM4ZmZjY2NjYTRmNjc2ZTRiOTI2ZGVhNjZlMDIifQ"
         },
         {
@@ -651,10 +651,100 @@
           "version": "repo-lines-v1:sha256:9671e7734219c14750ca3b65e189a7b4d667964641db40e2259e3ba0c61c2852:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjViNTZmMDMzNjUyOTEzYjFmMGVlMGE0MTgwNWJiZDg5OTZmMDQ1MjY0MmRiYzc0ZDFiYjZjNmE1ZGQyNWU3OTgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
         }
       ]
+    },
+    {
+      "id": "claim_d766ede554f04c3fb95ecc6195e2b32f",
+      "statement": "Routers take PoolDep, which builds a CallerPool over Depends(get_pool), so the single get_pool override in conftest.make_app covers every router; the recording_pool fixture (RecordingPool) is the DB-free way to test repository SQL: it answers each query with the next scripted row list, records (sql, params) in calls, and fails on any unscripted extra query.",
+      "evidence": [
+        {
+          "resource": "repo://backend/app/db/pool.py#L21-L80",
+          "version": "repo-lines-v1:sha256:c973eaf40051c7ac4be1e72b3471ef0799ead839759c120883f87719dd98778f:eyJzZWxlY3RlZExpbmVDb3VudCI6NjAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3N2IzYWU4MzQ2MjkyOWZlNWMzZmNmNjBiNzc2MjNmODEyYzA1MzFiNjMwYjQ5YWI0NDE5ZDM0NjdlMTUzYWMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjMxZTRlYjFmZGMwMjgxNTdjMmUxNGEwZmNiYThkNTE4Mzk4ZmQyMDMzZjdmYjAzZmViZGE0ODY4ODNmZWZhOTgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ3NjcxMGI4NDViZTQ3MDMxMWVhMTkzZjA1YWE5NGVlNDEzMTk5MTU3ZmI1Y2Q4NWI5MWUwYWRhNjQzYjdkYmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/conftest.py#L20-L80",
+          "version": "repo-lines-v1:sha256:a61054cbd5fee7994661c06e17460a95080899621c099a16a9b68ba16bf0c57d:eyJzZWxlY3RlZExpbmVDb3VudCI6NjEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYyMjFkNTQ4MDZjZGIzOGEzNWNkOTE5M2U0YzNhNGQwMjZjYWFmOWM4MDc1NzQ0NjY4N2JmOWY3YTM1M2JiNDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjY1ODUyOGEyZWJjMmFhYzc2ZDFhYzdlNGNiMzBmZWQ1MTE5MzczZDVjYTNlZWRlZmY2MjcwZjNkNDc2MjJjMzgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgxYzE0MjZiZWE3ZmFiYTA1YTEyYzFlMWM4NjBkYTY3YzYxNzM4ZmZjY2NjYTRmNjc2ZTRiOTI2ZGVhNjZlMDIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_55cac843876c40efbccd7fb76b66b5db",
+      "statement": "test_paging.py pins repositories/paging.fetch_page without a database: it appends LIMIT/OFFSET and binds limit and offset, reads the total from the first row in one query, returns total 0 for an empty first page without a second query, runs one count(*) subquery with the original params when a page is past the end, and raises ValueError before any query unless the SQL ends in an outermost ORDER BY whose last key is id (rejecting no tie-breaker, a trailing semicolon, its own LIMIT, a trailing comment, or an ORDER BY only in a subquery); a parametrized test applies that guard to each of the ten paged list functions so every list must sort on a unique id.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_paging.py#L1-L71",
+          "version": "repo-lines-v1:sha256:5f5ae81ef82019d379b3dc00c6f8fa0f9010d07549349aab8eb81fb8bc5d0388:eyJzZWxlY3RlZExpbmVDb3VudCI6NzEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0ZjE5Yjc5Y2MwY2YzYjY2ZmYxMWIwNzNlNGUxMmYxNjQ1N2Y5MmJiNjJlZDE5MTY5ZjU5MDVkODFiODIyNTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE0MjVjMzE0YjgwOGM3ZDAyM2RmOWE2ODdmZjBkZjIxY2MzZTZkMzZkYTA0YzkyZDI5MjNhYjRkYWMyOGI2OWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_545a4a9d0149496fad48018953db5352",
+      "statement": "Per-resource unit tests check that list_rfps, list_scores and list_documents pass their filters and limit/offset through fetch_page (asserted via recording_pool params), and route tests assert the {items, total, limit, offset} envelope, with GET /api/scores answering 422 rather than clamping an out-of-range limit and GET /api/registry refusing limit 0 or 101 and a negative offset.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_registry.py#L98-L101",
+          "version": "repo-lines-v1:sha256:75cd7e7462f81d65e7e2e9906a433ca6d4f4622c5193a2f2420a045f6b051d0f:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiN2RkOTgzY2Q1NTljMDE2Y2VlZjNiMDAwMThjNjBkMTA2ODM0NTdhNTlhZjI2NjFjOGQ5NGU5MGVjMWJhNjY1YSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjcwMmViYzQ1M2ZlMjZkYTAzNzMxNzE3NzkyYmE0MmExMDIzNDEwNDBiNWM3NzYxNjUzNGUzNjcwMTFhNjFjMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzlhOGE3MDFjNjM3OTg2MmYxOWM5ZGYwNWM1ODIzZmRiMjg2N2MxZDFiNTIzZGU4OTM1ZDE2YWI3OTE1N2RhMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWQ0MWIzMzQ2ZDg4MTk1Mjk1NDNiODY2M2I5Nzk5NDAzYWVlYmQwNTI5MDA0MDRhYmU5ZWNkMWVkNTcxMTZlMiJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_rfps.py#L39-L46",
+          "version": "repo-lines-v1:sha256:0004a56b4f2463e48cbf75f914e269308abd97f55d12163857ea622e7a3dc36e:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOGVkMGZiOGI4MGVlYzE4MjU3YjkzNDUyMmE0MTk1MzczM2FhNTc1ZjRmYmM2M2I4Y2E2ZDQyM2ViYjVkMmQwNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQ2NWJjM2Y4MGE1Mjk1NjAzZjNjY2JmNDJjNTFiNDIxNzYzN2JlNGU3OWMzMjNmYTEzNjMyMGE1ZDMwMThkMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjI5OWNiNmY0ZGNmYmE0YjBhOGYxMzQ3YmY4ZDdkYjc4N2Y4N2I4MjczMWZhN2YyM2E1OWIyNjM5N2Q4MDlmYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        },
+        {
+          "resource": "repo://backend/tests/test_scores.py#L48-L72",
+          "version": "repo-lines-v1:sha256:f71f238f487546b9a87b8e66e08a7e0ed83f339e71dcbceb5bdb9d5b32c42a6d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgwY2RkNTQ0NDI4MmQ1ZDMwNGNkNGQxMDBmYzRlZjBhYjRiN2ZjMTljODRjNTU3NDViZTU0YzFiZDZhNGQxNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk0NjViYzNmODBhNTI5NTYwM2YzY2NiZjQyYzUxYjQyMTc2MzdiZTRlNzljMzIzZmExMzYzMjBhNWQzMDE4ZDMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImYyOTljYjZmNGRjZmJhNGIwYThmMTM0N2JmOGQ3ZGI3ODdmODdiODI3MzFmYTdmMjNhNTliMjYzOTdkODA5ZmIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_vault.py#L643-L666",
+          "version": "repo-lines-v1:sha256:57736e3564fd49904fa2c55ba0e21c4acf914ffa5b80a0b7d14a521e0c045a2c:eyJzZWxlY3RlZExpbmVDb3VudCI6MjQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjlhZGExNWNhMjQwZDI0NDU3MWQ5NjMwOWI1NDY2ZTgyNGNiMzA0N2Y0N2ViOGUxZWQ2NTY1ZGZhMGNjYjFjNGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBjMmEyNjY2ZWM5Yzc4ODAxMzAyYTIyOGYzZDFhNGQyYmExMjMyOGI1NTE4ODFiNDJlZDg4NTQxNTcyMDllYmQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImZmN2RkNzk4NmMzODRlOWI2YmFlYTQwMmM2MDZjNjM2MmNiOWI2YzQ4YzM4MTBjZWFhOTEyMWRkM2UxY2JkMWEiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ed30d93211c541f39bfe178bdf2163da",
+      "statement": "test_registry.py unit-tests the GET /api/registry route: query parameters map to a Filters value (type=cso becomes kind org, unknown types become all), research counts are read only for the page's rows and not at all for an empty page, a failing research read leaves the page up, and a row's themes lead with the tags most of its programmes carry, leaving lenses out; test_registry_filters.py requires the backend NORTH_EAST list to equal the list in frontend/features/registry/rows.ts.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_registry.py#L38-L113",
+          "version": "repo-lines-v1:sha256:e048c6296373a2f2e7ae1d413252f5e7c5d52c1eea9018697e75d92d9d431d9d:eyJzZWxlY3RlZExpbmVDb3VudCI6NzYsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjUxNGE2MzhiYzg5MThhZGVmMTk1Y2RhY2JiZDZmZTU5YWIzODRiMzdiYmVmNDM4ZTU1NTA5NjMyNGIxZjA1MjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdkOTU2MjM0YjQ1OGJlMWU1MDNmNjJmNDJjMDA1ZWRjMGM3ZjljMmY1MDgyOTJmNjdkODgxZDBmMmMwMDY4MzAiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjA5NjNkZmM5YzJiY2QwNDM2Y2NmMGFkOGExYmQwNDYwZGEzNDQ3ZjYyMzU1MDI1YmI4NDkzNjhiZjlmNzgzNmQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://backend/tests/test_registry_filters.py#L1-L18",
+          "version": "repo-lines-v1:sha256:d138ef5eb2dd6561d571399589a599719d5544e3055c2e42783d4a7e11e3a6d7:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3Y2EzOTAyZTNmYzA4Y2EyYjdhZjc1MzQxY2JlNGU4MmU4MDM0Y2IyMTE2YTNmYzIyOWM2NTBkYjY4Y2YxNTciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImFlNDk1MGFkNmQyMGQyYTljNDJjYWRjZGNhODZhMzJkY2ZhOTgzZjViYTNhZThhNDA3MzEyYmM2NDdjNTI3YTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_ff67cd1ce98045279d17edd46386db22",
+      "statement": "test_registry_sql.py is an integration test of registry_page_sql against Postgres in the rolled-back db fixture: CSOs sort before funders each A to Z ignoring case, each filter applies (registrations to CSOs only, funder type and approach to funders only), search reads aliases, programmes and states, total counts every match, counts and facets are computed only for the first page (a later page returns empty ones and its plan cuts the facet counting), and registrations are read through the owner pool for the page's orgs only.",
+      "evidence": [
+        {
+          "resource": "repo://backend/tests/test_registry_sql.py#L1-L210",
+          "version": "repo-lines-v1:sha256:e82fda65f66ea3c747cdb25f2d5c2092b5650fecdc2ec99293f84daec4db7f5f:eyJzZWxlY3RlZExpbmVDb3VudCI6MjEwLCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJjYTVkY2Y2OTRkN2IxNGEwYzkzNWM5NGI5YThhZGY1NDcyNzhkMmY4ZDEyYWMxMzMxMDE0ZmViZDA5N2MzZjVjIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIwMWJhNDcxOWM4MGI2ZmU5MTFiMDkxYTdjMDUxMjRiNjRlZWVjZTk2NGUwOWMwNThlZjhmOTgwNWRhY2E1NDZiIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiIyMzY1MGU0ZGI1NDBlZTBmM2FmODYyYjYzNWFmODU4YmRmNjEzZDgzOTc4ZTc4MGJkNDUzYTgxZDAyNDhhMWE4In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_3bf07157212c4eed8576378b571be591",
+      "statement": "ListPage.test.tsx pins the shared list hooks and components: usePagedList (offset paging) loads offset 0 then the next offset, uses a server-rendered first page without refetching, restarts and drops stale answers when its key changes, de-duplicates rows shifted between pages while counting fetched, and clears total and last when a new key's first page fails; useCursorList follows next_cursor without repeats and drops answers for a stale key; ListMore offers at most a page more, shows 'End of the list', and triggers near the end only after a scroll.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/components/ui/__tests__/ListPage.test.tsx#L57-L250",
+          "version": "repo-lines-v1:sha256:6c847cedb931d711d434c86b43daf49e5734354fe671517a65785c1df41f306f:eyJzZWxlY3RlZExpbmVDb3VudCI6MTk0LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJlMzg3OGY1NzlhM2JlMzQyZGZkMTQ5MzQzY2Q3OGNjNjllMDlkMDJhMTcxOWNmNThlMzM3ZTRkOGUwNjRiNDdlIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmNmY1YjQwYjE1ODQ1N2QxNzg2NGYyMTc5MDc4NmRkNWEyZWNkYjY0YjY2YTY1MWY3ODhkNGUyNWNkMzMwM2QyIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJiNzc5ZDExOGQ2ZTNjYmY0NTA1Mzk3NDhkZWU3YTQzMDdhY2JlNjQ0NmNiYTI5N2YyNzYwZmE1ZDBiYmExYmMyIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
+    },
+    {
+      "id": "claim_4cbe882c62b8476292d7fdab4dfeeccb",
+      "statement": "RegistryClient.test.tsx mocks fetchRegistryPage and renders with a server-shaped first page: it makes no request on first render, asks the server once typing pauses or a dropdown is picked (with limit 25 and the current text), asks once when a search is cleared with the filters, requests offset 25 for the next batch while keeping the first page's counts and facet options, writes filter changes to the address as a replace dropping defaults, and shows only the active bucket's own filters.",
+      "evidence": [
+        {
+          "resource": "repo://frontend/features/registry/__tests__/RegistryClient.test.tsx#L1-L216",
+          "version": "repo-lines-v1:sha256:e41a5ffddf8f8c9c7d7be14a74dfaaa3d47c3af9e58fac05c7ac40adf1a23b6d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjE2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiJhZGY5NmEyZDc1NDU5YWE0ZTY4MGI1NjIxZjM2NDk4MTBlY2MxYTgwYTA5Yzc1MjVhMzI2MzVhMDFiNDhhMjg2IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiJmNmY1YjQwYjE1ODQ1N2QxNzg2NGYyMTc5MDc4NmRkNWEyZWNkYjY0YjY2YTY1MWY3ODhkNGUyNWNkMzMwM2QyIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MCwicHJlY2VkaW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MCwiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1In0"
+        }
+      ]
     }
   ],
   "verification": {
     "by": "openwiki/0.7.2",
-    "at": "2026-11-10T13:16:49.280Z"
+    "at": "2026-11-11T11:11:22.403Z"
   }
 }
