@@ -5,6 +5,8 @@ export type Filters = {
   reg: string; ftype: string; approach: string; q: string;
 };
 
+export const PAGE = 25;  // rows a batch, on the server's first render and each scroll
+
 export const DEFAULTS: Omit<Filters, "kind"> = {
   theme: "all", population: "all", sdg: "all", where: "any", reg: "any", ftype: "all", approach: "any", q: "",
 };
@@ -20,6 +22,13 @@ export function filtersFrom(params: { get(name: string): string | null }): Filte
   return f;
 }
 
+export type RawParams = Record<string, string | string[] | undefined>;
+
+
+export function firstParams(raw: RawParams): { get(name: string): string | null } {
+  return { get: (name) => (Array.isArray(raw[name]) ? raw[name][0] : raw[name]) ?? null };
+}
+
 /** The params a filter change writes; a default value drops its param. */
 export function filterParams(patch: Partial<Filters>): Record<string, string | null> {
   const out: Record<string, string | null> = {};
@@ -28,4 +37,13 @@ export function filterParams(patch: Partial<Filters>): Record<string, string | n
     else out[key] = value === DEFAULTS[key as Field] ? null : (value as string);
   }
   return out;
+}
+
+/** The paged API's query for these filters: the same names the address uses, defaults left out. */
+export function registryQuery(f: Filters, offset: number, limit: number): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filterParams({ ...f, q: f.q.trim() }))) if (value) params.set(key, value);
+  params.set("limit", String(limit));
+  params.set("offset", String(offset));
+  return params.toString();
 }

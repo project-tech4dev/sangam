@@ -123,7 +123,11 @@ export function useCursorList<T, P extends { items: T[]; next_cursor: string | n
         setState({ key, items, next: page.next_cursor, busy: false, error: null, last: page });
       },
       (error: Error) =>
-        key === current.current && setState((s) => ({ ...s, key, items: before, next: cursor, busy: false, error: error.message })),
+        key === current.current &&
+        setState((s) => ({
+          ...s, key, items: before, next: cursor, busy: false, error: error.message,
+          last: key === s.key ? s.last : null,
+        })),
     );
 
   useEffect(() => {
@@ -144,6 +148,70 @@ export function useCursorList<T, P extends { items: T[]; next_cursor: string | n
           }
         : null,
     remove: (keep: (item: T) => boolean) => setState((s) => ({ ...s, items: s.items.filter(keep) })),
+  };
+}
+
+/* A list paged by the server's limit and offset; the offset twin of useCursorList. `first` is a page the server
+   already rendered for the opening `resetKey`. `ListMore` counts `fetched`, not `items`, so a dropped duplicate can't strand it. */
+export function usePagedList<T, P extends { items: T[]; total: number }>(
+  resetKey: string,
+  load: (offset: number, limit: number) => Promise<P>,
+  idOf: (item: T) => string | number,
+  { limit = 25, first }: { limit?: number; first?: P } = {},
+) {
+  type State = {
+    key: string; items: T[]; next: number; total: number; busy: boolean; error: string | null; last: P | null;
+  };
+  const [state, setState] = useState<State>(() =>
+    first
+      ? { key: resetKey, items: first.items, next: first.items.length, total: first.total, busy: false, error: null, last: first }
+      : { key: "", items: [], next: 0, total: 0, busy: true, error: null, last: null },
+  );
+  const loader = useRef(load);
+  const current = useRef(resetKey);
+  const opened = useRef(first ? resetKey : null);
+  useEffect(() => {
+    loader.current = load;
+    current.current = resetKey;
+  });
+
+  const fetchPage = (key: string, offset: number, before: T[]) =>
+    loader.current(offset, limit).then(
+      (page) => {
+        if (key !== current.current) return;
+        const seen = new Set(before.map(idOf));
+        const items = [...before, ...page.items.filter((item) => !seen.has(idOf(item)))];
+        setState({ key, items, next: offset + page.items.length, total: page.total, busy: false, error: null, last: page });
+      },
+      (error: Error) =>
+        key === current.current &&
+        setState((s) => ({
+          ...s, key, items: before, next: offset, busy: false, error: error.message,
+          ...(key === s.key ? {} : { total: 0, last: null }), 
+        })),
+    );
+
+  useEffect(() => {
+    if (opened.current === resetKey) return;
+    opened.current = null;
+    void fetchPage(resetKey, 0, []);
+  }, [resetKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fresh = state.key === resetKey;
+  return {
+    items: fresh ? state.items : [],
+    total: fresh ? state.total : 0,
+    fetched: fresh ? Math.min(state.next, state.total) : 0,
+    busy: !fresh || state.busy,
+    error: fresh ? state.error : null,
+    last: fresh ? state.last : null,
+    more:
+      fresh && !state.busy && state.next < state.total
+        ? () => {
+            setState((s) => ({ ...s, busy: true }));
+            void fetchPage(resetKey, state.next, state.items);
+          }
+        : null,
   };
 }
 

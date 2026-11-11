@@ -1,19 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { BucketCards, FilterRow, initialsOf, ListMore, SearchBox, useShowMore, type Filter } from "@/components/ui";
+import { BucketCards, FilterRow, initialsOf, ListMore, SearchBox, usePagedList, type Filter } from "@/components/ui";
 import { displayName, funderTypeLabel } from "@/lib/format";
-import type { RegistryRow } from "@/lib/api";
+import type { RegistryPage, RegistryRow } from "@/lib/api";
 import { setUrlParams } from "@/lib/url";
-import { filterParams, filtersFrom } from "./filtersUrl";
+import { fetchRegistryPage } from "./api";
+import { filterParams, filtersFrom, PAGE, registryQuery } from "./filtersUrl";
 import { SDG_NAME } from "./sdg";
-import {
-  DEFAULTS, kindLine, matches, NORTH_EAST, present, signal, type Filters,
-} from "./rows";
+import { DEFAULTS, kindLine, NORTH_EAST, signal, type Filters } from "./rows";
 
-const PAGE = 20;
+const SEARCH_DELAY_MS = 250;
 const SUB = { all: "Everyone in the Registry", org: "Civil-society organisations", funder: "CSR, foundations, trusts" };
 
 const SHOW = 3;
@@ -74,37 +73,45 @@ function Row({ r, f }: { r: RegistryRow; f: Filters }) {
   );
 }
 
-export function RegistryClient({ rows }: { rows: RegistryRow[] }) {
+export function RegistryClient({ first }: { first: RegistryPage }) {
   const fromUrl = filtersFrom(useSearchParams());
   // Typed text stays local so the caret never waits on the address; the address gets a copy.
   const [q, setQ] = useState(fromUrl.q);
   const f: Filters = { ...fromUrl, q };
-  // A replace: Back leaves the Registry, it does not undo each filter.
+  const [asked, setAsked] = useState<Filters>(fromUrl);
+  // A replace: Back leaves the Registry, it does not undo each filter. A pick or a Clear is asked at once.
   const set = (patch: Partial<Filters>) => {
     if (patch.q !== undefined) setQ(patch.q);
+    setAsked({ ...f, ...patch });
     setUrlParams(filterParams(patch), "replace");
   };
-
-  const counts = {
-    all: rows.length,
-    org: rows.filter((r) => r.kind === "org").length,
-    funder: rows.filter((r) => r.kind === "funder").length,
+  const type = (text: string) => {
+    setQ(text);
+    setUrlParams(filterParams({ q: text }), "replace");
   };
-  const inBucket = f.kind === "all" ? rows : rows.filter((r) => r.kind === f.kind);
 
-  const options = useMemo(() => {
-    const domains = present(rows.flatMap((r) => [...new Set(r.themes.map((t) => t.domain).filter((d): d is string => !!d))]));
-    const populations = present(rows.flatMap((r) => r.populations));
-    const sdgs = [...new Set(rows.flatMap((r) => r.sdgs))].sort((a, b) => Number(a) - Number(b));
-    const states = new Set(rows.flatMap((r) => r.states));
-    const types = present(rows.filter((r) => r.kind === "funder" && r.funder_type).map((r) => r.funder_type!));
-    return {
-      domains, populations, sdgs, types,
-      ne: NORTH_EAST.filter((s) => states.has(s)),
-      open: rows.some((r) => r.open_call),
-      invites: rows.some((r) => r.intake_mode === "invitation_only"),
-    };
-  }, [rows]);
+  // Typing is asked once it pauses, not on every key.
+  useEffect(() => {
+    const t = setTimeout(() => setAsked((a) => (a.q === q ? a : { ...a, q })), SEARCH_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [q]);
+  const list = usePagedList<RegistryRow, RegistryPage>(
+    registryQuery(asked, 0, PAGE),
+    (offset, limit) => fetchRegistryPage(registryQuery(asked, offset, limit)),
+    (r) => `${r.kind}-${r.id}`,
+    { limit: PAGE, first },
+  );
+
+  // Counted over the whole Registry, whatever the filters, so the first page's are the same on every page.
+  const counts = { all: 0, org: 0, funder: 0, ...first.counts };
+  const values = (name: string) => (first.facets[name] ?? []).map((o) => o.value);
+  const states = new Set(values("where"));
+  const options = {
+    domains: values("theme"), populations: values("population"), sdgs: values("sdg"), types: values("ftype"),
+    ne: NORTH_EAST.filter((s) => states.has(s)),
+    open: values("approach").includes("open"),
+    invites: values("approach").includes("invites"),
+  };
 
   const filters: Filter[] = [
     {
@@ -151,11 +158,8 @@ export function RegistryClient({ rows }: { rows: RegistryRow[] }) {
     }
   }
 
-  const shown = rows.filter((r) => matches(r, f));
   const anySet = (Object.keys(DEFAULTS) as (keyof typeof DEFAULTS)[]).some((k) => f[k] !== DEFAULTS[k]);
-  const resetKey = JSON.stringify(f);
-  const [n, more] = useShowMore(resetKey, PAGE);
-  const visible = shown.slice(0, n);
+  const loading = list.busy && list.items.length === 0;
 
   return (
     <div className="reg">
@@ -176,21 +180,24 @@ export function RegistryClient({ rows }: { rows: RegistryRow[] }) {
         onPick={(kind) => set({ kind, reg: "any", ftype: "all", approach: "any" })}
       />
       <FilterRow filters={filters} />
-      <SearchBox value={f.q} onChange={(q) => set({ q })} placeholder="Search names, districts, programmes and funders…" />
+      <SearchBox value={f.q} onChange={type} placeholder="Search names, districts, programmes and funders…" />
 
       <div className="reg-count">
-        <span className="muted">{anySet ? `${shown.length} match` : `${inBucket.length} in the Registry`}</span>
+        <span className="muted">
+          {loading ? "Loading…" : anySet ? `${list.total} match` : `${list.total} in the Registry`}
+        </span>
         {anySet && (
           <button type="button" className="reg-clear" onClick={() => set(DEFAULTS)}>Clear filters ✕</button>
         )}
       </div>
 
       <div className="reg-list">
-        {visible.map((r) => <Row key={`${r.kind}-${r.id}`} r={r} f={f} />)}
-        {shown.length === 0 && <div className="muted reg-none">No entries match these filters.</div>}
-        <ListMore shown={visible.length} total={shown.length} onMore={more} page={PAGE} />
-        {shown.length > 0 && (
-          <div className="muted reg-shown" aria-live="polite">{visible.length} of {shown.length} shown</div>
+        {list.items.map((r) => <Row key={`${r.kind}-${r.id}`} r={r} f={f} />)}
+        {!list.busy && list.total === 0 && <div className="muted reg-none">No entries match these filters.</div>}
+        {list.error && <div className="muted reg-none" role="alert">{list.error}</div>}
+        <ListMore shown={list.fetched} total={list.total} onMore={() => list.more?.()} page={PAGE} busy={list.busy} />
+        {list.items.length > 0 && (
+          <div className="muted reg-shown" aria-live="polite">{list.items.length} of {list.total} shown</div>
         )}
       </div>
     </div>

@@ -13,7 +13,7 @@ from app.repositories import partner_groups, registry
 from app.repositories import profile_facts as repo
 from app.repositories.public_sql import is_private_url
 from app.schemas.profiles import FunderProfile, OrgProfile
-from app.schemas.registry import RegistryOut
+from app.schemas.registry import RegistryPage
 from tests.test_rls import DSN
 
 pytestmark = pytest.mark.integration
@@ -28,6 +28,12 @@ async def pool():
         pytest.skip("Postgres not reachable")
     yield p
     await p.close()
+
+
+async def _registry(viewer, owner, t: str) -> dict:
+    """The Registry page GET /api/registry serves for a search of the world's token, with its rows by slug."""
+    page = await registry.registry_page_sql(viewer, owner, registry.Filters(q=t), limit=100, offset=0)
+    return {**page, "rows": {r["slug"]: r for r in page["items"]}}
 
 
 async def _one(c, sql, params=()):
@@ -150,12 +156,12 @@ async def test_research_is_counted_without_content(pool):
     assert research.runs == 2 and str(research.latest) == "2026-10-05"
     assert {s.url: str(s.first_read) for s in research.sources} == {
         "https://give.do/a": "2026-10-01", "https://kabil.org": "2026-10-01", "https://rcrc.in/p": "2026-10-05"}
-    rows = {r["slug"]: r for r in await registry.registry_rows(pool, pool)}
+    rows = (await _registry(pool, pool, w["t"]))["rows"]
     counts = await registry.research_counts(pool, [("org", w["org"], f"o-{w['t']}")])
     assert counts[("org", w["org"])]["runs"] == 2 and rows[f"o-{w['t']}"]["slug"] == f"o-{w['t']}"
 
 
-async def test_registry_rows_read_what_the_list_filters_on(pool):
+async def test_a_registry_row_reads_what_the_list_filters_on(pool):
     w = await _world(pool)
     async with pool.connection() as c:
         await c.execute("INSERT INTO org_identifiers (org_id, id_type, id_value, status, is_public) VALUES "
@@ -165,7 +171,7 @@ async def test_registry_rows_read_what_the_list_filters_on(pool):
                         "is_public) VALUES (%s, 'partner', 'FY2024-25', 'Org', %s, true)", (w["funder"], w["org"]))
         await c.execute("INSERT INTO funder_csr_years (funder_id, fiscal_year, prescribed_csr) "
                         "VALUES (%s, 'FY2023-24', 9)", (w["funder"],))
-    rows = {r["slug"]: r for r in await registry.registry_rows(pool, pool)}
+    rows = (await _registry(pool, pool, w["t"]))["rows"]
     org, funder = rows[f"o-{w['t']}"], rows[f"f-{w['t']}"]
     assert org["states"] == [w["state"]] and org["place"] == f"Alpha {w['t']}, {w['state']}"
     assert org["themes"] == [{"label": "Livelihoods", "domain": None}] and org["sdgs"] == ["1"]
@@ -239,7 +245,9 @@ async def test_no_private_link_reaches_a_public_response(pool):
     org_body = OrgProfile(**(await repo.org_facts(pool, pool, f"o-{t}")).model_dump()).model_dump_json()
     funder_body = FunderProfile(**(await repo.funder_facts(pool, pool, f"f-{t}")).model_dump()).model_dump_json()
     page = await partner_groups.entity_groups(pool, "funder", f"f-{t}", cursor=None, limit=20)
-    reg = RegistryOut.model_validate({"rows": await registry.registry_rows(pool, pool)}).model_dump_json()
+    listed = await _registry(pool, pool, t)
+    assert {f"o-{t}", f"f-{t}"} <= set(listed["rows"])
+    reg = RegistryPage.model_validate(listed).model_dump_json()
     everything = org_body + funder_body + json.dumps(page, default=str) + reg
     assert "sangam.invalid" not in everything
     # The public twin of each row is still there: the rule drops only what it must.
@@ -262,7 +270,7 @@ async def test_every_viewer_reads_the_same_registrations_and_filters(pool):
     assert pages[0].org.identifiers == pages[1].org.identifiers
     assert pages[0].org.contacts == pages[1].org.contacts and pages[0].hidden_contacts == pages[1].hidden_contacts
     assert {i.id_type for i in pages[0].org.identifiers} == {"pan", "csr1"}  # the private PAN is on file for anon too
-    lists = [{r["slug"]: r for r in await registry.registry_rows(viewer, pool)}[f"o-{w['t']}"] for viewer in (anon, staff)]
+    lists = [(await _registry(viewer, pool, w["t"]))["rows"][f"o-{w['t']}"] for viewer in (anon, staff)]
     assert lists[0] == lists[1]
 
 
@@ -302,7 +310,7 @@ async def test_story_counts_and_channel_are_decided_in_sql(pool):
                             "VALUES (%s, %s, 0.9, 0.9, 'public')", (s, w["org"]))
     facts = await repo.org_facts(pool, pool, f"o-{w['t']}")
     assert (facts.stories.press, facts.stories.social) == (1, 2)
-    row = {r["slug"]: r for r in await registry.registry_rows(pool, pool)}[f"o-{w['t']}"]
+    row = (await _registry(pool, pool, w["t"]))["rows"][f"o-{w['t']}"]
     assert (row["press"], row["social"]) == (1, 2)
     from app.repositories import news_stories
 

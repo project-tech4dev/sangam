@@ -256,7 +256,14 @@ export type FunderProfile = ProfileFacts & {
 /** GET /api/orgs|funders/{slug}/brief — a signed link to the research brief, with the entity's own slug. */
 export type BriefLink = { url: string; expires_in_seconds: number; slug: string; name: string };
 
-/** GET /api/registry — every org and funder the Registry lists, with what its filters and search read. */
+/** One page of a list: the shared Page[T] every paged route returns. */
+export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
+/** A dropdown option and how many rows have it. */
+export type Facet = { value: string; count: number };
+/** A page for a list screen with bucket cards and dropdowns. */
+export type FacetedPage<T> = Page<T> & { counts: Record<string, number>; facets: Record<string, Facet[]> };
+
+/** GET /api/registry — one org or funder as the Registry list shows it. */
 export type RegistryRow = {
   kind: "org" | "funder"; id: number; slug: string; name: string; funder_type: string | null;
   place: string | null; states: string[]; themes: { label: string; domain: string | null }[];
@@ -264,6 +271,6 @@ export type RegistryRow = {
   intake_mode: string | null; open_call: boolean; partners: number;
   csr_prescribed: number | null; csr_year: string | null;
   press: number; social: number; posts_since: string | null;
-  research_runs: number; researched_on: string | null; search: string;
+  research_runs: number; researched_on: string | null;
 };
-export type RegistryOut = { rows: RegistryRow[] };
+export type RegistryPage = FacetedPage<RegistryRow>;

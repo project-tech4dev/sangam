@@ -2,7 +2,7 @@ from datetime import date
 
 from pydantic import Field
 
-from app.schemas.common import ReadModel
+from app.schemas.common import FacetedPage, ReadModel
 
 
 class RegistryTheme(ReadModel):
@@ -39,5 +39,4 @@ class RegistryRow(ReadModel):
     search: str = ""                  # aliases, districts, programmes and partner names, lower-cased
 
 
-class RegistryOut(ReadModel):
-    rows: list[RegistryRow]
+RegistryPage = FacetedPage[RegistryRow]

@@ -78,25 +78,41 @@ GROUP BY 1
 """
 
 
+# A tag (alias tg) of the link x, with its parent and grandparent: the taxonomy is domain -> theme -> sub_theme
+# (seed/taxonomy_seed.py), so two joins reach the root without walking the whole tags table.
+_TAG_TREE = """JOIN tags tg ON tg.id = x.tag_id
+LEFT JOIN tags par ON par.id = tg.parent_id
+LEFT JOIN tags top ON top.id = par.parent_id"""
+
+# The tag's domain: the root of its tree, when that root is a domain.
+_TAG_DOMAIN = """CASE WHEN tg.parent_id IS NULL THEN CASE WHEN tg.kind = 'domain' THEN tg.label END
+            WHEN par.parent_id IS NULL THEN CASE WHEN par.kind = 'domain' THEN par.label END
+            WHEN top.parent_id IS NULL AND top.kind = 'domain' THEN top.label END"""
+
+
 def entity_tags(owner: str, table: str) -> str:
     """Each tag of the entities in %(ids)s: its parent's label, its domain, and how many of their programmes carry it."""
     return f"""
-WITH RECURSIVE up AS (
-  SELECT id AS start, id, parent_id, label, kind FROM tags
-  UNION ALL
-  SELECT up.start, t.id, t.parent_id, t.label, t.kind FROM tags t JOIN up ON t.id = up.parent_id
-),
-root AS (SELECT start, label FROM up WHERE parent_id IS NULL AND kind = 'domain')
 SELECT x.{owner} AS id, tg.slug, tg.label, tg.kind, x.role, {public_text('x.note')} AS note,
-       par.label AS parent_label, root.label AS domain,
-       (SELECT count(*) FROM programs p JOIN program_tags pt ON pt.program_id = p.id
-        WHERE p.{owner} = x.{owner} AND pt.tag_id = x.tag_id) AS progs
+       par.label AS parent_label, {_TAG_DOMAIN} AS domain, COALESCE(pc.n, 0) AS progs
 FROM {table} x
-JOIN tags tg ON tg.id = x.tag_id
-LEFT JOIN tags par ON par.id = tg.parent_id
-LEFT JOIN root ON root.start = tg.id
+{_TAG_TREE}
+LEFT JOIN (SELECT p.{owner} AS eid, pt.tag_id, count(*) AS n
+           FROM programs p JOIN program_tags pt ON pt.program_id = p.id
+           WHERE p.{owner} = ANY(%(ids)s)
+           GROUP BY 1, 2) pc ON pc.eid = x.{owner} AND pc.tag_id = x.tag_id
 WHERE x.{owner} = ANY(%(ids)s)
 ORDER BY x.role, tg.label
+"""
+
+
+def entity_tag_domains(owner: str, table: str) -> str:
+    """entity_tags with only what a list filters on: each tag's kind, label and domain, no programme count."""
+    return f"""
+SELECT x.{owner} AS id, tg.kind, tg.label, {_TAG_DOMAIN} AS domain
+FROM {table} x
+{_TAG_TREE}
+WHERE x.{owner} = ANY(%(ids)s)
 """
 
 
