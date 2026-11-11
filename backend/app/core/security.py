@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import time
 from collections.abc import Mapping
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -88,23 +87,6 @@ _authorization_header = APIKeyHeader(
 )
 
 
-# A signed-in user's row, reused for a minute instead of read on every request; a staff change waits that long.
-USER_TTL = 60.0
-_users: dict[tuple[UUID, str, str | None], tuple[float, dict]] = {}
-
-
-async def _user_row(auth_user_id: UUID, email: str, display_name: str | None) -> dict:
-    key, now = (auth_user_id, email, display_name), time.monotonic()
-    hit = _users.get(key)
-    if hit and now - hit[0] < USER_TTL:
-        return hit[1]
-    row = await repo.resolve_auth_user(get_pool(), auth_user_id=auth_user_id, email=email, display_name=display_name)
-    if len(_users) >= 1000:  # one instance's signed-in users; clearing beats tracking which is oldest
-        _users.clear()
-    _users[key] = (now, row)
-    return row
-
-
 async def resolve_principal(authorization: str | None) -> CurrentUser:
     """Who an Authorization header is. Runs as the owner: it writes users rows no caller may write."""
     settings = get_settings()
@@ -135,7 +117,12 @@ async def resolve_principal(authorization: str | None) -> CurrentUser:
         raise _unauthorized("Token carries no email")
     meta = claims.get("user_metadata") or {}
     try:
-        row = await _user_row(auth_user_id, email, meta.get("full_name") or meta.get("name"))
+        row = await repo.resolve_auth_user(
+            get_pool(),
+            auth_user_id=auth_user_id,
+            email=email,
+            display_name=meta.get("full_name") or meta.get("name"),
+        )
     except repo.EmailTakenError as exc:
         logger.warning(
             "sign-in refused: %s is linked to auth user %s, but the token is for auth user %s",
