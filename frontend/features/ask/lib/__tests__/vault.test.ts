@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api/auth-headers", () => ({ authHeaders: async () => ({ Authorization: "Bearer t" }) }));
 
-import { API } from "@/features/ask/lib/rest";
+import { API } from "@/lib/api/rest";
 import { deleteFromVault, listVault, uploadToVault } from "@/features/ask/lib/vault";
 
 const fetchMock = vi.fn();

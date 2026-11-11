@@ -6,7 +6,7 @@ import { navigation } from "@/tests/setup";
 
 const call = vi.fn();
 const getMe = vi.fn();
-vi.mock("@/features/ask/lib/rest", () => ({ call: (...a: unknown[]) => call(...a), getMe: () => getMe() }));
+vi.mock("@/lib/api/rest", () => ({ call: (...a: unknown[]) => call(...a), getMe: () => getMe() }));
 const proposals = vi.hoisted(() => ({ rows: [] as unknown[], start: vi.fn() }));
 vi.mock("@/features/ask/views/proposals/api", () => ({
   useProposals: () => proposals.rows,

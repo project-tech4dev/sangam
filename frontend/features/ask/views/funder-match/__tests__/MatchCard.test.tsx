@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MatchDetail, MatchRow } from "@/lib/api";
 
 const call = vi.fn();
-vi.mock("@/features/ask/lib/rest", () => ({ call: (...a: unknown[]) => call(...a) }));
+vi.mock("@/lib/api/rest", () => ({ call: (...a: unknown[]) => call(...a) }));
 const proposals = vi.hoisted(() => ({ rows: [] as unknown[], start: vi.fn() }));
 vi.mock("@/features/ask/views/proposals/api", () => ({
   useProposals: () => proposals.rows,

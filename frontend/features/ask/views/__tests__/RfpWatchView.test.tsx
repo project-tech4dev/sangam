@@ -6,7 +6,7 @@ import type { Feed, FeedCall } from "@/features/ask/views/rfp-watch/api";
 
 const call = vi.fn();
 const getMe = vi.fn();
-vi.mock("@/features/ask/lib/rest", () => ({ call: (...a: unknown[]) => call(...a), getMe: () => getMe() }));
+vi.mock("@/lib/api/rest", () => ({ call: (...a: unknown[]) => call(...a), getMe: () => getMe() }));
 
 import { RfpWatchView } from "@/features/ask/views/RfpWatchView";
 import { daysLeft } from "@/features/ask/views/rfp-watch/CallCard";
