@@ -220,6 +220,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-10 · (unmerged) · CodeQL alerts fixed: Pitch's gap, citation and amount regexes run in linear time, its Wikipedia check matches the host rather than a suffix, and the Registry brief strips HTML comments until none is left.
 - 2026-11-10 · #360 · `entity_tags` reaches a tag's domain through its parent and grandparent (the taxonomy is domain → theme → sub_theme) instead of walking every tag, and counts programmes in one grouped join; the Registry index uses `entity_tag_domains`, with no programme count. A Registry page over 2,000 orgs: 885 ms → 25 ms.
 - 2026-11-11 · #366 · The ten paged lists read through one `fetch_page` and answer through `PageParams.build_page`. Each sorts on a unique id (eight did not, so tied rows could repeat or vanish between pages), a page past the end reports the list's real total instead of 0, and `fetch_page` refuses SQL that does not end in `ORDER BY … id`.
+- 2026-11-11 · (unmerged) · Codecov judges a commit only once all three coverage uploads are in (`after_n_builds: 3`). It used to post the frontend checks before the frontend job uploaded, and `codecov/project/frontend` on #366 stayed in progress.
 
 ## Tracing and evals
 
