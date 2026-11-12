@@ -12,7 +12,6 @@ from zoneinfo import ZoneInfo
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
 from app.agentkit.models import resolve_model
-from app.ask.tools.sql.errors import FAILED_PREFIX, REJECTED_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +27,8 @@ IST = ZoneInfo("Asia/Kolkata")  # the people asking are in India
 CAVEAT_PREFIX = "\u26a0\ufe0f"
 # compare_fit's refusal for a caller who may not run a match (matching_tools.py); a test holds the two together.
 COMPARE_FIT_REFUSED = "compare_fit refused: running a match"
+DATA_TOOLS = {"db_query", "db_profile_column", "search_graph", "compare_fit"}
+NO_DATA = ("The knowledge graph is not available", "No graph facts found")  # search_graph's empty replies
 LARGE_RESULTS = "/large_tool_results/"  # where FilesystemMiddleware moves a result too big to keep inline
 _EXECUTED = re.compile(r"^executed: (.+)$", re.MULTILINE)
 _JSON = re.compile(r"\{.*\}", re.DOTALL)
@@ -45,8 +46,9 @@ Every tool result the answer could draw on, in the order they ran:
 The answer given:
 {answer}
 
-A fact in the answer is supported if ANY result above supports it. A result marked (no rows) or \
-(no match) failed; an answer may say so. compare_fit's scores, tiers \
+A fact in the answer is supported if ANY result above supports it. A result marked (no data) failed \
+or was empty; an answer may say so. A result marked (cut) has more rows than shown: do not warn that a fact \
+is missing when it could be in the part not shown. compare_fit's scores, tiers \
 and statuses are computed in code: they are evidence, not claims to re-judge.
 
 Check exactly these four things. Checks 1-3 are about SQL: skip them when no db_query ran.
@@ -87,26 +89,37 @@ class Turn:
     paged: set[str] = field(default_factory=set)  # read_file calls that page back an evicted result
 
 
+def _cut(content: str, limit: int) -> str:
+    if len(content) <= limit:
+        return content
+    return f"{content[:limit]}\n(cut: {len(content) - limit} more characters not shown)"
+
+
 def _evidence(message: ToolMessage, turn: Turn) -> str | None:
     """The block the audit reads for one tool result; None for one it has no use for (schema reads, skills)."""
-    content = message.content
-    if message.name == "db_query":
-        sql = "\n".join(executed_sql(message)) or "(not recorded)"
-        if content.startswith((REJECTED_PREFIX, FAILED_PREFIX)):
-            return f"db_query (no rows)\nSQL: {sql}\n{content[:FAILURE_CHARS]}"
-        turn.has_data = True
-        return f"db_query\nSQL: {sql}\nReturned:\n{content[:RESULT_CHARS]}"
-    if message.name == "compare_fit":
-        if content.startswith(COMPARE_FIT_REFUSED):
-            turn.refused = True
-        if content.startswith(("compare_fit refused", "compare_fit failed")):  # also CompareFitBudget's refusals
-            return f"compare_fit (no match)\n{content[:FAILURE_CHARS]}"
-        turn.has_data = True
-        return f"compare_fit\n{content[:COMPARE_FIT_CHARS]}"
-    if message.name == "read_file" and message.tool_call_id in turn.paged:
-        turn.has_data = True
-        return f"read_file (a large result paged back)\n{content[:RESULT_CHARS]}"
-    return None
+    name, content = message.name, message.content
+    if name not in DATA_TOOLS and not (name == "read_file" and message.tool_call_id in turn.paged):
+        return None
+    if content.startswith(COMPARE_FIT_REFUSED):
+        turn.refused = True
+    sql = f"\nSQL: {chr(10).join(executed_sql(message)) or '(not recorded)'}" if name == "db_query" else ""
+    if content.startswith((f"{name} failed", f"{name} rejected", f"{name} refused", *NO_DATA)):
+        return f"{name} (no data){sql}\n{_cut(content, FAILURE_CHARS)}"
+    turn.has_data = True
+    label = "read_file (a large result paged back)" if name == "read_file" else name
+    return f"{label}{sql}\nReturned:\n{_cut(content, COMPARE_FIT_CHARS if name == 'compare_fit' else RESULT_CHARS)}"
+
+
+def _newest(blocks: list[str]) -> str:
+    """Whole blocks, newest first back to the cap: the answer is built mostly from the last results."""
+    kept, size = [], 0
+    for block in reversed(blocks):
+        if kept and size + len(block) > EVIDENCE_CHARS:
+            break
+        kept.append(block)
+        size += len(block) + 2
+    dropped = len(blocks) - len(kept)
+    return "\n\n".join(([f"({dropped} earlier results not shown)"] if dropped else []) + kept[::-1])
 
 
 def collect_turn(messages: list[BaseMessage]) -> Turn:
@@ -144,7 +157,7 @@ def audit_turn(messages: list[BaseMessage], model_spec: str) -> Audit | None:
             PROMPT.format(
                 today=datetime.now(IST).date().isoformat(),
                 question=turn.question[:1000],
-                evidence="\n\n".join(turn.evidence)[-EVIDENCE_CHARS:],  # the answer is built mostly from the last
+                evidence=_newest(turn.evidence),
                 answer=turn.answer[:3000],
             ),
             max_tokens=MAX_TOKENS,

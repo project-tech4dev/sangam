@@ -155,6 +155,14 @@ def test_a_warning_is_scored_and_never_shown(monkeypatch, scores):
     assert scores == [("answer_audit", 0.0, "counts orgs twice")]
 
 
+@pytest.mark.parametrize("canned", [mw._GIVE_UP, mw._CAPPED])
+def test_a_canned_stop_is_not_audited(monkeypatch, scores, canned):
+    called = []
+    monkeypatch.setattr(mw, "audit_turn", lambda messages, spec: called.append(1))
+    mw.answer_audit("haiku").after_agent({"messages": [HumanMessage("q"), AIMessage(canned)]}, None)
+    assert called == [] and scores == []
+
+
 def test_a_warning_without_a_caveat_scores_zero(monkeypatch, scores):
     assert _audit_with(monkeypatch, Audit("warn", None)) is None and scores[0][1] == 0.0
 

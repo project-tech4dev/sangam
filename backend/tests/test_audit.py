@@ -105,11 +105,41 @@ class TestWhatItReads:
                     query("db_query failed: statement timeout", "SELECT 2", "2"), AIMessage("a")]
         collected = collect_turn(messages)
         assert collected.has_data
-        assert collected.evidence[1].startswith("db_query (no rows)") and "statement timeout" in collected.evidence[1]
+        assert collected.evidence[1].startswith("db_query (no data)\nSQL: SELECT 2") and "statement timeout" in collected.evidence[1]
 
-    def test_a_long_result_is_cut(self):
+    def test_a_long_result_is_cut_and_says_so(self):
+        """Unmarked, a funder from row 40 of 51 looked unsupported."""
         [block] = collect_turn([HumanMessage("q"), query("x" * (audit_mod.RESULT_CHARS + 500))]).evidence
         assert block.count("x") == audit_mod.RESULT_CHARS
+        assert block.endswith("(cut: 500 more characters not shown)")
+
+    def test_a_profile_and_graph_facts_are_evidence(self):
+        """'42 organisations are in Assam' can come from a profile count, not a query."""
+        messages = [
+            HumanMessage("q"),
+            ToolMessage("org_locations.state: ASSAM 42", name="db_profile_column", tool_call_id="1"),
+            ToolMessage("[graph:ab12cd34] KABIL co-implements with Axis", name="search_graph", tool_call_id="2"),
+        ]
+        collected = collect_turn(messages)
+        assert collected.has_data
+        assert [b.splitlines()[0] for b in collected.evidence] == ["db_profile_column", "search_graph"]
+
+    @pytest.mark.parametrize("content", [
+        "The knowledge graph is not available (no NEO4J_URI). Answer from the database tools instead.",
+        "No graph facts found for 'KABIL'.",
+        "search_graph failed: timeout",
+    ])
+    def test_an_empty_graph_is_not_data(self, content):
+        collected = collect_turn([HumanMessage("q"), ToolMessage(content, name="search_graph", tool_call_id="1")])
+        assert not collected.has_data and collected.evidence[0].startswith("search_graph (no data)")
+
+    def test_a_failed_page_back_is_not_data(self):
+        messages = [
+            HumanMessage("q"),
+            AIMessage("", tool_calls=[{"id": "r1", "name": "read_file", "args": {"file_path": "/large_tool_results/x"}}]),
+            ToolMessage("read_file failed: FileNotFoundError. Try another way.", name="read_file", tool_call_id="r1"),
+        ]
+        assert not collect_turn(messages).has_data
 
     def test_a_shortlist_keeps_more_than_a_query(self):
         shortlist = "z" * (audit_mod.RESULT_CHARS * 3)
@@ -197,6 +227,7 @@ class TestWhenItRuns:
                     AIMessage("answer")]
         audit_turn(messages, MODEL)
         assert "newest rows" in model.prompt and "SQL: SELECT 1" not in model.prompt
+        assert "(1 earlier results not shown)\n\ndb_query\nSQL: SELECT 2" in model.prompt, "whole blocks, header kept"
 
     def test_a_turn_whose_queries_all_failed_is_not_audited(self, fake_model):
         model = fake_model('{"verdict":"warn","caveat":"x"}')

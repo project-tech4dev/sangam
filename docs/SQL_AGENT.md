@@ -6,11 +6,12 @@ question asked about?), **filters** (is every condition in the question present?
 (could an empty result mean a wrong filter *value*?), **numbers** (do the figures in the prose
 match the rows?). Its verdict is the Langfuse `answer_audit` score; since #322 it appends no caveat, and it never blocks.
 
-It reads every `db_query` result of the turn with the SQL that produced it (4,000 characters each), `compare_fit`'s
-output (16,000, enough for a shortlist), a result paged back from `/large_tool_results/`, and failures as a short
-note, so an answer that says "could not be retrieved" is not unsupported; past 30,000 in all it keeps the newest. It
-also gets today's date in India. A turn where nothing returned data, or where `compare_fit` refused the caller, is not
-audited. It used to see only the last query, cut to 2,000 characters, and no date, so it flagged facts that came from
+It reads every result the answer could draw on: each `db_query` with its SQL, `db_profile_column` and
+`search_graph` (4,000 characters each), `compare_fit` (16,000, enough for a shortlist), and a result paged back from
+`/large_tool_results/`. A cut result says so, and a failed or empty one is a short note, so "could not be retrieved"
+is not unsupported. Past 30,000 characters it keeps whole results, newest first. It also gets today's date in India.
+A turn where nothing returned data, where `compare_fit` refused the caller, or that ended on a canned stop (retry
+limit, call cap) is not audited. It used to see only the last query, cut to 2,000 characters, and no date, so it flagged facts that came from
 earlier queries or from `compare_fit`, and called recent dates future.
 
 `after_agent`, not `after_model` — it must run once on the finished answer, not after every
