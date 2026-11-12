@@ -96,12 +96,41 @@ class TestWhatItReads:
         ("compare_fit failed: no organisation with id 7", "compare_fit"),
         ("orgs: id, name", "db_describe_table"),
     ])
-    def test_failures_refusals_and_schema_reads_are_not_evidence(self, content, name):
-        assert collect_turn([HumanMessage("q"), ToolMessage(content, name=name, tool_call_id="1")]).evidence == []
+    def test_failures_refusals_and_schema_reads_are_not_data(self, content, name):
+        assert not collect_turn([HumanMessage("q"), ToolMessage(content, name=name, tool_call_id="1")]).has_data
+
+    def test_a_failure_is_shown_beside_the_results(self):
+        """An answer that says 'its funding could not be retrieved' is right, not unsupported."""
+        messages = [HumanMessage("q"), query("1 row(s).\nPRDA", "SELECT 1", "1"),
+                    query("db_query failed: statement timeout", "SELECT 2", "2"), AIMessage("a")]
+        collected = collect_turn(messages)
+        assert collected.has_data
+        assert collected.evidence[1].startswith("db_query (no rows)") and "statement timeout" in collected.evidence[1]
 
     def test_a_long_result_is_cut(self):
         [block] = collect_turn([HumanMessage("q"), query("x" * (audit_mod.RESULT_CHARS + 500))]).evidence
         assert block.count("x") == audit_mod.RESULT_CHARS
+
+    def test_a_shortlist_keeps_more_than_a_query(self):
+        shortlist = "z" * (audit_mod.RESULT_CHARS * 3)
+        [block] = collect_turn([HumanMessage("q"), ToolMessage(shortlist, name="compare_fit", tool_call_id="1")]).evidence
+        assert block.count("z") == audit_mod.RESULT_CHARS * 3
+
+    def test_a_result_paged_back_from_a_file_is_evidence(self):
+        """A big result is moved to a file and read back; the stub alone would leave every figure unsupported."""
+        messages = [
+            HumanMessage("q"),
+            AIMessage("", tool_calls=[
+                {"id": "r1", "name": "read_file", "args": {"file_path": "/large_tool_results/call_1"}},
+                {"id": "r2", "name": "read_file", "args": {"file_path": "/skills/news-brief/SKILL.md"}},
+            ]),
+            ToolMessage("Thoubal 12", name="read_file", tool_call_id="r1"),
+            ToolMessage("# News brief", name="read_file", tool_call_id="r2"),
+            AIMessage("Thoubal has 12."),
+        ]
+        collected = collect_turn(messages)
+        assert collected.has_data
+        assert [b.splitlines()[0] for b in collected.evidence] == ["read_file (a large result paged back)"]
 
 
 class TestTheSqlThatRan:
@@ -131,12 +160,43 @@ class TestWhenItRuns:
         model = fake_model('{"verdict":"warn","caveat":"x"}')
         messages = [
             HumanMessage("Match KABIL against every funder"),
+            query("1 row(s).\ncolumns: id, name\n7 KABIL", "SELECT id FROM orgs", "0"),
             ToolMessage("compare_fit refused: running a match for organisation 7 is for its stewards.",
                         name="compare_fit", tool_call_id="1"),
             AIMessage("Running a match for KABIL is for its stewards, admins and Sangam staff."),
         ]
         assert audit_turn(messages, MODEL) is None
         assert model.calls == 0
+
+    def test_a_budget_refusal_after_a_match_is_still_audited(self, fake_model):
+        """CompareFitBudget refusing a repeat is not the caller being refused: the first match stands."""
+        model = fake_model('{"verdict":"ok"}')
+        messages = [
+            HumanMessage("q"),
+            ToolMessage("Axis Bank Foundation · 82 strong", name="compare_fit", tool_call_id="1"),
+            ToolMessage("compare_fit refused a repeat: it already ran with these arguments this turn.",
+                        name="compare_fit", tool_call_id="2"),
+            AIMessage("Axis is a strong fit, 82."),
+        ]
+        assert audit_turn(messages, MODEL) == Audit("ok")
+        assert model.calls == 1
+
+    async def test_the_refusal_prefix_is_what_compare_fit_returns(self, monkeypatch):
+        from app.ask.tools import matching_tools
+
+        async def no(*args): return False
+        monkeypatch.setattr(matching_tools.matching, "may_run", no)
+        monkeypatch.setattr(matching_tools, "get_pool", lambda: None)
+        reply = await matching_tools.compare_fit.ainvoke({"org_id": 7})
+        assert reply.startswith(audit_mod.COMPARE_FIT_REFUSED)
+
+    def test_the_newest_results_survive_the_cap(self, fake_model, monkeypatch):
+        model = fake_model('{"verdict":"ok"}')
+        monkeypatch.setattr(audit_mod, "EVIDENCE_CHARS", 200)
+        messages = [HumanMessage("q"), query("old " * 100, "SELECT 1", "1"), query("newest rows", "SELECT 2", "2"),
+                    AIMessage("answer")]
+        audit_turn(messages, MODEL)
+        assert "newest rows" in model.prompt and "SQL: SELECT 1" not in model.prompt
 
     def test_a_turn_whose_queries_all_failed_is_not_audited(self, fake_model):
         model = fake_model('{"verdict":"warn","caveat":"x"}')
@@ -158,11 +218,13 @@ class TestWhenItRuns:
     def test_the_prompt_carries_every_result_and_today(self, fake_model):
         """Without today's date the audit called a fetch date twelve days old 'in the future'."""
         model = fake_model('{"verdict":"ok"}')
-        messages = [HumanMessage("q"), query("1 row(s).\nfirst", "SELECT 1", "1"),
-                    query("1 row(s).\nsecond", "SELECT 2", "2"), AIMessage("first and second")]
+        messages = [HumanMessage("q"), query("1 row(s).\nalpha", "SELECT 1", "1"),
+                    query("1 row(s).\nbeta", "SELECT 2", "2"), AIMessage("the answer")]
+        before = datetime.now(audit_mod.IST).date().isoformat()
         audit_turn(messages, MODEL)
-        assert "first" in model.prompt and "second" in model.prompt
-        assert f"Today is {datetime.now(audit_mod.IST).date().isoformat()}." in model.prompt
+        after = datetime.now(audit_mod.IST).date().isoformat()
+        assert "SQL: SELECT 1" in model.prompt and "alpha" in model.prompt and "beta" in model.prompt
+        assert f"Today is {before}." in model.prompt or f"Today is {after}." in model.prompt
 
     def test_skipped_when_there_is_no_answer_yet(self, fake_model):
         model = fake_model('{"verdict":"ok"}')

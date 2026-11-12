@@ -6,10 +6,12 @@ question asked about?), **filters** (is every condition in the question present?
 (could an empty result mean a wrong filter *value*?), **numbers** (do the figures in the prose
 match the rows?). Its verdict is the Langfuse `answer_audit` score; since #322 it appends no caveat, and it never blocks.
 
-It reads every `db_query` result of the turn with the SQL that produced it, and `compare_fit`'s output, each cut to
-4,000 characters, plus today's date in India. A turn where nothing returned data (every query failed, `compare_fit`
-refused, or only the schema was read) is not audited. It used to see only the last query, cut to 2,000 characters,
-and no date, so it flagged facts that came from earlier queries or from `compare_fit`, and called recent dates future.
+It reads every `db_query` result of the turn with the SQL that produced it (4,000 characters each), `compare_fit`'s
+output (16,000, enough for a shortlist), a result paged back from `/large_tool_results/`, and failures as a short
+note, so an answer that says "could not be retrieved" is not unsupported; past 30,000 in all it keeps the newest. It
+also gets today's date in India. A turn where nothing returned data, or where `compare_fit` refused the caller, is not
+audited. It used to see only the last query, cut to 2,000 characters, and no date, so it flagged facts that came from
+earlier queries or from `compare_fit`, and called recent dates future.
 
 `after_agent`, not `after_model` — it must run once on the finished answer, not after every
 model call in the loop. By then the answer has already streamed, so it cannot correct anything
