@@ -65,6 +65,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-19 · Ask's limits in code: a question stops after `ASK_MODEL_CALL_LIMIT` (25) model calls, `compare_fit` refuses a repeat of the same arguments and a fourth call, and Ask falls back to `RESEARCH_MODEL` and summarizes on `UTILITY_MODEL` as Import and Pitch do (#248, #249).
 - 2026-10-19 · Ask efficiency M3: the prompt carries the table list (`{{TABLE_MAP}}`, from `catalog.py`); `db_query` adds each table's id when none is selected, so plain rows come back cited; a one-row result shows text up to 2,000 characters; a table's caveats come in full once a turn, then as one line; the SQL that ran moves from the text to the tool's artifact (the evidence rail shows the model's SELECT).
 - 2026-11-12 · #402 · The answer audit no longer adds a ⚠️ caveat under Ask's answer: 18 of 39 production answers had one and only 2–3 were real. Its verdict still reaches Langfuse as `answer_audit` (#322 step 1).
+- 2026-11-12 · #403 · The answer audit reads every query result in the turn with its SQL, `compare_fit`'s output and today's date, and skips refusal turns; it used to see only the last query and flagged facts from the others (#322 step 2).
 
 ## Knowledge graph
 

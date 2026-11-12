@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
@@ -26,10 +28,15 @@ def turn(answer="KABIL has the highest score, 93.", *, with_sql=True):
     return messages
 
 
+def query(content, sql="SELECT 1", call_id="1"):
+    return ToolMessage(content, name="db_query", tool_call_id=call_id, artifact={"sql": sql})
+
+
 class FakeModel:
-    def __init__(self, reply): self.reply = reply; self.calls = 0
+    def __init__(self, reply): self.reply = reply; self.calls = 0; self.prompt = ""
     def invoke(self, prompt, **kwargs):
         self.calls += 1
+        self.prompt = prompt
         return AIMessage(content=self.reply)
 
 
@@ -44,20 +51,116 @@ def fake_model(monkeypatch):
 
 class TestWhatItReads:
     def test_collects_question_sql_and_answer(self):
-        question, sql, result, answer = collect_turn(turn())
-        assert question.startswith("Which org")
-        assert sql == ['SELECT "o"."name" FROM "orgs" AS "o" LIMIT 51']
-        assert "KABIL" in result
-        assert answer == "KABIL has the highest score, 93."
+        collected = collect_turn(turn())
+        assert collected.question.startswith("Which org")
+        [block] = collected.evidence
+        assert 'SQL: SELECT "o"."name" FROM "orgs" AS "o" LIMIT 51' in block
+        assert "KABIL" in block
+        assert collected.answer == "KABIL has the highest score, 93."
 
     def test_a_new_user_message_resets_the_turn(self):
         """Auditing the previous turn's SQL against this turn's answer would
         manufacture caveats out of nothing."""
         messages = turn() + [HumanMessage("And the lowest?"), AIMessage("BDF, 41.")]
-        question, sql, _, answer = collect_turn(messages)
-        assert question == "And the lowest?"
-        assert sql == []
-        assert answer == "BDF, 41."
+        collected = collect_turn(messages)
+        assert collected.question == "And the lowest?"
+        assert collected.evidence == []
+        assert collected.answer == "BDF, 41."
+
+    def test_every_query_in_the_turn_is_kept(self):
+        """Ask runs 3-5 queries a turn; keeping only the last flagged facts that came from the others."""
+        messages = [
+            HumanMessage("What does PRDA do?"),
+            query("1 row(s).\ncolumns: name\nPRDA", "SELECT name FROM orgs", "1"),
+            query("4 row(s).\ncolumns: district\nBishnupur\nChandel\nNoney\nThoubal", "SELECT district", "2"),
+            query("2 row(s).\ncolumns: funder\nTata Trusts\nAxis", "SELECT funder", "3"),
+            AIMessage("PRDA works in four districts."),
+        ]
+        evidence = collect_turn(messages).evidence
+        assert len(evidence) == 3
+        assert "Thoubal" in evidence[1] and "SQL: SELECT district" in evidence[1]
+
+    def test_compare_fit_output_is_evidence(self):
+        messages = [
+            HumanMessage("How well does KABIL fit Axis?"),
+            ToolMessage("1 funder checked.\nAxis Bank Foundation · 82 strong", name="compare_fit", tool_call_id="1"),
+            AIMessage("Axis is a strong fit, 82 [score:4]."),
+        ]
+        [block] = collect_turn(messages).evidence
+        assert block.startswith("compare_fit") and "82 strong" in block
+
+    @pytest.mark.parametrize("content, name", [
+        ("db_query rejected: unknown column", "db_query"),
+        ("db_query failed: the database is unreachable right now.", "db_query"),
+        ("compare_fit refused: running a match for organisation 7 is for its stewards.", "compare_fit"),
+        ("compare_fit failed: no organisation with id 7", "compare_fit"),
+        ("orgs: id, name", "db_describe_table"),
+    ])
+    def test_failures_refusals_and_schema_reads_are_not_data(self, content, name):
+        assert not collect_turn([HumanMessage("q"), ToolMessage(content, name=name, tool_call_id="1")]).has_data
+
+    def test_a_failure_is_shown_beside_the_results(self):
+        """An answer that says 'its funding could not be retrieved' is right, not unsupported."""
+        messages = [HumanMessage("q"), query("1 row(s).\nPRDA", "SELECT 1", "1"),
+                    query("db_query failed: statement timeout", "SELECT 2", "2"), AIMessage("a")]
+        collected = collect_turn(messages)
+        assert collected.has_data
+        assert collected.evidence[1].startswith("db_query (no data)\nSQL: SELECT 2") and "statement timeout" in collected.evidence[1]
+
+    def test_a_long_result_is_cut_and_says_so(self):
+        """Unmarked, a funder from row 40 of 51 looked unsupported."""
+        [block] = collect_turn([HumanMessage("q"), query("x" * (audit_mod.RESULT_CHARS + 500))]).evidence
+        assert block.count("x") == audit_mod.RESULT_CHARS
+        assert block.endswith("(cut: 500 more characters not shown)")
+
+    def test_a_profile_and_graph_facts_are_evidence(self):
+        """'42 organisations are in Assam' can come from a profile count, not a query."""
+        messages = [
+            HumanMessage("q"),
+            ToolMessage("org_locations.state: ASSAM 42", name="db_profile_column", tool_call_id="1"),
+            ToolMessage("[graph:ab12cd34] KABIL co-implements with Axis", name="search_graph", tool_call_id="2"),
+        ]
+        collected = collect_turn(messages)
+        assert collected.has_data
+        assert [b.splitlines()[0] for b in collected.evidence] == ["db_profile_column", "search_graph"]
+
+    @pytest.mark.parametrize("content", [
+        "The knowledge graph is not available (no NEO4J_URI). Answer from the database tools instead.",
+        "No graph facts found for 'KABIL'.",
+        "search_graph failed: timeout",
+    ])
+    def test_an_empty_graph_is_not_data(self, content):
+        collected = collect_turn([HumanMessage("q"), ToolMessage(content, name="search_graph", tool_call_id="1")])
+        assert not collected.has_data and collected.evidence[0].startswith("search_graph (no data)")
+
+    def test_a_failed_page_back_is_not_data(self):
+        messages = [
+            HumanMessage("q"),
+            AIMessage("", tool_calls=[{"id": "r1", "name": "read_file", "args": {"file_path": "/large_tool_results/x"}}]),
+            ToolMessage("read_file failed: FileNotFoundError. Try another way.", name="read_file", tool_call_id="r1"),
+        ]
+        assert not collect_turn(messages).has_data
+
+    def test_a_shortlist_keeps_more_than_a_query(self):
+        shortlist = "z" * (audit_mod.RESULT_CHARS * 3)
+        [block] = collect_turn([HumanMessage("q"), ToolMessage(shortlist, name="compare_fit", tool_call_id="1")]).evidence
+        assert block.count("z") == audit_mod.RESULT_CHARS * 3
+
+    def test_a_result_paged_back_from_a_file_is_evidence(self):
+        """A big result is moved to a file and read back; the stub alone would leave every figure unsupported."""
+        messages = [
+            HumanMessage("q"),
+            AIMessage("", tool_calls=[
+                {"id": "r1", "name": "read_file", "args": {"file_path": "/large_tool_results/call_1"}},
+                {"id": "r2", "name": "read_file", "args": {"file_path": "/skills/news-brief/SKILL.md"}},
+            ]),
+            ToolMessage("Thoubal 12", name="read_file", tool_call_id="r1"),
+            ToolMessage("# News brief", name="read_file", tool_call_id="r2"),
+            AIMessage("Thoubal has 12."),
+        ]
+        collected = collect_turn(messages)
+        assert collected.has_data
+        assert [b.splitlines()[0] for b in collected.evidence] == ["read_file (a large result paged back)"]
 
 
 class TestTheSqlThatRan:
@@ -76,11 +179,83 @@ class TestWhenItRuns:
         assert audit_turn(turn(), "") is None
         assert model.calls == 0, "must not spend a call when disabled"
 
-    def test_skipped_when_no_sql_ran(self, fake_model):
-        """Curated-tool turns have nothing SQL-shaped to audit and must be free."""
+    def test_skipped_when_no_data_came_back(self, fake_model):
+        """A turn with no db_query or compare_fit result has nothing to audit and must be free."""
         model = fake_model('{"verdict":"warn","caveat":"x"}')
         assert audit_turn(turn(with_sql=False), MODEL) is None
         assert model.calls == 0
+
+    def test_a_refusal_turn_is_not_audited(self, fake_model):
+        """Nothing came back to check the answer against, so the audit could only invent a problem."""
+        model = fake_model('{"verdict":"warn","caveat":"x"}')
+        messages = [
+            HumanMessage("Match KABIL against every funder"),
+            query("1 row(s).\ncolumns: id, name\n7 KABIL", "SELECT id FROM orgs", "0"),
+            ToolMessage("compare_fit refused: running a match for organisation 7 is for its stewards.",
+                        name="compare_fit", tool_call_id="1"),
+            AIMessage("Running a match for KABIL is for its stewards, admins and Sangam staff."),
+        ]
+        assert audit_turn(messages, MODEL) is None
+        assert model.calls == 0
+
+    def test_a_budget_refusal_after_a_match_is_still_audited(self, fake_model):
+        """CompareFitBudget refusing a repeat is not the caller being refused: the first match stands."""
+        model = fake_model('{"verdict":"ok"}')
+        messages = [
+            HumanMessage("q"),
+            ToolMessage("Axis Bank Foundation · 82 strong", name="compare_fit", tool_call_id="1"),
+            ToolMessage("compare_fit refused a repeat: it already ran with these arguments this turn.",
+                        name="compare_fit", tool_call_id="2"),
+            AIMessage("Axis is a strong fit, 82."),
+        ]
+        assert audit_turn(messages, MODEL) == Audit("ok")
+        assert model.calls == 1
+
+    async def test_the_refusal_prefix_is_what_compare_fit_returns(self, monkeypatch):
+        from app.ask.tools import matching_tools
+
+        async def no(*args): return False
+        monkeypatch.setattr(matching_tools.matching, "may_run", no)
+        monkeypatch.setattr(matching_tools, "get_pool", lambda: None)
+        reply = await matching_tools.compare_fit.ainvoke({"org_id": 7})
+        assert reply.startswith(audit_mod.COMPARE_FIT_REFUSED)
+
+    def test_the_newest_results_survive_the_cap(self, fake_model, monkeypatch):
+        model = fake_model('{"verdict":"ok"}')
+        monkeypatch.setattr(audit_mod, "EVIDENCE_CHARS", 200)
+        messages = [HumanMessage("q"), query("old " * 100, "SELECT 1", "1"), query("newest rows", "SELECT 2", "2"),
+                    AIMessage("answer")]
+        audit_turn(messages, MODEL)
+        assert "newest rows" in model.prompt and "SQL: SELECT 1" not in model.prompt
+        assert "(1 earlier results not shown)\n\ndb_query\nSQL: SELECT 2" in model.prompt, "whole blocks, header kept"
+
+    def test_a_turn_whose_queries_all_failed_is_not_audited(self, fake_model):
+        model = fake_model('{"verdict":"warn","caveat":"x"}')
+        messages = [HumanMessage("q"), query("db_query failed: the database is unreachable right now."),
+                    AIMessage("The data could not be reached.")]
+        assert audit_turn(messages, MODEL) is None
+        assert model.calls == 0
+
+    def test_a_compare_fit_turn_is_audited_without_sql(self, fake_model):
+        model = fake_model('{"verdict":"ok"}')
+        messages = [
+            HumanMessage("How well does KABIL fit Axis?"),
+            ToolMessage("Axis Bank Foundation · 82 strong", name="compare_fit", tool_call_id="1"),
+            AIMessage("Axis is a strong fit, 82."),
+        ]
+        assert audit_turn(messages, MODEL) == Audit("ok")
+        assert "82 strong" in model.prompt
+
+    def test_the_prompt_carries_every_result_and_today(self, fake_model):
+        """Without today's date the audit called a fetch date twelve days old 'in the future'."""
+        model = fake_model('{"verdict":"ok"}')
+        messages = [HumanMessage("q"), query("1 row(s).\nalpha", "SELECT 1", "1"),
+                    query("1 row(s).\nbeta", "SELECT 2", "2"), AIMessage("the answer")]
+        before = datetime.now(audit_mod.IST).date().isoformat()
+        audit_turn(messages, MODEL)
+        after = datetime.now(audit_mod.IST).date().isoformat()
+        assert "SQL: SELECT 1" in model.prompt and "alpha" in model.prompt and "beta" in model.prompt
+        assert f"Today is {before}." in model.prompt or f"Today is {after}." in model.prompt
 
     def test_skipped_when_there_is_no_answer_yet(self, fake_model):
         model = fake_model('{"verdict":"ok"}')
@@ -154,5 +329,4 @@ def test_an_appended_caveat_is_not_mistaken_for_the_answer():
     from app.ask.audit import CAVEAT_PREFIX
 
     messages = turn() + [AIMessage(content=f"{CAVEAT_PREFIX} the SQL has no state filter")]
-    _, _, _, answer = collect_turn(messages)
-    assert answer == "KABIL has the highest score, 93."
+    assert collect_turn(messages).answer == "KABIL has the highest score, 93."

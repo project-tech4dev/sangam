@@ -75,7 +75,8 @@ Generated detail (tools, skills, middleware order, prompt rules): [ask-sangam](.
   An uncited row makes an uncitable answer.
 - **The answer audit is a score, not a caveat.** It runs after the answer has streamed and sends `answer_audit` to Langfuse;
   the person sees nothing. 18 of 39 production answers got a ⚠️, and only 2–3 were real (#322). It returns to the answer
-  only once its scores agree with hand labels.
+  only once its scores agree with hand labels. It judges an answer against everything the answer could draw on: every
+  query result and `compare_fit` output in the turn, and today's date; a turn where nothing returned data, or a refusal, is not audited.
 
 ## 4. Sangam Import / Scout
 

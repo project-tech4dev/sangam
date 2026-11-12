@@ -148,6 +148,9 @@ def answer_audit(model_spec: str):
 
     @after_agent(name="answer_audit")
     def _audit(state, runtime):
+        last = state["messages"][-1] if state["messages"] else None
+        if isinstance(last, AIMessage) and last.content in (_GIVE_UP, _CAPPED):
+            return  # a canned stop, not an answer: scoring it would mix runaway turns into answer quality
         verdict = audit_turn(state["messages"], model_spec)
         if verdict is None:
             return
