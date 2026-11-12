@@ -76,8 +76,8 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         *fallback(settings.model, settings.research_model),
         cheap_summarizer(strong, resolve_model(settings.utility_model), backend),
     ]
-    if settings.sql_audit_model:
-        # On by default (SQL_AUDIT_MODEL=off turns it off): one cheap extra model call per SQL turn.
+    if settings.sql_audit_model and settings.langfuse_enabled:
+        # Its verdict is only a Langfuse score, so without Langfuse the call would buy nothing.
         middleware.append(answer_audit(settings.sql_audit_model))
 
     agent = create_deep_agent(

@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 MAX_TOKENS = 1024  # room for a little thinking before the verdict
 
-# Prefix of the caveat the audit used to append (#322). Threads saved before then still hold one as a second
-# AIMessage, so anything reading a turn's final answer must keep skipping it.
+# Prefix of the caveat the audit used to append. Older threads still hold one as a second AIMessage,
+# so anything reading a turn's final answer must keep skipping it.
 CAVEAT_PREFIX = "\u26a0\ufe0f"
 _EXECUTED = re.compile(r"^executed: (.+)$", re.MULTILINE)
 _JSON = re.compile(r"\{.*\}", re.DOTALL)

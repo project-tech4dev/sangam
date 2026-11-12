@@ -159,6 +159,18 @@ def test_a_warning_without_a_caveat_scores_zero(monkeypatch, scores):
     assert _audit_with(monkeypatch, Audit("warn", None)) is None and scores[0][1] == 0.0
 
 
+@pytest.mark.parametrize("keys, wired", [({}, False), ({"langfuse_public_key": "pk", "langfuse_secret_key": "sk"}, True)])
+def test_the_audit_runs_only_where_its_score_can_land(keys, wired):
+    """Without Langfuse the score is dropped, so the model call would be paid for nothing."""
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.ask.agent import build_agent
+    from app.core.config import Settings
+
+    graph = build_agent(Settings(_env_file=None, **keys), InMemorySaver())
+    assert ("answer_audit.after_agent" in graph.nodes) is wired
+
+
 # --- staff-last lock ---------------------------------------------------------
 
 def test_staff_rows_requested_by_call_or_result():

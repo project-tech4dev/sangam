@@ -10,8 +10,8 @@ match the rows?). Its verdict is the Langfuse `answer_audit` score; since #322 i
 model call in the loop. By then the answer has already streamed, so it cannot correct anything
 in place; it used to append a caveat, and now only scores (#322).
 
-**Off unless `SQL_AUDIT_MODEL` is set**, because it is a real extra model call on every SQL
-turn. Everything in it fails open: a turn must not break because a second opinion could not be
+**Off unless `SQL_AUDIT_MODEL` and the Langfuse keys are both set**, because it is a real extra model call on every
+SQL turn and its score has nowhere else to go. Everything in it fails open: a turn must not break because a second opinion could not be
 obtained.
 
 Measured live against `anthropic:claude-haiku-4-5` on four planted turns — a sound answer

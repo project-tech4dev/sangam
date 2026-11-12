@@ -349,7 +349,7 @@ pipeline call Tavily, so `tavily_api_key` matters.
 checks grain, missing filters, false zeros and whether the figures in the prose match the rows,
 and sends its verdict to Langfuse as the `answer_audit` score. **The person never sees it**: it
 used to append a ⚠️ caveat, and most of those were wrong (#322). It comes back into the answer
-only once the scores show it is right. On by default, on the cheap tier; `SQL_AUDIT_MODEL=off`
+only once the scores show it is right. On by default where Langfuse is set, on the cheap tier; `SQL_AUDIT_MODEL=off`
 turns it off.
 
 Adding a table to the catalog is a **security decision**, not bookkeeping: a new table is

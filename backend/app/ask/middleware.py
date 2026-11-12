@@ -158,7 +158,7 @@ def answer_audit(model_spec: str):
             1.0 if verdict.verdict == "ok" else 0.0,
             comment=verdict.caveat,
         )
-        # Not shown: most production caveats were wrong (#322). Back in the answer only once it is shown to be right.
+        # Not shown: most production caveats were wrong. Back in the answer only once it is shown to be right.
         if verdict.verdict == "warn":
             logger.info("answer audit flagged: %s", verdict.caveat)
 
