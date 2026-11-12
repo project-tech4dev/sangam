@@ -117,8 +117,8 @@ Each agent runs on a model matched to how hard its work is:
 |---|---|---|
 | `MODEL` | `anthropic:claude-opus-5-5` | Ask Sangam; the Import supervisor |
 | `RESEARCH_MODEL` | `anthropic:claude-sonnet-5-5` | Import's entity-researchers and vault-reader |
-| `UTILITY_MODEL` | `anthropic:claude-haiku-4-5` | fixed-shape work: catalog-writer, workbook-reader, article extraction |
-| `SQL_AUDIT_MODEL` | `anthropic:claude-haiku-4-5` | the audit of each Ask SQL answer; `off` disables it |
+| `UTILITY_MODEL` | `anthropic:claude-haiku-5-5` | fixed-shape work: catalog-writer, workbook-reader, article extraction |
+| `SQL_AUDIT_MODEL` | `anthropic:claude-haiku-5-5` | the audit of each Ask SQL answer; `off` disables it |
 
 A blank variable means the default, and `config.py` is the only place defaults are written.
 

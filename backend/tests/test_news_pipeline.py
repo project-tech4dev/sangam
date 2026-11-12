@@ -2,10 +2,10 @@
 
 import re
 from datetime import date
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from langchain_core.messages import AIMessage
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
@@ -55,7 +55,7 @@ class Fakes:
 
             async def ainvoke(self, messages):
                 if self.schema is None:  # a plain call, as write_headline makes
-                    return SimpleNamespace(content="A headline")
+                    return AIMessage(content="A headline")
                 if self.schema.__name__ in ("EntityVerdict", "TopicVerdict"):  # grouping calls are not scoring
                     fakes.classified.append(messages[1][1][:60])
                 return self.schema.model_validate(reply)

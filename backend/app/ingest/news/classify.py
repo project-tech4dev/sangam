@@ -120,4 +120,4 @@ async def classify_topic(model, feed_key: str, hit: Hit, registry_names: list[st
 async def write_headline(model, *, platform: str, title: str | None, summary: str) -> str:
     reply = await model.ainvoke([("system", _prompt("headline")),
                                  ("user", f"Platform: {platform}\nRaw title: {title}\nSummary: {summary}")])
-    return str(getattr(reply, "content", reply)).strip().strip('"')[:120]
+    return reply.text.strip().strip('"')[:120]

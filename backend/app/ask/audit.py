@@ -13,7 +13,7 @@ from app.agentkit.models import resolve_model
 
 logger = logging.getLogger(__name__)
 
-MAX_TOKENS = 400
+MAX_TOKENS = 1024  # room for a little thinking before the verdict
 
 # Prefix on the appended caveat. Anything reading a turn's final answer must skip these: the caveat is a
 # SECOND AIMessage, so "the last AI message" would read the caveat as the answer — which would make a re-.
@@ -98,9 +98,11 @@ def audit_turn(messages: list[BaseMessage], model_spec: str) -> Audit | None:
             ),
             max_tokens=MAX_TOKENS,
         )
-        text = reply.content if isinstance(reply.content, str) else str(reply.content)
+        text = reply.text
         match = _JSON.search(text)
         if not match:
+            if reply.response_metadata.get("stop_reason") == "max_tokens":
+                logger.warning("answer audit hit max_tokens before its verdict; raise MAX_TOKENS")
             return None
         data = json.loads(match.group(0))
         if data.get("verdict") == "warn" and data.get("caveat"):
