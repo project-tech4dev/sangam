@@ -118,9 +118,9 @@ class TestVerdicts:
         assert audit_turn(turn(), MODEL) is None
         assert "max_tokens" in caplog.text
 
-    def test_warn_without_a_caveat_is_not_actionable(self, fake_model):
+    def test_warn_without_a_caveat_is_still_a_warning(self, fake_model):
         fake_model('{"verdict":"warn"}')
-        assert audit_turn(turn(), MODEL) == Audit("ok")
+        assert audit_turn(turn(), MODEL) == Audit("warn")
 
 
 class TestFailsOpen:

@@ -11,7 +11,7 @@ from langchain.agents.middleware import (
 )
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
-from app.ask.audit import CAVEAT_PREFIX, audit_turn
+from app.ask.audit import audit_turn
 from app.ask.tools.sql.errors import (
     FAILED_PREFIX,
     PROFILE_FAILED_PREFIX,
@@ -144,13 +144,13 @@ class CompareFitBudget(AgentMiddleware):
 
 
 def answer_audit(model_spec: str):
-    """Append a caveat when a cheap second opinion finds a problem with the answer."""
+    """Score each answer with a cheap second opinion; the verdict goes to Langfuse, never into the answer."""
 
     @after_agent(name="answer_audit")
     def _audit(state, runtime):
         verdict = audit_turn(state["messages"], model_spec)
         if verdict is None:
-            return None
+            return
         # Scored either way: a dashboard showing only the failures cannot tell
         # you whether the rate is improving.
         score_answer(
@@ -158,9 +158,8 @@ def answer_audit(model_spec: str):
             1.0 if verdict.verdict == "ok" else 0.0,
             comment=verdict.caveat,
         )
-        if verdict.verdict != "warn" or not verdict.caveat:
-            return None
-        logger.info("answer audit raised a caveat: %s", verdict.caveat)
-        return {"messages": [AIMessage(content=f"{CAVEAT_PREFIX} {verdict.caveat}")]}
+        # Not shown: most production caveats were wrong. Back in the answer only once it is shown to be right.
+        if verdict.verdict == "warn":
+            logger.info("answer audit flagged: %s", verdict.caveat)
 
     return _audit
