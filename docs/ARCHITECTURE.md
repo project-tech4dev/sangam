@@ -73,7 +73,9 @@ Generated detail (tools, skills, middleware order, prompt rules): [ask-sangam](.
   decision. Running it as the caller is branch `fix/ask-sql-runs-as-caller`, not merged.
 - **Tools never raise, and every row is cited.** A raised exception aborts the run; a returned error lets the model adapt.
   An uncited row makes an uncitable answer.
-- **The answer audit never blocks or edits** — the answer has already streamed when it runs. It appends a caveat.
+- **The answer audit is a score, not a caveat.** It runs after the answer has streamed and sends `answer_audit` to Langfuse;
+  the person sees nothing. 18 of 39 production answers got a ⚠️, and only 2–3 were real (#322). It returns to the answer
+  only once its scores agree with hand labels.
 
 ## 4. Sangam Import / Scout
 

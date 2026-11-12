@@ -139,8 +139,7 @@ async def run_agent(question: str, settings: Settings, *, timeout: float = CASE_
                 sqls.extend(executed_sql(message))
         elif isinstance(message, AIMessage) and not message.tool_calls:
             text = message_text(message)
-            # Skip the audit's appended caveat: it is a second AIMessage, so "the last one" would score the
-            # caveat as the answer whenever SQL_AUDIT_MODEL is set.
+            # Skip a caveat the audit appended before #322: threads saved then hold it as a second AIMessage.
             if text.strip() and not text.startswith(CAVEAT_PREFIX):
                 answer = text
     cites = {f"{k}:{v}" for k, v in CITATION.findall(answer)}

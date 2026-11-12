@@ -347,8 +347,10 @@ pipeline call Tavily, so `tavily_api_key` matters.
 
 `SQL_AUDIT_MODEL` turns on a post-answer audit (`app/ask/audit.py`): a cheap second model
 checks grain, missing filters, false zeros and whether the figures in the prose match the rows,
-then appends a caveat. It never blocks and never edits — by the time it runs the answer has
-already streamed. On by default, on the cheap tier; `SQL_AUDIT_MODEL=off` turns it off.
+and sends its verdict to Langfuse as the `answer_audit` score. **The person never sees it**: it
+used to append a ⚠️ caveat, and most of those were wrong (#322). It comes back into the answer
+only once the scores show it is right. On by default, on the cheap tier; `SQL_AUDIT_MODEL=off`
+turns it off.
 
 Adding a table to the catalog is a **security decision**, not bookkeeping: a new table is
 invisible to the agent until someone puts it there, and boot logs any live table that is

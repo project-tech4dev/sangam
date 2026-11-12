@@ -10,7 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from app.agentkit import middleware as kit
 from app.ask import middleware as mw
-from app.ask.audit import CAVEAT_PREFIX, Audit
+from app.ask.audit import Audit
 from app.ask.tools.sql.errors import FAILED_PREFIX, PROFILE_REJECTED_PREFIX
 from app.ingest import middleware as imw
 
@@ -150,13 +150,12 @@ def test_an_ok_verdict_scores_one_and_adds_nothing(monkeypatch, scores):
     assert scores == [("answer_audit", 1.0, None)]
 
 
-def test_a_warning_appends_a_caveat(monkeypatch, scores):
-    out = _audit_with(monkeypatch, Audit("warn", "counts orgs twice"))
-    assert out["messages"][0].content == f"{CAVEAT_PREFIX} counts orgs twice"
+def test_a_warning_is_scored_and_never_shown(monkeypatch, scores):
+    assert _audit_with(monkeypatch, Audit("warn", "counts orgs twice")) is None
     assert scores == [("answer_audit", 0.0, "counts orgs twice")]
 
 
-def test_a_warning_without_a_caveat_adds_nothing(monkeypatch, scores):
+def test_a_warning_without_a_caveat_scores_zero(monkeypatch, scores):
     assert _audit_with(monkeypatch, Audit("warn", None)) is None and scores[0][1] == 0.0
 
 

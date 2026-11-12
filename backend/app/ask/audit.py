@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 MAX_TOKENS = 1024  # room for a little thinking before the verdict
 
-# Prefix on the appended caveat. Anything reading a turn's final answer must skip these: the caveat is a
-# SECOND AIMessage, so "the last AI message" would read the caveat as the answer — which would make a re-.
+# Prefix of the caveat the audit used to append (#322). Threads saved before then still hold one as a second
+# AIMessage, so anything reading a turn's final answer must keep skipping it.
 CAVEAT_PREFIX = "\u26a0\ufe0f"
 _EXECUTED = re.compile(r"^executed: (.+)$", re.MULTILINE)
 _JSON = re.compile(r"\{.*\}", re.DOTALL)
@@ -105,8 +105,8 @@ def audit_turn(messages: list[BaseMessage], model_spec: str) -> Audit | None:
                 logger.warning("answer audit hit max_tokens before its verdict; raise MAX_TOKENS")
             return None
         data = json.loads(match.group(0))
-        if data.get("verdict") == "warn" and data.get("caveat"):
-            return Audit("warn", str(data["caveat"]))
+        if data.get("verdict") == "warn":  # a warning without a reason still fails the score
+            return Audit("warn", str(data["caveat"]) if data.get("caveat") else None)
         return Audit("ok")
     except Exception:  # a second opinion must never break a turn
         logger.warning("answer audit failed; continuing unaudited", exc_info=True)

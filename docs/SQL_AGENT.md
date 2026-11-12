@@ -4,11 +4,11 @@
 because they are about meaning rather than safety: **grain** (does the SQL count the entity the
 question asked about?), **filters** (is every condition in the question present?), **false zero**
 (could an empty result mean a wrong filter *value*?), **numbers** (do the figures in the prose
-match the rows?). It appends a caveat and never blocks.
+match the rows?). Its verdict is the Langfuse `answer_audit` score; since #322 it appends no caveat, and it never blocks.
 
 `after_agent`, not `after_model` — it must run once on the finished answer, not after every
-model call in the loop. It appends rather than edits because by then the answer has already
-streamed to the user; there is nothing left to correct in place, only something to add.
+model call in the loop. By then the answer has already streamed, so it cannot correct anything
+in place; it used to append a caveat, and now only scores (#322).
 
 **Off unless `SQL_AUDIT_MODEL` is set**, because it is a real extra model call on every SQL
 turn. Everything in it fails open: a turn must not break because a second opinion could not be
@@ -455,7 +455,7 @@ A cheap second-model pass after the answer (`llm_calls/turn_audit.py`), scoring 
 **grain** (does the SQL count the entity the question asked about?), **filters** (is every
 condition in the question present?), **false zero** (could a 0 result mean a wrong filter
 *value* rather than absent data?), **numbers** (do the figures in the answer match the result
-table?). It emits a caveat and a Langfuse score and **never blocks the answer**.
+table?). It emits a Langfuse score (no caveat since #322) and **never blocks the answer**.
 
 Worth it here specifically because of the known defects: the false-zero check is exactly what
 turns *"0 news mentions for KABIL"* into *"0 rows — but `news_mentions.org_id` is unpopulated,
