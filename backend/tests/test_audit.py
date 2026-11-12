@@ -111,6 +111,13 @@ class TestVerdicts:
                     {"type": "text", "text": '{"verdict":"warn","caveat":"grain mismatch"}'}])
         assert audit_turn(turn(), MODEL).caveat == "grain mismatch"
 
+    def test_thinking_that_uses_up_the_cap_is_logged(self, fake_model, monkeypatch, caplog):
+        model = fake_model([{"type": "thinking", "thinking": "", "signature": "s"}])
+        monkeypatch.setattr(model, "invoke", lambda prompt, **kw: AIMessage(
+            content=model.reply, response_metadata={"stop_reason": "max_tokens"}))
+        assert audit_turn(turn(), MODEL) is None
+        assert "max_tokens" in caplog.text
+
     def test_warn_without_a_caveat_is_not_actionable(self, fake_model):
         fake_model('{"verdict":"warn"}')
         assert audit_turn(turn(), MODEL) == Audit("ok")

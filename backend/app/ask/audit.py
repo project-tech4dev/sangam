@@ -101,6 +101,8 @@ def audit_turn(messages: list[BaseMessage], model_spec: str) -> Audit | None:
         text = reply.text
         match = _JSON.search(text)
         if not match:
+            if reply.response_metadata.get("stop_reason") == "max_tokens":
+                logger.warning("answer audit hit max_tokens before its verdict; raise MAX_TOKENS")
             return None
         data = json.loads(match.group(0))
         if data.get("verdict") == "warn" and data.get("caveat"):
