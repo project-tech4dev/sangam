@@ -29,12 +29,33 @@ async def open_graph(settings: Settings):
         return None
     # Imported lazily so the app still boots if graph deps are missing.
     from graphiti_core import Graphiti
+    from graphiti_core.driver.neo4j_driver import Neo4jDriver
 
-    graphiti = Graphiti(settings.neo4j_uri, settings.neo4j_user, settings.neo4j_password)
-    await graphiti.build_indices_and_constraints()
+    graphiti = None
+    try:
+        database = await _home_database(settings)
+        driver = Neo4jDriver(settings.neo4j_uri, settings.neo4j_user, settings.neo4j_password, database=database)
+        graphiti = Graphiti(graph_driver=driver)
+        await graphiti.build_indices_and_constraints()
+    except Exception as exc:  # noqa: BLE001 - the graph is optional; a bad connection must not stop the app
+        logger.warning("Knowledge graph disabled: could not open %s: %s", settings.neo4j_uri, exc)
+        if graphiti is not None:
+            await graphiti.close()
+        return None
     client = graphiti
-    logger.info("Knowledge graph ready: neo4j=%s", settings.neo4j_uri)
+    logger.info("Knowledge graph ready: neo4j=%s database=%s", settings.neo4j_uri, database)
     return graphiti
+
+
+async def _home_database(settings: Settings) -> str:
+    """Aura names its database after the instance, not 'neo4j', so ask the server which one is home."""
+    from neo4j import AsyncGraphDatabase
+
+    async with AsyncGraphDatabase.driver(
+        settings.neo4j_uri, auth=(settings.neo4j_user, settings.neo4j_password)
+    ) as neo4j_driver:
+        records, _, _ = await neo4j_driver.execute_query("CALL db.info() YIELD name RETURN name", database_=None)
+    return records[0]["name"]
 
 
 async def close_graph() -> None:
