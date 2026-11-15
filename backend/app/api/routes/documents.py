@@ -38,8 +38,7 @@ async def list_documents(
 ) -> Page[DocumentOut]:
     rows, total = await repo.list_documents(pool, limit=page.limit, offset=page.offset,
                                             org=org, funder=funder, doc_type=doc_type, user_id=user_id)
-    return Page(items=[DocumentOut.model_validate(r) for r in rows],
-                total=total, limit=page.limit, offset=page.offset)
+    return page.build_page(rows, total, DocumentOut)
 
 
 # --- the Doc Vault ---------------------------------------------------------
@@ -159,22 +158,22 @@ def _extract(data: bytes, key: str) -> tuple[str | None, str]:
     digest = storage.content_hash(data)
     name = key.lower()
     if name.endswith((".docx", ".xlsx", ".pptx")):
-        from app.ingest import office
+        from app.core import extract
 
         try:
             if name.endswith(".docx"):
-                text = "\n\n".join(office.docx_paragraphs(data))
+                text = "\n\n".join(extract.docx_paragraphs(data))
             elif name.endswith(".pptx"):
-                text = "\n\n".join(f"## Slide {n}\n{s}" for n, s in enumerate(office.pptx_slides(data), 1) if s)
+                text = "\n\n".join(f"## Slide {n}\n{s}" for n, s in enumerate(extract.pptx_slides(data), 1) if s)
             else:
-                text = office.xlsx_markdown(data)
+                text = extract.xlsx_markdown(data)
         except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
             logger.warning("no text from %s (%s: %s)", key, type(exc).__name__, exc)
             return None, digest
         return (text or None), digest
     if not name.endswith(".pdf"):
         return None, digest
-    from app.agent.tools.files import extract_pdf_text  # agent-tool module; only an upload needs it
+    from app.core.extract import extract_pdf_text
 
     with tempfile.NamedTemporaryFile(suffix=".pdf") as handle:
         handle.write(data)
@@ -197,13 +196,11 @@ async def document_file(
     row = await repo.readable_document(pool, document_id=document_id, user_id=user_id)
     # One 404 for "no such document" and "not yours": whether a private
     # document exists is itself private.
-    if row is None or not row["storage_path"]:
+    if row is None:
         raise HTTPException(404, f"document {document_id} has no readable file")
-    parts = storage.split(row["storage_path"])
+    # The row is readable, but its path is only trusted inside the row's own org folder.
+    parts = storage.owned_split(row["storage_path"], org_id=row["org_id"], is_public=row["is_public"])
     if parts is None:
-        raise HTTPException(404, f"document {document_id} has no readable file")
-    # Only the upload script writes staff-sources paths, always on a private, org-less row.
-    if parts[0] == storage.STAFF_SOURCES and (row["is_public"] or row["org_id"] is not None):
         raise HTTPException(404, f"document {document_id} has no readable file")
     url = await storage.signed_url(*parts)
     if url is None:

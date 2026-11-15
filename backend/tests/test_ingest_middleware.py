@@ -8,6 +8,7 @@ import pytest
 from langchain.agents.middleware import ModelCallLimitMiddleware, ModelFallbackMiddleware
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
+from app.agentkit.middleware import SUMMARY_INPUT_TOKENS
 from app.ingest import middleware as mw
 
 TIERS = {"model": "m:strong", "research_model": "m:mid", "utility_model": "m:cheap"}
@@ -193,7 +194,7 @@ class TestSummariesAreWrittenByTheUtilityTier:
             assert summary.model.name == "m:cheap"
             # The fakes have no profile, as Opus 5.5 and Sonnet 5.5 have none: the fixed thresholds stand.
             assert summary._lc_helper.trigger == ("tokens", 170000)
-            assert summary._lc_helper.trim_tokens_to_summarize == mw.SUMMARY_INPUT_TOKENS
+            assert summary._lc_helper.trim_tokens_to_summarize == SUMMARY_INPUT_TOKENS
 
     def test_ours_replaces_the_one_deepagents_adds(self, monkeypatch):
         # Every create_agent call deepagents makes, so the stacks it actually compiles can be checked.

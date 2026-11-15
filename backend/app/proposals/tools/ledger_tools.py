@@ -13,10 +13,10 @@ from langgraph.errors import GraphBubbleUp
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
-from app.agent.models import resolve_model
+from app.agentkit.models import resolve_model
 from app.core.config import get_settings
 from app.db.pool import get_pool
-from app.ingest import run_sources
+from app.ingest.reading import run_sources
 from app.proposals import context, records, steps
 from app.proposals import facts as fact_rules
 from app.proposals import questions as question_rules

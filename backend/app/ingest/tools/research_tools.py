@@ -12,30 +12,45 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 import httpx
 import trafilatura
-from langchain_core.tools import tool
+from langchain_core.tools import BaseTool, tool
+from langchain_tavily import TavilySearch
 
-from app.agent.tools.files import _safe_name, downloads_dir, extract_pdf_text
-from app.agent.tools.web import make_web_search
+from app.core import extract
 from app.core.config import get_settings
 from app.core.egress import TRUST
+from app.core.extract import extract_pdf_text
 from app.db.pool import get_pool
-from app.ingest import office
-from app.ingest.access import canonical_url, check_url, source_banner
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.brief import publish, rows_for
 from app.ingest.caller import scope, staff_only
-from app.ingest.contract import quoted_only, unanswered
-from app.ingest.research_records import SCHEMA_VERSION, EntityResearch
-from app.ingest.sources import rule_for_url
-from app.ingest.staff_sources import is_staff_source_url
-from app.ingest.writer import slugify
+from app.ingest.catalog.promote import org_match
+from app.ingest.catalog.promote_records import MERGEABLE
+from app.ingest.catalog.writer import slugify
+from app.ingest.reading.access import canonical_url, check_url, source_banner
+from app.ingest.reading.registry import rule_for_url
+from app.ingest.reading.staff_sources import is_staff_source_url
+from app.ingest.research.contract import quoted_only, unanswered
+from app.ingest.research.finding_types import SCHEMA_VERSION
+from app.ingest.research.findings import EntityResearch
 from app.integrations import storage
+from app.integrations.storage import _safe_name
 
 logger = logging.getLogger(__name__)
+
+
+def downloads_dir() -> Path:
+    directory = Path(get_settings().downloads_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+def make_web_search(api_key: str, max_results: int = 5) -> BaseTool:
+    return TavilySearch(max_results=max_results, tavily_api_key=api_key)
 
 MAX_DOWNLOAD_MB = 60
 WORD = "wordprocessingml"  # in a .docx's content type
@@ -290,7 +305,7 @@ def read_document_pages(filename: str, start_page: int = 1, end_page: int | None
         return f"ERROR: {filename} is not in the downloads folder. Available: {available}"
     if destination.suffix.lower() == ".docx":
         try:
-            text, total = office.docx_range(destination.read_bytes(), start_page, end_page)
+            text, total = extract.docx_range(destination.read_bytes(), start_page, end_page)
         except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
             return f"ERROR: {filename} could not be read as a Word file ({type(exc).__name__}: {exc})."
         return f"[{filename}: {total} paragraphs]\n\n{text}" if text.strip() else f"{filename} has no text in that range."
@@ -304,6 +319,21 @@ def read_document_pages(filename: str, start_page: int = 1, end_page: int | None
             f"most likely scanned. Report that honestly; do not guess at the contents."
         )
     return f"[{filename}: {total_pages} pages]\n\n{text}"
+
+
+_NGO_REFUSAL = ("REFUSED: researching an NGO is for its stewards and the Sangam team, and only an NGO "
+                "Sangam already holds. Report what you found in your summary instead.")
+
+
+async def _may_research(conn: Any, caller: Any, findings: EntityResearch, slug: str) -> bool:
+    """Whether a non-staff caller stewards the NGO this save writes to; the brief is keyed on the slug alone."""
+    row = {"slug": slug, "entity_kind": "org", "entity_name": findings.entity_name,
+           "canonical_name": findings.canonical_name,
+           "findings": [f.model_dump(mode="json") for f in findings.findings]}
+    match = await org_match(conn, row)
+    held = await (await conn.execute("SELECT id FROM orgs WHERE slug = %s", (slug,))).fetchall()
+    ids = {r["id"] for r in held} | ({match.entity_id} if match and match.method in MERGEABLE else set())
+    return bool(ids) and all(caller.can_research_org(i) for i in ids)
 
 
 @tool
@@ -331,8 +361,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
     staff_save = any(is_staff_source_url(f.source_url) for f in findings.findings)
     caller = scope()
     if findings.entity_kind == "org" and not (caller.is_staff or caller.steward_of):
-        return ("REFUSED: researching an NGO is for its stewards and the Sangam team. Report what you "
-                "found in your summary instead.")
+        return _NGO_REFUSAL
     if missing := unanswered(findings):
         return (
             f"REFUSED: a save answers every field with a finding or a gap, and {len(missing)} have "
@@ -344,6 +373,9 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
         slug = slugify(findings.canonical_name or findings.entity_name)
         pool = get_pool()
         async with pool.connection() as conn:
+            if findings.entity_kind == "org" and not caller.is_staff and not await _may_research(
+                    conn, caller, findings, slug):
+                return _NGO_REFUSAL
             prior = await (
                 await conn.execute(
                     "SELECT fact_count, researched_by FROM entity_research "

@@ -7,9 +7,9 @@ from types import SimpleNamespace
 import pytest
 from langchain_core.messages import ToolMessage
 
-from app.agent.tools import sql_tools
-from app.agent.tools.sql.catalog import CATALOG, DEFECTS
-from app.agent.tools.sql.executor import PsycopgExecutor
+from app.ask.tools import sql_tools
+from app.ask.tools.sql.catalog import CATALOG, DEFECTS
+from app.ask.tools.sql.executor import PsycopgExecutor
 from app.db.pool import caveats_given
 
 REAL_EXECUTOR = sql_tools._executor

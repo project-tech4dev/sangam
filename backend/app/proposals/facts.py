@@ -9,6 +9,7 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
+from app.ingest.reading import vault
 from app.proposals import reliability, rubric
 
 LIVE = ("proposed", "confirmed")  # corrected and rejected facts fill no gap and reach no text
@@ -99,8 +100,6 @@ def problem(work: dict[str, Any], fact: dict[str, Any]) -> str | None:
         if len(str(fact.get("evidence") or "").strip()) < WEB_EVIDENCE:
             return f"{subject}: a web fact quotes at least {WEB_EVIDENCE} characters of the page"
     if origin == "vault":
-        from app.ingest import vault
-
         if fact.get("document_id") not in (work.get("sources") or []):
             return f"{subject}: document {fact.get('document_id')} is not one of the files ticked for this proposal"
         found = vault.check_findings([{"concept": subject, "source_url": fact.get("source_url"),
@@ -129,7 +128,8 @@ def off_page(fact: dict[str, Any], page: str | None) -> str | None:
         return f"{subject}: give its topic, one of {', '.join(PUBLIC_TOPICS)}"
     if not _YEAR.search(str(fact.get("as_of") or "")):
         return f"{subject}: give the year the figure is for, such as 2011 or 2019-21"
-    if (urlparse(str(url or "")).hostname or "").endswith("wikipedia.org"):
+    host = urlparse(str(url or "")).hostname or ""
+    if host == "wikipedia.org" or host.endswith(".wikipedia.org"):
         return f"{subject}: Wikipedia is not a source; cite the dataset or report it draws on"
     if page is None:
         return f"{subject}: {url} was not read in this run; read it with read_page before citing it"

@@ -7,7 +7,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.ingest import reshelve, undo
+from app.ingest import reshelve
+from app.ingest.catalog import undo
 from app.integrations import storage
 from tests.test_cov_promote import funder, one, tag
 

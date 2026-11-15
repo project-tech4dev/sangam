@@ -60,7 +60,7 @@ def _check(work: dict[str, Any], path: str, value: Any, advance: bool, via: str)
     elif m := _GATE.match(path):
         if m.group(1) not in {r["key"] for r in work.get("requirements") or []}:
             raise BadChange(f"no requirement {m.group(1)!r}")
-        if value not in (*readiness.ANSWERS, None):
+        if value not in (*steps.ANSWERS, None):
             raise BadChange("an answer is yes, will_have, no or null")
     elif path == "stage":
         current = work.get("stage", 1)

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Tag, Toast } from "@/components/ui";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { authHeaders } from "@/lib/api/auth-headers";
-import { API } from "../lib/rest";
+import { API } from "@/lib/api/rest";
 import { hostOf } from "../lib/sources";
 import { type Doc, VAULT_ACCEPT, deleteFromVault, uploadToVault } from "../lib/vault";
 

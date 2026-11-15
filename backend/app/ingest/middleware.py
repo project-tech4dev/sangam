@@ -6,29 +6,28 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 from importlib.resources import files
-from typing import Any, NotRequired
+from typing import Any
 
-from deepagents.backends.protocol import BackendProtocol
 from deepagents.middleware.rubric import GraderResponse, RubricEvaluation, RubricMiddleware
-from deepagents.middleware.summarization import SummarizationMiddleware, compute_summarization_defaults
 from langchain.agents.middleware import (
     AgentMiddleware,
-    AgentState,
+    HumanInTheLoopMiddleware,
     ModelCallLimitMiddleware,
-    ModelFallbackMiddleware,
     ModelRequest,
     ModelResponse,
     TodoListMiddleware,
 )
 from langchain.agents.middleware.types import hook_config
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, AnyMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, AnyMessage, BaseMessage, SystemMessage, ToolMessage
 from pydantic import BaseModel, ValidationError
 
-from app.agent.models import resolve_model
-from app.ingest import run_sources
+from app.agentkit.middleware import AgUiState
 from app.ingest.caller import caller_note, scope
-from app.ingest.research_records import FINDING_MODELS, EntityResearch, VaultResearch
+from app.ingest.catalog.save import write_preview
+from app.ingest.reading import run_sources
+from app.ingest.research.finding_types import FINDING_MODELS
+from app.ingest.research.findings import EntityResearch, VaultResearch
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +51,6 @@ PLAN_PROMPT = (
 )
 PLAN_TOOL = ("Write or replace the run's plan: every todo, each pending, in_progress or completed. "
              "See `write_todos` in your instructions.")
-# Haiku's window is 200k; the summary prompt and its answer need the rest.
-SUMMARY_INPUT_TOKENS = 150_000
 
 RUBRIC = (files("app.ingest") / "prompts" / "research_rubric.md").read_text(encoding="utf-8")
 
@@ -62,12 +59,6 @@ def append_to_system_message(system: SystemMessage | None, text: str) -> SystemM
     """A text block after the system message's own; ours, since deepagents keeps its copy private."""
     blocks: list[Any] = list(system.content_blocks) if system else []
     return SystemMessage(content_blocks=[*blocks, {"type": "text", "text": f"\n\n{text}" if blocks else text}])
-
-
-def fallback(primary: str, *candidates: str) -> list[ModelFallbackMiddleware]:
-    """The first candidate that differs from `primary`, tried when its call fails; none if all match."""
-    spare = next((c for c in candidates if c and c != primary), None)
-    return [ModelFallbackMiddleware(resolve_model(spare))] if spare else []
 
 
 class ReadingLimit(AgentMiddleware):
@@ -270,14 +261,6 @@ class CallerNote(AgentMiddleware):
 TICKED_SOURCES = "Sources the person ticked for this Import run"
 
 
-class _AgUiState(AgentState):
-    pass
-
-
-# The key ag-ui-langgraph writes the client's context to; LangGraph drops a key no schema declares.
-_AgUiState.__annotations__["ag-ui"] = NotRequired[dict[str, Any]]
-
-
 def _field(item: Any, key: str) -> Any:
     # ag-ui-langgraph stores its pydantic Context objects, not dicts.
     return item.get(key) if isinstance(item, dict) else getattr(item, key, None)
@@ -331,7 +314,7 @@ def _ai_messages(response: Any) -> list[AIMessage]:
 class TickedSources(AgentMiddleware):
     """The person's ticks answer choose_sources: told to the model, and written into its call whatever it passed."""
 
-    state_schema = _AgUiState
+    state_schema = AgUiState
 
     def _with_note(self, request: ModelRequest) -> ModelRequest:
         note = ticked_note(request.state)
@@ -521,18 +504,118 @@ def call_limit(limit: int) -> ModelCallLimitMiddleware:
     return ModelCallLimitMiddleware(run_limit=limit, exit_behavior="end")
 
 
-def cheap_summarizer(own: BaseChatModel, summarizer: BaseChatModel, backend: BackendProtocol) -> SummarizationMiddleware:
-    """Replaces the agent's own summarizer by name: same thresholds as `own` gets today, written by `summarizer`."""
-    defaults = compute_summarization_defaults(own)
-    return SummarizationMiddleware(
-        model=summarizer,
-        backend=backend,
-        trigger=defaults["trigger"],
-        keep=defaults["keep"],
-        truncate_args_settings=defaults["truncate_args_settings"],
-        trim_tokens_to_summarize=SUMMARY_INPUT_TOKENS,
-    )
-
-
 def run_plan() -> TodoListMiddleware:
     return TodoListMiddleware(system_prompt=PLAN_PROMPT, tool_description=PLAN_TOOL)
+
+
+# The researcher reads untrusted pages and the staff workbooks; once it has seen a staff row, no
+# outbound tool runs, so an injected instruction cannot carry a row out in a URL or query.
+STAFF_TOOL = "read_source_rows"
+# An allowlist, so an outbound tool added to the researcher later is closed by default.
+OPEN_AFTER_STAFF = frozenset({STAFF_TOOL, "save_research", "read_document_pages", "research_goals",
+                              "funder_dossier", "read_file"})
+STAFF_LOCK_REPLY = "web tools are closed for this run: staff rows have been read. Save what you have."
+
+
+def staff_rows_requested(messages: list[BaseMessage]) -> bool:
+    """True once this run has asked for a staff read, including in the current turn."""
+    for m in messages:
+        if isinstance(m, ToolMessage) and m.name == STAFF_TOOL:
+            return True
+        if isinstance(m, AIMessage) and any(c.get("name") == STAFF_TOOL for c in m.tool_calls or []):
+            return True
+    return False
+
+
+class StaffLastLock(AgentMiddleware):
+    """Refuses every tool but OPEN_AFTER_STAFF for the rest of a run once read_source_rows has been called."""
+
+    def _refusal(self, request) -> ToolMessage | None:
+        call = request.tool_call
+        if call.get("name") in OPEN_AFTER_STAFF:
+            return None
+        try:
+            state = request.state
+            messages = state["messages"] if isinstance(state, dict) else state.messages
+            closed = staff_rows_requested(messages)
+        except Exception:  # noqa: BLE001 - unreadable state fails closed
+            closed = True
+        if not closed:
+            return None
+        return ToolMessage(content=STAFF_LOCK_REPLY, tool_call_id=call.get("id") or "", name=call.get("name"),
+                           status="error")
+
+    def wrap_tool_call(self, request, handler):
+        return self._refusal(request) or handler(request)
+
+    async def awrap_tool_call(self, request, handler):
+        return self._refusal(request) or await handler(request)
+
+
+def staff_last_lock() -> StaffLastLock:
+    return StaffLastLock()
+
+
+# Import's catalog-writer pauses before every promote_research: staff approve each write, and answer a
+# funder's case 3 or 4 questions on the same card (docs/features/2026-10-08-import-coverage-report.md).
+PROMOTE_TOOL = "promote_research"
+
+
+class SaveQuestions(HumanInTheLoopMiddleware):
+    """Pauses every promote_research, carrying its questions, planned rows and coverage on the request.
+
+    The person's answers arrive as an `edit` whose args hold `decisions`. Decisions the model wrote
+    itself are dropped: only a person's edit can set them.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(interrupt_on={PROMOTE_TOOL: {
+            "allowed_decisions": ["approve", "edit", "reject"],
+            "description": lambda call, state, runtime: self._describe(call),
+        }})
+        # tool_call id -> its preview, only for the length of one after-model step.
+        self._previews: dict[str, dict] = {}
+
+    def _describe(self, call) -> str:
+        n = len(self._previews.get(call.get("id"), {}).get("questions", []))
+        what = call["args"].get("slug") or "every researched organisation"
+        return f"Approve writing {what} to the catalog" + (f" ({n} question(s))" if n else "")
+
+    def _create_action_and_config(self, tool_call, config, state, runtime):
+        action, review = super()._create_action_and_config(tool_call, config, state, runtime)
+        preview = self._previews.get(tool_call.get("id"), {})
+        action["questions"] = preview.get("questions", [])  # type: ignore[typeddict-unknown-key]
+        action["planned"] = preview.get("planned", [])  # type: ignore[typeddict-unknown-key]
+        action["coverage"] = preview.get("coverage", "")  # type: ignore[typeddict-unknown-key]
+        return action, review
+
+    async def aafter_model(self, state, runtime):
+        last = next((m for m in reversed(state["messages"]) if isinstance(m, AIMessage)), None)
+        calls = [c for c in (last.tool_calls if last else []) if c["name"] == PROMOTE_TOOL]
+        for call in calls:
+            slug = call["args"].get("slug") or ""
+            # An empty slug sweeps everything: still approved, but its questions are held instead.
+            self._previews[call["id"]] = await write_preview(slug) if slug else {}
+        try:
+            return self.after_model(state, runtime)
+        finally:
+            for call in calls:
+                self._previews.pop(call["id"], None)
+
+    async def awrap_tool_call(self, request, handler):
+        if request.tool_call["name"] != PROMOTE_TOOL:
+            return await handler(request)
+        edit = self._reviewer_edit(request)
+        answers = (edit or {}).get("args", {}).get("decisions")
+        args = {**request.tool_call["args"], "decisions": answers if isinstance(answers, dict) else {}}
+        return await handler(request.override(tool_call={**request.tool_call, "args": args}))
+
+    def wrap_tool_call(self, request, handler):
+        if request.tool_call["name"] != PROMOTE_TOOL:
+            return handler(request)
+        args = {**request.tool_call["args"], "decisions": {}}
+        return handler(request.override(tool_call={**request.tool_call, "args": args}))
+
+
+def save_questions() -> SaveQuestions:
+    return SaveQuestions()

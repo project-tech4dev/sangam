@@ -18,9 +18,9 @@ import pytest
 
 from app.core.config import Settings
 from app.ingest import brief
-from app.ingest.research_records import EntityResearch
+from app.ingest.catalog.writer import ensure_document
+from app.ingest.research.findings import EntityResearch
 from app.ingest.tools import research_tools as research
-from app.ingest.writer import ensure_document
 from app.integrations import storage
 
 MIGRATION = Path(__file__).resolve().parents[2] / "db" / "migrations" / "0020_storage_buckets.sql"
@@ -32,6 +32,22 @@ def test_the_vault_bucket_takes_exactly_the_types_the_routes_allow():
     sql = (MIGRATION.parent / "0055_org_vault_pptx.sql").read_text(encoding="utf-8")
     listed = set(re.findall(r"'([a-z]+/[a-z0-9.+-]+)'", sql))
     assert listed == set(storage.VAULT_TYPES.values())
+
+
+@pytest.mark.parametrize("path, org_id, public, expected", [
+    ("org-vault/3/a.pdf", 3, False, ("org-vault", "3/a.pdf")),
+    ("org-vault/4/a.pdf", 3, False, None),
+    ("org-vault/33/a.pdf", 3, False, None),
+    ("org-vault/3/a.pdf", None, False, None),
+    ("staff-sources/kabil/x.xlsx", None, False, ("staff-sources", "kabil/x.xlsx")),
+    ("staff-sources/kabil/x.xlsx", 3, False, None),
+    ("staff-sources/kabil/x.xlsx", None, True, None),
+    ("source-archive/orgs/kabil/ar.pdf", 3, True, ("source-archive", "orgs/kabil/ar.pdf")),
+    ("elsewhere/3/a.pdf", 3, False, None),
+    (None, 3, False, None),
+])
+def test_a_path_is_trusted_only_inside_the_rows_own_folder(path, org_id, public, expected):
+    assert storage.owned_split(path, org_id=org_id, is_public=public) == expected
 
 
 class TestStorageIsOptional:
@@ -654,7 +670,7 @@ class TestABriefShowsPublicSourcesOnly:
         assert "private accounts" in text and brief.PRIVATE_NOTE not in text
 
     def test_the_private_domain_is_matched_by_host_not_by_substring(self):
-        from app.ingest.source_guards import is_private_source
+        from app.ingest.research.source_guards import is_private_source
 
         assert is_private_source(self.VAULT) and is_private_source(self.STAFF)
         assert not is_private_source("https://example.org/sangam.invalid/page")

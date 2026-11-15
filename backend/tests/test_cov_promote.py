@@ -8,9 +8,10 @@ from typing import Any
 
 import pytest
 
-from app.ingest import promote as promote_mod
-from app.ingest.promote import EXTRACTOR_VERSION, promote
-from app.ingest.writer import Gate
+from app.ingest.catalog import promote_documents
+from app.ingest.catalog.promote import promote
+from app.ingest.catalog.promote_records import EXTRACTOR_VERSION
+from app.ingest.catalog.writer import Gate
 
 pytestmark = pytest.mark.integration
 
@@ -36,7 +37,7 @@ def no_storage(monkeypatch):
     """No archive: CI has no Supabase, and a real move could not be rolled back."""
     async def none(bucket, url):
         return None
-    monkeypatch.setattr(promote_mod.storage, "archived_key", none)
+    monkeypatch.setattr(promote_documents.storage, "archived_key", none)
 
 
 async def research(db, name: str, findings: list[dict], *, kind: str = "funder", version: int = 2,

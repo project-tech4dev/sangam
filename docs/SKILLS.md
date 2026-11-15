@@ -44,8 +44,8 @@ and `read_source_rows`, the researcher's reader for the staff workbooks, and the
 apply. The researcher's own prompt carries the same notes, since those cannot be optional. Neither
 skill names a funder, a CSO or a file.
 
-Ask Sangam has three of its own, under `backend/app/agent/skills/`, with the
-same mechanism (`app/agent/build.py`): `funder-matching` (how to get from an
+Ask Sangam has three of its own, under `backend/app/ask/skills/`, with the
+same mechanism (`app/ask/agent.py`): `funder-matching` (how to get from an
 organisation to verdicts), `funder-comparison` (named funders) and
 `funder-shortlist-brief` (the write-up). The judging is `compare_fit`'s, in
 code (`app/matching/rules.py`), so none of the three holds a matching rule.
@@ -120,7 +120,7 @@ path `read_file` resolves. `test_the_route_round_trips` holds it.
 
 **Nothing that writes exists on either agent, or on their subagents.**
 `write_file`, `edit_file`, `delete` and `execute` are gone — see
-`app/agent/harness.py` — so an agent cannot rewrite its own instructions
+`app/agentkit/harness.py` — so an agent cannot rewrite its own instructions
 regardless of backend. `read_file` stays because `FilesystemMiddleware`
 refuses to be constructed without it.
 
@@ -165,7 +165,7 @@ a gap. `research_goals` still names what the catalog holds; the skill names
 everything the brief shows, including fields with no column yet (`unplaced`).
 Because loading a skill is the model's choice, the prompt's STEP 2 tells the
 researcher to read its kind's file, and `save_research` enforces the result in
-code (`app/ingest/contract.py`): a save with a field that has neither a finding
+code (`app/ingest/research/contract.py`): a save with a field that has neither a finding
 nor a gap is refused, naming it. Example: an Axis save with no `rfp` finding
 and no `rfp` gap comes back "rfp: no finding and no gap".
 `test_only_the_researcher_declares_skills_and_only_the_pull_ones` pins it.

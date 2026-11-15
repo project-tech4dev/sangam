@@ -11,8 +11,8 @@ from typing import Any
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
-from app.agent.audit import CAVEAT_PREFIX, executed_sql
-from app.agent.build import build_agent
+from app.ask.agent import build_agent
+from app.ask.audit import CAVEAT_PREFIX, executed_sql
 from app.core.config import Settings
 from app.core.security import DEV_USER, _db_identity, chat_user_id
 from app.db.pool import agent_caller, caveats_given
@@ -139,8 +139,7 @@ async def run_agent(question: str, settings: Settings, *, timeout: float = CASE_
                 sqls.extend(executed_sql(message))
         elif isinstance(message, AIMessage) and not message.tool_calls:
             text = message_text(message)
-            # Skip the audit's appended caveat: it is a second AIMessage, so "the last one" would score the
-            # caveat as the answer whenever SQL_AUDIT_MODEL is set.
+            # Skip a caveat the audit used to append: older threads hold it as a second AIMessage.
             if text.strip() and not text.startswith(CAVEAT_PREFIX):
                 answer = text
     cites = {f"{k}:{v}" for k, v in CITATION.findall(answer)}

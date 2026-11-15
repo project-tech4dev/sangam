@@ -7,9 +7,10 @@ from datetime import date
 from types import SimpleNamespace
 
 import pytest
+from langchain_core.messages import AIMessage
 
 from app.ingest.adapters.tavily_news import Hit, SearchFailed
-from app.ingest.matcher import name_key
+from app.ingest.catalog.matcher import name_key
 from app.ingest.news import pipeline
 from app.ingest.news import run as news_run
 from app.ingest.news import verify as news_verify
@@ -175,7 +176,7 @@ class Model:
     async def ainvoke(self, messages):
         if self.fail:
             raise RuntimeError("down")
-        return SimpleNamespace(content=self.content)
+        return AIMessage(content=self.content)
 
 
 def deps(search, entity=ENTITY, topic=TOPIC, **kw):
@@ -437,7 +438,7 @@ class TestStories:
 
 class TestDepsAndHelpers:
     def test_from_settings(self, monkeypatch):
-        from app.agent import models
+        from app.agentkit import models
         monkeypatch.setattr(models, "resolve_model", lambda name: f"m:{name}")
         monkeypatch.setattr(news_verify, "build_verifier", lambda s: "verifier")
         s = pipeline.get_settings().model_copy(update={"news_verify_max": 3, "utility_model": "u",
@@ -467,7 +468,7 @@ class TestVerify:
     def test_build_verifier_is_read_only(self, monkeypatch):
         import deepagents
 
-        from app.agent import models
+        from app.agentkit import models
         seen = {}
 
         class Agent:
@@ -580,3 +581,11 @@ class TestNewsCli:
         out = capsys.readouterr().out
         assert "plan: 2 searches" in out and '"run_id": 3' in out and "2026-01-01" in out
 
+
+
+async def test_a_headline_after_a_thinking_block_is_just_the_text():
+    from app.ingest.news import classify
+
+    model = Model(content=[{"type": "thinking", "thinking": "", "signature": "s"},
+                           {"type": "text", "text": '"Acme opens a school in Pune"'}])
+    assert await classify.write_headline(model, platform="web", title=None, summary="s") == "Acme opens a school in Pune"

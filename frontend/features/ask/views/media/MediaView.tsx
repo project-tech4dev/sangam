@@ -4,7 +4,7 @@ import { useState } from "react";
 import { BucketCards, FilterRow, ListMore, SearchBox, useCursorList, type Filter } from "@/components/ui";
 import type { MeOut, Story, StoryEntity, StoryPage } from "@/lib/api";
 import { shortDate } from "@/lib/format";
-import { call } from "../../lib/rest";
+import { call } from "@/lib/api/rest";
 import { useOrgChoices } from "../../lib/useOrgChoices";
 import { StoryCard, TOPIC_LABEL } from "./StoryCard";
 

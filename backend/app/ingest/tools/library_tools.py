@@ -15,12 +15,12 @@ from typing import Any
 
 from langchain_core.tools import tool
 
-from app.agent.tools.files import extract_pdf_text
+from app.core import extract
+from app.core.extract import extract_pdf_text
 from app.db.pool import get_pool
-from app.ingest import office
-from app.ingest.matcher import resolve_funder, resolve_org
-from app.ingest.promote import MERGEABLE
-from app.ingest.vault import MAX_BYTES, MAX_CHARS
+from app.ingest.catalog.matcher import resolve_funder, resolve_org
+from app.ingest.catalog.promote_records import MERGEABLE
+from app.ingest.reading.vault import MAX_BYTES, MAX_CHARS
 from app.integrations import storage
 
 logger = logging.getLogger(__name__)
@@ -72,14 +72,14 @@ async def list_library_documents(name: str) -> str:
         return f"list_library_documents failed: {type(exc).__name__}"
 
 
-def _archived(doc: dict[str, Any], data: bytes, start_page: int, end_page: int | None) -> str:
+def archived(doc: dict[str, Any], data: bytes, start_page: int, end_page: int | None) -> str:
     """An archived PDF by pages, a Word file by paragraphs, or a text page by lines, headed by what a finding cites."""
     path = doc["storage_path"].lower()
     word, plain = path.endswith(".docx"), path.endswith(TEXT)
     if word:
-        unit, (text, total) = "paragraph", office.docx_range(data, start_page, end_page)
+        unit, (text, total) = "paragraph", extract.docx_range(data, start_page, end_page)
     elif plain:
-        unit, (text, total) = "line", office.text_range(data, start_page, end_page)
+        unit, (text, total) = "line", extract.text_range(data, start_page, end_page)
     else:
         with tempfile.NamedTemporaryFile(suffix=".pdf") as handle:
             handle.write(data)
@@ -123,7 +123,7 @@ async def read_library_document(document_id: int, start_page: int = 1, end_page:
         data = await storage.download(*parts, max_bytes=MAX_BYTES) if parts else None
         if data is None:
             return f"Document {document_id} could not be downloaded."
-        return await asyncio.to_thread(_archived, dict(doc), data, start_page, end_page)
+        return await asyncio.to_thread(archived, dict(doc), data, start_page, end_page)
     except Exception as exc:  # noqa: BLE001 - a tool returns its failure
         logger.warning("read_library_document failed for %s (%s)", document_id, type(exc).__name__)
         return f"read_library_document failed: {type(exc).__name__}"

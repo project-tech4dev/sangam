@@ -6,7 +6,7 @@ tags: [documentation, repository, code-wiki]
 ---
 
 Sangam is a catalog of Indian CSR funders and NGOs with two agents on one FastAPI backend.
-**Ask Sangam** (`backend/app/agent/`) answers questions by writing its own SQL behind a catalog allowlist.
+**Ask Sangam** (`backend/app/ask/`) answers questions by writing its own SQL behind a catalog allowlist.
 **Sangam Import**, shown on screen as **Sangam Scout** (`backend/app/ingest/`), researches organisations on the open web and promotes cited findings into the catalog.
 Around them are:
 - **Funder Match** (`backend/app/matching/`): judged in code, no model.
@@ -53,7 +53,7 @@ Report an unfinished plan as unfinished, and a known regression as a regression.
 
 - Each agent's tool list is fixed and pinned by tests: Ask has seven tools plus `read_file`/`ls`. Subagents carry their own filesystem middleware.
 - Agent tools never raise; they return an error string. Every database row they return carries a citation marker.
-- `backend/app/agent/tools/sql/catalog.py` is a security allowlist. Adding a table to it is a security decision.
+- `backend/app/ask/tools/sql/catalog.py` is a security allowlist. Adding a table to it is a security decision.
 - Migrations are not automatic (`make migrate`), and schema changes go only in `db/migrations/`.
 - Nothing deploys automatically; `.github/workflows/deploy.yml` is run by hand.
 - Postgres is the system of record. The Neo4j graph is optional and rebuildable.
@@ -62,11 +62,11 @@ Report an unfinished plan as unfinished, and a known regression as a regression.
 ## Facts that earlier pages got wrong
 
 Check these against the code before restating them:
-- **SQL catalog size.** It allowlists 37 tables, and `KNOWN_EXCLUDED` holds 22 (`backend/app/agent/tools/sql/catalog.py`). State both counts.
+- **SQL catalog size.** It allowlists 37 tables, and `KNOWN_EXCLUDED` holds 22 (`backend/app/ask/tools/sql/catalog.py`). State both counts.
 - **Import's subagents.** There are four: `entity-researcher`, `vault-reader`, `catalog-writer`, `workbook-reader`. In `test_harness.py`, `test_import_advertises_exactly_its_two_subagents` checks only that two are advertised and `general-purpose` is absent. `test_both_subagents_are_compiled_and_found` asserts the exact set of four.
-- **Import's NGO promote path.** It resolves a parent body (`_org_parent` in `promote.py`).
+- **Import's NGO promote path.** It resolves a parent body (`_org_parent` in `ingest/catalog/promote.py`).
 - **The funder promote path's order** is: funder, then tags, then documents, then CSR years, then programmes.
-- **`StaffLastLock` and `SaveQuestions`** live in `app/agent/middleware.py`, but only Import uses them; Ask does not.
+- **`StaffLastLock` and `SaveQuestions`** live in `app/ingest/middleware.py`; Ask does not use them.
 - **`ReadingLimit`** applies to the entity-researcher only. The vault-reader and the catalog-writer have only `call_limit`.
 - **Proposals.** A `proposals` table exists (`0009`), with grants and RLS, but no backend code reads or writes it. Proposals live in browser `localStorage`.
 - **Missing Supabase keys on the frontend.** `lib/supabase/middleware.ts` passes requests through when the keys are absent. Describe the actual failure, and say it the same way on every page.

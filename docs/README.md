@@ -16,6 +16,6 @@ The rest go deeper on one area. Read one when the task touches that area.
 | `features/*.md` | One dated plan per feature | Planning a change in that feature; check its status in CHANGELOG.md |
 | `entities/*.md` | Rendered research briefs (`make client-docs`) | Data, not architecture |
 
-Agents get the right ARCHITECTURE section without asking: nested `CLAUDE.md` files in `backend/app/agent/`,
+Agents get the right ARCHITECTURE section without asking: nested `CLAUDE.md` files in `backend/app/ask/`,
 `backend/app/ingest/`, `backend/app/matching/`, `backend/app/core/`, `db/` and `frontend/` load when an agent
 works in that folder and point at both the wiki page and the ARCHITECTURE section. `CLAUDE.md` holds the commands and the invariants every session needs.

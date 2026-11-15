@@ -11,24 +11,23 @@ import logging
 from typing import Any
 
 from langchain_core.tools import tool
-from psycopg.errors import UniqueViolation
 
-from app.agent.tools.sql.catalog import CATALOG
 from app.core.security import CallerScope, chat_user_id
 from app.db.pool import get_pool
-from app.ingest import brief, coverage, manual_checks, review, undo
-from app.ingest import vault as vault_store
-from app.ingest.caller import scope, staff_only, without_private
-from app.ingest.expectations import (
+from app.ingest.caller import scope, staff_only
+from app.ingest.catalog import manual_checks
+from app.ingest.catalog.matcher import resolve_funder, resolve_org
+from app.ingest.catalog.promote import promote
+from app.ingest.catalog.save import ENTITY_KEYS, SaveRefused, held_per_concept, research_rows, save_to_catalog
+from app.ingest.catalog.writer import Gate
+from app.ingest.research import coverage
+from app.ingest.research.expectations import (
     CONCEPTS,
     concepts_for,
     expected_fields,
     recent_fiscal_years,
 )
-from app.ingest.matcher import resolve_funder, resolve_org
-from app.ingest.promote import MERGEABLE, org_match, promote
-from app.ingest.research_records import FINDING_MODELS
-from app.ingest.writer import UNWRITTEN, Gate, slugify
+from app.ingest.research.finding_types import FINDING_MODELS
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +63,7 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
         else "id, name, slug, registry_status, org_kind, legal_form, registration_date, cohort, website, "
         "aliases, staff_count, staff_count_note, source_type, evidence"
     )
+    caller = scope()
     try:
         pool = get_pool()
         async with pool.connection() as conn:
@@ -76,6 +76,7 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
                     (f"%{name}%", name, name),
                 )
             ).fetchall()
+            rows = [r for r in rows if _listed(caller, entity_kind, r)]
             # A shared word is not a match: "Infosys Foundation" scored 0.48 against "SBI Foundation".
             match = await (resolve_funder if entity_kind == "funder" else resolve_org)(conn, name)
             top = next((r for r in rows if r["id"] == match.entity_id), None) if match.resolved else None
@@ -83,6 +84,8 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
                 top = await (
                     await conn.execute(f"SELECT {head} FROM {entity_table} WHERE id = %s", (match.entity_id,))
                 ).fetchone()
+            if top is not None and not _listed(caller, entity_kind, top):
+                top = None
             if top is None:
                 close = ", ".join(f"{r['name']} [{entity_kind}:{r['id']}]" for r in rows)
                 return (
@@ -106,7 +109,7 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
                 out.append(f"  other rows with a similar name: {others}")
 
             for label, sql in sections:
-                found = await (await conn.execute(sql, (fid,))).fetchall()
+                found = [r for r in await (await conn.execute(sql, (fid,))).fetchall() if _readable(caller, r)]
                 if not found:
                     out.append(f"\n{label}: NOT RECORDED")
                     continue
@@ -120,7 +123,19 @@ async def funder_dossier(name: str, entity_kind: str = "funder") -> str:
 
 
 def _row(r: Any) -> str:
-    return " ".join(f"{k}={v}" for k, v in r.items() if v is not None and k != "id")
+    return " ".join(f"{k}={v}" for k, v in r.items() if v is not None and k != "id" and not k.startswith("_"))
+
+
+def _readable(caller: CallerScope, r: Any) -> bool:
+    """RLS on the owner pool: a private row (`_public` false) is staff's, or its own org's (`_org`)."""
+    return r.get("_public", True) or caller.can_read_org(r.get("_org"))
+
+
+def _listed(caller: CallerScope, kind: str, r: Any) -> bool:
+    """A hidden funder is staff's; a hidden NGO is its own people's too, as funders_read and orgs_read say."""
+    if r.get("registry_status") != "hidden" or caller.is_staff:
+        return True
+    return kind == "org" and caller.can_read_org(r["id"])
 
 
 # Read-only, fixed SQL, one query per concept the research brief targets.
@@ -132,7 +147,8 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         # for "whether anybody qualifies" — nothing here judges an applicant.
         "eligibility (the funder_eligibility document: what it REQUIRES of applicants; not a judgement on any)",
         """
-        SELECT id AS document_id, title, as_of, source_url, left(content_md, 1500) AS text
+        SELECT id AS document_id, title, as_of, source_url, left(content_md, 1500) AS text,
+               is_public AS _public, org_id AS _org
         FROM documents WHERE funder_id = %s AND doc_type = 'funder_eligibility'
         ORDER BY fetched_at DESC NULLS LAST, id DESC LIMIT 1
         """,
@@ -160,7 +176,8 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         "funder_activity kind='spend' (filed lines, INR; domain and theme are INFERRED unless confirmed)",
         """
         SELECT a.fiscal_year, a.project_name, a.amount, a.outlay, a.partner_name, a.implementation_mode,
-               a.designation, d.code AS domain, t.code AS theme, a.classified_by, a.classification_confirmed
+               a.designation, d.code AS domain, t.code AS theme, a.classified_by, a.classification_confirmed,
+               a.is_public AS _public
         FROM funder_activity a
         LEFT JOIN tags d ON d.id = a.domain_tag_id LEFT JOIN tags t ON t.id = a.theme_tag_id
         WHERE a.funder_id = %s AND a.kind = 'spend' ORDER BY a.fiscal_year, a.id
@@ -169,7 +186,7 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
         "funder_activity kind='footprint' (where the work actually ran)",
         """
-        SELECT a.fiscal_year, a.name_as_printed, s.name AS state, l.name AS location
+        SELECT a.fiscal_year, a.name_as_printed, s.name AS state, l.name AS location, a.is_public AS _public
         FROM funder_activity a
         LEFT JOIN locations s ON s.id = a.state_location_id LEFT JOIN locations l ON l.id = a.location_id
         WHERE a.funder_id = %s AND a.kind = 'footprint' ORDER BY a.fiscal_year, a.id
@@ -187,7 +204,7 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
          "received, and a multi-year grant's whole amount sits on its start year)"),
         """
         SELECT fiscal_year, partner_name, partner_canonical, partner_kind, project_name, outlay, amount,
-               start_date, end_date, relationship_status, partner_org_id
+               start_date, end_date, relationship_status, partner_org_id, is_public AS _public
         FROM funder_activity WHERE funder_id = %s AND kind = 'partner' ORDER BY fiscal_year, id
         """,
     ),
@@ -195,7 +212,7 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         "funder_activity kind='programme' (the funder's OWN programme totals; never add them to spend)",
         """
         SELECT a.fiscal_year, p.name AS programme, a.amount, d.code AS domain, t.code AS theme,
-               a.classification_confirmed
+               a.classification_confirmed, a.is_public AS _public
         FROM funder_activity a JOIN programs p ON p.id = a.program_id
         LEFT JOIN tags d ON d.id = a.domain_tag_id LEFT JOIN tags t ON t.id = a.theme_tag_id
         WHERE a.funder_id = %s AND a.kind = 'programme' ORDER BY a.fiscal_year, p.name
@@ -218,13 +235,13 @@ _DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
         "contacts",
         """
-        SELECT name, role, kind, verified FROM contacts WHERE funder_id = %s
+        SELECT name, role, kind, verified, is_public AS _public, org_id AS _org FROM contacts WHERE funder_id = %s
         """,
     ),
     (
         "documents",
         """
-        SELECT title, doc_type, as_of, source_url FROM documents
+        SELECT title, doc_type, as_of, source_url, is_public AS _public, org_id AS _org FROM documents
         WHERE funder_id = %s ORDER BY as_of
         """,
     ),
@@ -238,7 +255,8 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         ("org_identifiers (current = 'registered' or 'provisional' with a number; 'applied' is not a "
          "registration; 'check_blocked' is not 'valid')"),
         """
-        SELECT id_type, id_value, status, valid_until, application_ref, is_current, source_type, evidence
+        SELECT id_type, id_value, status, valid_until, application_ref, is_current, source_type, evidence,
+               is_public AS _public, org_id AS _org
         FROM org_identifiers WHERE org_id = %s ORDER BY id_type, is_current DESC, id
         """,
     ),
@@ -268,7 +286,7 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
         "funder_activity kind='partner' naming this organisation (grants received; amount INR)",
         """
         SELECT a.fiscal_year, f.name AS funder, a.project_name, a.amount, a.relationship_status,
-               a.start_date, a.end_date
+               a.start_date, a.end_date, a.is_public AND f.registry_status <> 'hidden' AS _public
         FROM funder_activity a JOIN funders f ON f.id = a.funder_id
         WHERE a.partner_org_id = %s AND a.kind = 'partner' ORDER BY a.fiscal_year, a.id
         """,
@@ -283,13 +301,13 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
     (
         "contacts",
         """
-        SELECT name, role, kind, verified FROM contacts WHERE org_id = %s
+        SELECT name, role, kind, verified, is_public AS _public, org_id AS _org FROM contacts WHERE org_id = %s
         """,
     ),
     (
         "documents",
         """
-        SELECT title, doc_type, as_of, source_url FROM documents
+        SELECT title, doc_type, as_of, source_url, is_public AS _public, org_id AS _org FROM documents
         WHERE org_id = %s ORDER BY as_of
         """,
     ),
@@ -299,8 +317,8 @@ _ORG_DOSSIER_SECTIONS: tuple[tuple[str, str], ...] = (
 # that adding a kind is adding a row rather than editing four `if`s.
 _BY_KIND: dict[str, tuple[str, str, tuple[tuple[str, str], ...]]] = {
     # kind -> (entity table, foreign key, dossier sections)
-    "funder": ("funders", "funder_id", _DOSSIER_SECTIONS),
-    "org": ("orgs", "org_id", _ORG_DOSSIER_SECTIONS),
+    "funder": (*ENTITY_KEYS["funder"], _DOSSIER_SECTIONS),
+    "org": (*ENTITY_KEYS["org"], _ORG_DOSSIER_SECTIONS),
 }
 
 
@@ -358,7 +376,7 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                     (f"%{name}%", name, name),
                 )
             ).fetchone()
-            held = await _held_per_concept(conn, row["id"], entity_kind) if row else {}
+            held = await held_per_concept(conn, row["id"], entity_kind) if row else {}
 
         out = [
             (f"Research goals for {name!r}. These are the database's columns, not a wish list — "
@@ -410,97 +428,6 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
         return f"research_goals failed: {type(exc).__name__}: {exc}"
 
 
-async def _held_per_concept(
-    conn: Any, entity_id: int, entity_kind: str
-) -> dict[str, tuple[int, list[str]]]:
-    """Row counts, and the fiscal years already covered, per concept.
-
-    Both halves have to move together. This used to walk every concept in the
-    registry and emit `WHERE funder_id = %s`, which was fine while every table
-    had one — the moment orgs tables joined the registry it became `SELECT …
-    FROM orgs WHERE funder_id = %s`, an UndefinedColumn swallowed by the broad
-    `except` in research_goals, **for funder runs too**, because the loop runs
-    before anything is printed. So it iterates the concepts for this kind and
-    takes the foreign key from the same place.
-    """
-    entity_table, fk, _ = _BY_KIND[entity_kind]
-    out: dict[str, tuple[int, list[str]]] = {}
-    for concept in concepts_for(entity_kind):
-        spec = CONCEPTS[concept]
-        table = spec.table
-        # The entity's own row, which is the match we already have in hand.
-        if table == entity_table:
-            out[concept] = (1, [])
-            continue
-        has_year = any(c.name == "fiscal_year" for c in CATALOG[table].columns)
-        years = ", array_agg(DISTINCT fiscal_year)" if has_year else ", '{}'::text[]"
-        # funder_activity hangs off the funder; an NGO's lines are the ones naming it as the partner.
-        col = "partner_org_id" if entity_kind == "org" and table == "funder_activity" else fk
-        # Table, column and filter column come from module constants, never a caller.
-        where, params = f"{col} = %s", [entity_id]
-        if spec.row_filter:
-            where += f" AND {spec.row_filter[0]} = %s"
-            params.append(spec.row_filter[1])
-        found = await (
-            await conn.execute(
-                f"SELECT count(*) AS n{years} AS years FROM {table} WHERE {where}", tuple(params)
-            )
-        ).fetchone()
-        out[concept] = (found["n"], [y for y in (found["years"] or []) if y])
-    return out
-
-
-async def _research_rows(
-    pool: Any, slug: str, caller: CallerScope | None = None, *, vault: bool = False
-) -> list[dict[str, Any]]:
-    """The newest row per entity, its findings read from the brief; for a caller who is not staff, without private ones.
-
-    `vault` adds Doc Vault findings: only for a writer or a person, never a context that briefs researchers."""
-    caller = caller or scope()
-    async with pool.connection() as conn:
-        rows = await (
-            await conn.execute(
-                "SELECT DISTINCT ON (slug) * FROM entity_research "
-                + ("WHERE slug = %s " if slug else "")
-                + "ORDER BY slug, researched_at DESC",
-                (slug,) if slug else (),
-            )
-        ).fetchall()
-    # Vault findings live in vault_research alone: one in the shared row was never checked against a vault.
-    out = [{**r, "findings": [f for f in r.get("findings") or [] if not vault_store.is_vault_url(f.get("source_url"))]}
-           for r in (dict(r) if caller.is_staff else without_private(dict(r)) for r in rows)]
-    # The brief is the record: promotion, its plan and coverage all read its facts, not one run's.
-    async with pool.connection() as conn:
-        out = [await brief.promotable(r, [_public_row(x, caller) for x in await brief.rows_for(conn, r["slug"])])
-               for r in out]
-    return [await _with_vault(pool, r, caller) for r in out] if vault else out
-
-
-def _public_row(row: dict[str, Any], caller: CallerScope) -> dict[str, Any]:
-    """An earlier run, without its Doc Vault findings and, for a caller who is not staff, its private ones."""
-    row = dict(row) if caller.is_staff else without_private(dict(row))
-    return {**row, "findings": [f for f in row.get("findings") or [] if not vault_store.is_vault_url(f.get("source_url"))]}
-
-
-async def _with_vault(pool: Any, row: dict[str, Any], caller: CallerScope) -> dict[str, Any]:
-    """The row plus the newest vault findings of each org whose files this caller may read."""
-    slugs = sorted({row["slug"], slugify(row.get("entity_name") or row["slug"])})
-    async with pool.connection() as conn:
-        found = await (await conn.execute(
-            "SELECT DISTINCT ON (v.org_id) v.org_id, v.findings, v.documents_read, "
-            "(SELECT jsonb_object_agg(d.id, coalesce(d.title, 'untitled')) FROM documents d "
-            " WHERE d.id = ANY(v.documents_read)) AS titles "
-            "FROM vault_research v WHERE v.slug = ANY(%s) ORDER BY v.org_id, v.researched_at DESC",
-            (slugs,),
-        )).fetchall()
-    readable = [v for v in found if caller.can_read_org(v["org_id"])]
-    if not readable:
-        return row
-    return {**row, "findings": [*(row.get("findings") or []), *(f for v in readable for f in v["findings"])],
-            "vault": [{"org_id": v["org_id"], "documents_read": list(v["documents_read"]),
-                       "titles": dict(v.get("titles") or {})} for v in readable]}
-
-
 def _comparison(plan: dict[str, Any]) -> dict[str, Any]:
     """The plan grouped the way a person reads it, case by case."""
     items = plan.get("plan", {}).get("items", [])
@@ -534,7 +461,7 @@ async def compare_with_catalog(slug: str) -> str:
     """
     try:
         pool = get_pool()
-        rows = await _research_rows(pool, slug)
+        rows = await research_rows(pool, slug)
         if not rows:
             return f"No saved research for {slug!r}. Research first."
         row = rows[0]
@@ -567,7 +494,7 @@ async def coverage_report(slug: str) -> str:
     """
     try:
         pool = get_pool()
-        rows = await _research_rows(pool, slug, vault=True)
+        rows = await research_rows(pool, slug, vault=True)
         if not rows:
             return f"No saved research for {slug!r}. Research first."
         row = rows[0]
@@ -579,196 +506,6 @@ async def coverage_report(slug: str) -> str:
     except Exception as exc:
         logger.exception("coverage_report failed")
         return f"coverage_report failed: {type(exc).__name__}: {exc}"
-
-
-async def write_preview(slug: str) -> dict[str, Any]:
-    """What SaveQuestions puts on the pause: a funder's case 3 and 4 questions, the planned rows, and coverage."""
-    rows = await _research_rows(get_pool(), slug, vault=True)
-    if not rows:
-        return {"questions": [], "planned": [], "coverage": ""}
-    row = rows[0]
-    if row.get("entity_kind") == "org":
-        head = coverage.render(coverage.compute(row)).split("\n")[1]
-        return {"questions": [], "planned": ["An NGO: blanks are filled, conflicts are reported."], "coverage": head}
-    async with get_pool().connection() as conn:
-        plan = await promote(conn, row, gate=Gate(plan=True))
-    counts: dict[str, int] = {}
-    for item in plan.get("plan", {}).get("items", []):
-        if item["case"] in (2, 5):
-            counts[item["table"]] = counts.get(item["table"], 0) + 1
-    planned = [f"{table}: {n} row(s)" for table, n in sorted(counts.items())]
-    if plan.get("held"):
-        planned.append(f"held back: {len(plan['held'])}")
-    head = coverage.render(coverage.compute(row, report=plan)).split("\n")[1]
-    return {"questions": plan.get("questions", []), "planned": planned, "coverage": head}
-
-
-async def _rows_now(conn: Any, kind: str | None, entity_id: int | None) -> dict[str, int] | None:
-    """Catalog rows per concept for one entity; None when there is no entity to count yet."""
-    if kind not in _BY_KIND or entity_id in (None, UNWRITTEN):
-        return None
-    return {c: n for c, (n, _) in (await _held_per_concept(conn, entity_id, kind)).items()}
-
-
-def saved_since_research(row: dict[str, Any]) -> bool:
-    """Whether the row's save covers its findings: a same-day re-run rewrites the row after the save (#222)."""
-    saved_at, researched_at = row.get("saved_at"), row.get("researched_at")
-    return not (saved_at and researched_at and researched_at > saved_at)
-
-
-async def _record_save(conn: Any, row: dict[str, Any], report: dict[str, Any]) -> None:
-    """Keep what this save wrote on the research row. Afterwards a plan reads every row as `same`,
-    so this is the only record of what the profile held before."""
-    entity = report.get("entity")
-    after = await _rows_now(conn, entity["kind"], entity["id"]) if entity else None
-    saved = coverage.saved_record(row.get("saved"), report, after)
-    if saved is None:
-        if row.get("saved"):  # a re-run's save that changed nothing still saves the re-run
-            await conn.execute("UPDATE entity_research SET saved_at = now() WHERE id = %s", (row["id"],))
-        return
-    await conn.execute(
-        "UPDATE entity_research SET saved = %s::jsonb, saved_at = now() WHERE id = %s",
-        (json.dumps(saved, default=str), row["id"]),
-    )
-
-
-async def coverage_view(slug: str, caller: CallerScope | None = None) -> dict[str, Any] | None:
-    """Coverage per concept, with rows before and after: from the stored save, else a funder's dry run.
-    An NGO not yet saved has no before/after: its write cannot be dry-run."""
-    pool = get_pool()
-    rows = await _research_rows(pool, slug, caller, vault=True)
-    if not rows:
-        return None
-    row = rows[0]
-    kind = row.get("entity_kind")
-    saved = row.get("saved") if saved_since_research(row) else None
-    if saved and row.get("private_removed"):
-        # Held lines quote the values they held, private ones included; the counts stay.
-        saved = {**saved, "held": []}
-    entity, reasons, held, questions = None, [], [], 0
-    changes: dict[str, dict[str, int]] = {}
-    before: dict[str, int] | None = None
-    after: dict[str, int] | None = None
-    report: dict[str, Any] | None = None
-    if saved:
-        stage = "saved"
-        entity, reasons, held = saved.get("entity"), saved.get("reasons", []), saved.get("held", [])
-        changes, before, after = saved.get("changes", {}), saved.get("rows_before"), saved.get("rows_after")
-        report = {"skipped": saved.get("skipped", {}), "held": held}
-    elif kind != "org":
-        stage = "planned"
-        async with pool.connection() as conn:
-            report = await promote(conn, row, gate=Gate(plan=True))
-            entity, reasons, held = report.get("entity"), report["reasons"], report["held"]
-            questions = len(report.get("questions", []))
-            # A dry run does not archive documents, so a plan's document count reads 0.
-            changes = coverage.changes_by_concept(report)
-            if entity:
-                before = await _rows_now(conn, kind, entity["id"]) or {c: 0 for c in concepts_for(kind)}
-                after = {c: n + changes.get(c, {}).get("added", 0) for c, n in before.items()}
-        if entity and entity.get("id") == UNWRITTEN:
-            entity = {**entity, "id": None}  # a funder the plan would add has no id to link to yet
-    else:
-        stage = "unsaved"
-    return coverage.view(row, stage=stage, report=report, entity=entity, reasons=reasons, held=held,
-                         questions=questions, changes=changes, before=before, after=after)
-
-
-async def review_view(slug: str, caller: CallerScope | None = None) -> dict[str, Any] | None:
-    """The review card's body: answers with their proof, what is missing, the questions, what saving adds."""
-    pool = get_pool()
-    rows = await _research_rows(pool, slug, caller, vault=True)
-    if not rows:
-        return None
-    row = rows[0]
-    kind = row.get("entity_kind")
-    questions: list[dict[str, Any]] = []
-    saves: dict[str, dict[str, int]] = {}
-    async with pool.connection() as conn:
-        if kind == "funder":
-            plan = await promote(conn, row, gate=Gate(plan=True))
-            questions, saves = plan.get("questions", []), coverage.changes_by_concept(plan)
-            existing = bool(plan.get("entity") and plan["entity"].get("id") not in (None, UNWRITTEN))
-        else:
-            # The same match saving would make: on an existing NGO a save only fills blanks.
-            asking = Gate(plan=True)
-            match = await org_match(conn, row, asking)
-            questions = asking.asked()
-            existing = bool(row.get("resolved_org_id")) or bool(match and match.method in MERGEABLE)
-    return {
-        "slug": row["slug"], "name": row.get("canonical_name") or row.get("entity_name") or row["slug"],
-        "kind": kind, "existing": existing,
-        "answers": review.answers(row), "missing": review.missing(row),
-        "questions": [review.question(q) for q in questions],
-        "saves": [{"concept": c, "topic": review.topic(c), **n} for c, n in saves.items()
-                  if n.get("added") or n.get("updated")],
-    }
-
-
-async def _may_save(
-    conn: Any, caller: CallerScope, row: dict[str, Any], decisions: dict[str, str] | None = None
-) -> str | None:
-    """Why this caller may not save this research to the catalog, or None."""
-    name = row.get("canonical_name") or row.get("entity_name") or row["slug"]
-    if row.get("entity_kind") != "org":
-        return None if caller.can_save_funder() else "saving to Sangam needs a signed-in user."
-    org_id = row.get("resolved_org_id")
-    if org_id is None:
-        # A steward who says a close name is their NGO saves to it, as staff would.
-        match = await org_match(conn, row, Gate(decisions))
-        org_id = match.entity_id if match and match.method in MERGEABLE else None
-    if org_id is None:
-        return f"{name} is not an NGO Sangam holds yet; the Sangam team adds new NGOs."
-    if not caller.can_research_org(org_id):
-        return f"{name} is an NGO; only its stewards and the Sangam team save research about it."
-    return None
-
-
-class SaveRefused(Exception):
-    """This caller may not save this research; the message says why, in the person's words."""
-
-
-async def save_to_catalog(slug: str, caller: CallerScope, decisions: dict[str, str] | None = None) -> list[dict[str, Any]]:
-    """Write saved research into the catalog, one transaction and one undoable promotion per row.
-    Raises LookupError with no research, SaveRefused when the caller's role may not save it."""
-    if not slug and not caller.is_staff:
-        raise SaveRefused("promote one researched organisation at a time: pass its slug.")
-    pool = get_pool()
-    rows = await _research_rows(pool, slug, caller, vault=True)
-    if not rows:
-        raise LookupError(slug)
-    async with pool.connection() as conn:
-        refused = await _may_save(conn, caller, rows[0], decisions) if not caller.is_staff else None
-    if refused:
-        raise SaveRefused(refused)
-    reports = []
-    for row in rows:
-        for attempt in range(2):
-            try:
-                async with pool.connection() as conn, conn.transaction():
-                    promotion = await undo.start(conn, row.get("id"), row["slug"], caller.user_id)
-                    report = await promote(conn, row, gate=Gate(decisions or {}))
-                    await _record_save(conn, row, report)
-                    report["promotion_id"] = promotion if await undo.finish(conn, promotion) else None
-                break
-            except UniqueViolation:
-                # Another save added the same row between a look-up and its insert; the retry finds it.
-                if attempt:
-                    raise
-        reports.append(report)
-        await _publish_states(pool, row["slug"], report.get("facts") or {})
-    return reports
-
-
-async def _publish_states(pool: Any, slug: str, states: dict[str, dict[str, Any]]) -> None:
-    """Write what the save did with each fact into the brief. The catalog is already committed, so a failure is logged."""
-    try:
-        async with pool.connection() as conn:
-            rows = await brief.rows_for(conn, slug)
-        if rows:
-            await brief.publish(rows, states=states)
-    except Exception:
-        logger.exception("brief for %s: the save's states were not written back", slug)
 
 
 @tool

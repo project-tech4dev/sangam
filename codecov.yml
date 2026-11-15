@@ -1,3 +1,7 @@
+codecov:
+  notify:
+    after_n_builds: 3   # backend-unit, backend-integration and frontend: judge none until all three upload
+
 # Both backend uploads also carry the `backend` flag, which the README badge reads; the frontend has its own.
 coverage:
   status:

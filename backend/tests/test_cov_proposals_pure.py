@@ -9,7 +9,6 @@ import pytest
 from docx import Document
 
 from app.proposals import assemble, gates, records
-from app.proposals.tools import record_tools
 from app.repositories import profile_facts
 from app.repositories import proposals as repo
 
@@ -162,8 +161,8 @@ def registry(monkeypatch):
 
     monkeypatch.setattr(profile_facts, "org_facts", org_facts)
     monkeypatch.setattr(repo, "match_for", match_for)
-    monkeypatch.setattr(record_tools, "org_text", lambda facts: "Jan Sahas [org:7] · society\nFounded 2001 [org:7]")
-    monkeypatch.setattr(record_tools, "match_text", lambda m: "Funder Match [score:5]: 62 of 100")
+    monkeypatch.setattr(records, "org_text", lambda facts: "Jan Sahas [org:7] · society\nFounded 2001 [org:7]")
+    monkeypatch.setattr(records, "match_text", lambda m: "Funder Match [score:5]: 62 of 100")
     return state
 
 

@@ -4,18 +4,20 @@ title: Funder Match
 description: How the in-code match-v2 rubric scores one organisation against funders with no model involved, covering profile loading, the seven criteria, tiers, saved runs and their RLS, the places it is consumed (compare_fit, REST, make match, the UI), and how a match card starts a proposal.
 tags: [funder-match, match-v2, rubric, rls, compare_fit, saved-runs]
 sources:
-  - id: openwiki-source-d1e8740dfb3dd3dd2e214ddc
-    resource: repo://backend/app/agent/build.py
-  - id: openwiki-source-813dbe9c3eeb378112388ccd
-    resource: repo://backend/app/agent/middleware.py
-  - id: openwiki-source-d283e7d3b1dc789fadafd127
-    resource: repo://backend/app/agent/skills/funder-matching/SKILL.md
-  - id: openwiki-source-1f8b3caaa82d707d101e103d
-    resource: repo://backend/app/agent/tools/matching_tools.py
   - id: openwiki-source-3bce7721dfe72764acead2da
     resource: repo://backend/app/api/routes/funder_matches.py
   - id: openwiki-source-e0103e1ba2cbec5a0f421c56
     resource: repo://backend/app/api/routes/proposals.py
+  - id: openwiki-source-62856e43366ce312d8fa652f
+    resource: repo://backend/app/api/routes/scores.py
+  - id: openwiki-source-319a08aaeaf88078bae3e2e9
+    resource: repo://backend/app/ask/agent.py
+  - id: openwiki-source-f675a01c36b7a806924914b8
+    resource: repo://backend/app/ask/middleware.py
+  - id: openwiki-source-4c1427c2f37a53fce3022d75
+    resource: repo://backend/app/ask/skills/funder-matching/SKILL.md
+  - id: openwiki-source-d55b72c3daac4208de6d9806
+    resource: repo://backend/app/ask/tools/matching_tools.py
   - id: openwiki-source-1e8ec9e14fbff85f6151dc94
     resource: repo://backend/app/matching/assessment.py
   - id: openwiki-source-36ea5281072d37df20fefc14
@@ -40,12 +42,20 @@ sources:
     resource: repo://backend/app/repositories/matching.py
   - id: openwiki-source-1157f5d2ae5aa2bccc1057d0
     resource: repo://backend/app/repositories/proposals.py
+  - id: openwiki-source-0d66a555db38957a5df266b0
+    resource: repo://backend/app/repositories/scores.py
   - id: openwiki-source-32973df7d69d78ccef1499ff
     resource: repo://backend/tests/test_ask_budgets.py
   - id: openwiki-source-d642d26fca955a56c4af2c1a
     resource: repo://backend/tests/test_compare_fit.py
   - id: openwiki-source-51f4392f2fa38bb658665986
     resource: repo://backend/tests/test_funder_match_runs.py
+  - id: openwiki-source-b452c5f471e2aef0e36fb392
+    resource: repo://backend/tests/test_scores.py
+  - id: openwiki-source-ae9507c4a442eab54c70e7da
+    resource: repo://db/init/02_schema.sql
+  - id: openwiki-source-a51b4e8aa8968bfd9e155474
+    resource: repo://db/migrations/0027_rls.sql
   - id: openwiki-source-2939d404ec1a27d9be23ffd5
     resource: repo://db/migrations/0042_funder_matches.sql
   - id: openwiki-source-3d121c1ca466c424ca2b4936
@@ -58,6 +68,8 @@ sources:
     resource: repo://frontend/features/ask/AskWorkspace.tsx
   - id: openwiki-source-5f1c5aeea988fa7c1bfcd4ea
     resource: repo://frontend/features/ask/lib/comingSoon.ts
+  - id: openwiki-source-c70a91b754d3b0e7d7978e44
+    resource: repo://frontend/features/ask/views/funder-match/__tests__/MatchCard.test.tsx
   - id: openwiki-source-6f60a62e50bf4cca50bd6002
     resource: repo://frontend/features/ask/views/funder-match/api.ts
   - id: openwiki-source-14705a3866e29a5d7c9df8ee
@@ -66,12 +78,14 @@ sources:
     resource: repo://frontend/features/ask/views/FunderMatchView.tsx
   - id: openwiki-source-a6acd51674a7bb40ec0a9785
     resource: repo://frontend/features/ask/views/proposals/api.ts
+  - id: openwiki-source-7c561c5775ee50c3cc569d22
+    resource: repo://frontend/lib/__tests__/rest.test.ts
   - id: openwiki-source-012f2c78e3b1446dfc35803f
     resource: repo://Makefile
-generated: { by: "openwiki/0.7.2", at: "2026-10-19T10:32:36.779Z" }
+generated: { by: "openwiki/0.7.2", at: "2026-11-11T11:11:22.403Z" }
 verified:
   - by: openwiki/0.7.2
-    at: 2026-10-19T10:32:36.779Z
+    at: 2026-11-11T11:11:22.403Z
 ---
 
 # Funder Match
@@ -180,23 +194,42 @@ A run is read as the owner and written as the caller, under that caller's RLS.
 
 See [Auth, roles and RLS](auth-roles-rls.md) for `app.my_org_ids()`, `app.is_staff()` and the caller pool, and [Data and migrations](data-and-migrations.md) for migration numbering.
 
+## Stored fit scores: the separate `/scores` API
+
+Do not confuse saved Funder Match runs with the older `fit_scores` tables. They are two different stores:
+
+| | Funder Match runs | Stored fit scores |
+|---|---|---|
+| Tables | `funder_matches`, `funder_match_details` | `fit_scores`, `fit_score_items`, `rubrics`, `rubric_criteria`, `score_adjustments` |
+| Written by | `matching.service.run_and_save` (code, `match-v2`) | Seed data (`seed/seed.py` loads rubrics, KABIL fit scores and adjustments) and manual scoring (`scored_by` defaults to `'manual'`) |
+| Routes | `/funder-matches` | `/scores` (`api/routes/scores.py`) |
+| Mutability | Append-only, no UPDATE or DELETE grant | Rows are read-only through the API, but a manual adjustment log can be appended |
+
+`api/routes/scores.py` (prefix `/scores`) exposes three routes, all backed by `repositories/scores.py`:
+
+- `GET /scores` returns a `Page[FitScoreOut]` (`items`, `total`, `limit`, `offset`) filtered by `org`, `funder` (each matched against slug or numeric id) and `rubric` (a `rubrics.version`). Rows are ordered by rubric version, then `total_score` descending, then id. Paging goes through `fetch_page`, and a `limit` over the maximum is rejected with 422, not silently clamped. The Ask page fetches `/api/scores?limit=100` server-side to build its index.
+- `GET /scores/{id}` returns `FitScoreDetail`: the score, its `items` (one per rubric criterion, joined to `rubric_criteria`, ordered by code, with justification) and its `adjustments` log in time order. It returns 404 when the id is unknown.
+- `POST /scores/{id}/adjustments` records a manual adjustment (`criterion_id`, optional `old_score`, `new_score >= 0`, non-empty `reason`) and returns 201. The route stamps `adjusted_by` from the signed-in user (`require_user`), so a caller cannot choose it. It returns 404 if the score does not exist, and 422 for an empty reason. The adjustment is an audit row: it never changes `fit_scores.total_score` or the item scores. RLS (`score_adjustments_insert` in migration `0027_rls.sql`) allows the insert only for a score whose org the caller may write to, or for staff.
+
+Nothing in `matching/` reads or writes these tables. The Ask agent rule that a computed `compare_fit` score is never merged with a stored `fit_scores` row follows from this split. See [Ask Sangam](ask-sangam.md) and [Data and migrations](data-and-migrations.md).
+
 ## Where it is consumed
 
-- **Ask: `compare_fit(org_id, funder_ids=None)`** (`agent/tools/matching_tools.py`). It checks `matching.may_run` for the chat user (`chat_user_id`) before reading anything. A caller who may not run gets the text "compare_fit refused", and the tool description tells the agent to report that plainly and never rebuild a match from `db_query`. It loads, then `compare()` runs `match()` per funder and builds a result dict (`org`, `rubric`, `funders_checked`, ranked `matches` with score descending, nulls last, and `not_scored`). `render()` turns that dict into **plain text, one fact per line**, which is what the tool returns. The text is used instead of one JSON line so that a reply the harness evicts to a file (deepagents moves any tool reply over 20k tokens) still pages cleanly.
+- **Ask: `compare_fit(org_id, funder_ids=None)`** (`ask/tools/matching_tools.py`). It checks `matching.may_run` for the chat user (`chat_user_id`) before reading anything. A caller who may not run gets the text "compare_fit refused", and the tool description tells the agent to report that plainly and never rebuild a match from `db_query`. It loads, then `compare()` runs `match()` per funder and builds a result dict (`org`, `rubric`, `funders_checked`, ranked `matches` with score descending, nulls last, and `not_scored`). `render()` turns that dict into **plain text, one fact per line**, which is what the tool returns. The text is used instead of one JSON line so that a reply the harness evicts to a file (deepagents moves any tool reply over 20k tokens) still pages cleanly.
   - **Header.** `compare_fit · <org> · rubric match-v2 · N funders checked`, then `scored N: <per-tier counts> · not scored M`, then an `unknown across the N scored: …` line counting, per criterion, how many scored funders left it unknown.
   - **Shortlist (`funder_ids` omitted).** Only scored funders are listed. The top strong and medium fits, up to `FULL_DETAIL_MAX` (10), are written in full: headline, card lines, one line per criterion (`- label points status: note cites`), `not judged` and `to raise the score` lines. Every other scored funder is one line: funder, type, score, tier and its first gap (`!`) line. The shortlist omits the per-funder summary to stay inside the budget.
   - **Named funders (`funder_ids` given).** Every funder named is in full, with its summary, including a funder that scored nothing (null score, counted as not scored). An id that does not exist returns `compare_fit failed: no funder with id …`.
   - **Not scored.** Funders with no score are split in two lines: `nothing in common recorded` is a real non-fit (both sides have places or themes, none shared), while `the funder has nothing recorded` (`has_places_or_themes` false) is unknown, never a non-fit.
   - **Errors** (unknown org, missing funder, any exception) are returned as `compare_fit failed: …` strings, because a raise would abort the agent run.
-  - `build.py` lists it in `TOOLS` beside the `db_*` tools and `search_graph`, and its comment calls it the one exception to "all database access goes through `db_query`", because the checklist is fixed and so the queries are.
-  - **Call budget.** `build_agent` also puts a `CompareFitBudget` middleware in the Ask stack (`agent/middleware.py`). In code, it refuses a `compare_fit` call with the same `(org_id, sorted funder_ids)` as an earlier one in the current turn ("refused a repeat: … Answer from that result"), and a call beyond `MAX_COMPARE_FIT_CALLS` (3) per question. The refusal comes back as an error `ToolMessage` and the tool does not run. A call with different `funder_ids` is a distinct call, so the whole-catalog call plus one detail call for named funders is allowed, and a new human message starts the count again (`test_ask_budgets.py`).
-  - The `funder-matching` skill (`agent/skills/funder-matching/SKILL.md`) tells the agent to resolve the organisation with one `db_query`, call `compare_fit(org_id)` once, call it again only as `compare_fit(org_id, [id])` for a one-line funder the user wants in detail, never judge funders itself after a refusal or failure, and then hand the single reply to the `funder-shortlist-brief` skill. When the user names the funders, `funder-comparison` is used instead. See [Ask Sangam](ask-sangam.md).
+  - `ask/agent.py` lists it in `TOOLS` beside the `db_*` tools and `search_graph`, and its comment calls it the one exception to the rule that the agent reaches the database one way (discover the schema, then `db_query`), because the checklist is fixed and so the queries are.
+  - **Call budget.** `build_agent` (`ask/agent.py`) also puts a `CompareFitBudget` middleware in the Ask stack (`ask/middleware.py`). In code, it refuses a `compare_fit` call with the same `(org_id, sorted funder_ids)` as an earlier one in the current turn ("refused a repeat: … Answer from that result"), and a call beyond `MAX_COMPARE_FIT_CALLS` (3) per question. The refusal comes back as an error `ToolMessage` and the tool does not run. A call with different `funder_ids` is a distinct call, so the whole-catalog call plus one detail call for named funders is allowed, and a new human message starts the count again (`test_ask_budgets.py`).
+  - The `funder-matching` skill (`ask/skills/funder-matching/SKILL.md`) tells the agent to resolve the organisation with one `db_query`, call `compare_fit(org_id)` once, call it again only as `compare_fit(org_id, [id])` for a one-line funder the user wants in detail, never judge funders itself after a refusal or failure, and then hand the single reply to the `funder-shortlist-brief` skill. When the user names the funders, `funder-comparison` is used instead. See [Ask Sangam](ask-sangam.md).
 - **REST** (`api/routes/funder_matches.py`, prefix `/funder-matches`):
   - `GET ?org=` returns the org's latest run, ranked, with tier counts and each funder's `prev_score` from the run before. It returns 404 when the org is unknown or unreadable, so a stranger cannot tell an unrun org from a hidden one.
   - `GET /{match_id}/detail` returns one match's full reasoning, and 404 when RLS hides it.
   - `POST /runs?org=` returns 201 with a run summary. It returns 404 for an unseen org and 403 for someone who can read but not run. It calls `service.run_and_save(owner, pool, …, principal.id)`.
 - **`make match [ORG=<slug>]`** runs `python -m app.matching.run` (`matching/run.py`) in the backend container. It saves a run for every org, or one by slug or id, as the owner with `run_by` NULL, and prints funders checked and tiers.
-- **UI.** The Ask workspace's Funder Match view is split between `frontend/features/ask/views/FunderMatchView.tsx` (the list) and `funder-match/MatchCard.tsx` (one funder). `funder-match/api.ts` has `getMatches` (`GET /api/funder-matches?org=`), `getDetail` (`/api/funder-matches/{id}/detail`) and `runMatch` (`POST /api/funder-matches/runs?org=`).
+- **UI.** The Ask workspace's Funder Match view is split between `frontend/features/ask/views/FunderMatchView.tsx` (the list) and `funder-match/MatchCard.tsx` (one funder). `funder-match/api.ts` is a thin wrapper over the shared `call` helper in `@/lib/api/rest`: `getMatches` (`GET /api/funder-matches?org=`, with the slug URL-encoded), `getDetail` (`GET /api/funder-matches/{id}/detail`), `runMatch` (`POST /api/funder-matches/runs?org=`) and the `RunSummary` type (`run_id`, `run_at`, `funders_checked`, `tiers`). It does not call `/api/scores`. The backend, not the client, refuses `runMatch` for anyone but staff and the org's stewards and admins. The `MatchList`, `MatchRow` and `MatchDetail` types come from `@/lib/api`.
   - **List (`FunderMatchView`).** It picks an organisation (the first one until another is chosen; one fixed name if the user has only one), fetches its latest saved run, and shows the run date, funders checked and earlier-run count, or "Not run yet". Strong and medium matches are the ranked buckets (`All fits`, `Strong`, `Medium`), and the rank number is the position in the full strong-plus-medium ranking, not in the filtered view. Weak and not-scored matches are folded into a "Weak or no fit" disclosure that shows only at the default view: bucket `all`, no funder-type or proposal filter, and no search text. Search reads the funder name, type and every card reason, and the funder-type and proposal-status filters narrow every bucket.
   - **Rerun.** A "Rerun match" (or "Run the first match") button is shown only when the list's `may_run` is true. It posts a run, shows a `Saved · N funders checked · X strong, Y medium` status, and bumps a counter that reloads the list. Without a saved run, a card explains who can run the first one.
   - **Card (`MatchCard`).** It shows rank, funder name and type, the score out of 100 with a tier-coloured bar, the tier tag (`Strong fit`, `Medium fit`, `Weak fit`, `Not scored`), and a `Delta` ("▲/▼ n since the last run") only when both the score and `prev_score` exist and differ. The saved card's reasons are listed with a check for `fit` and an alert for `gap`. A collapsed "Why this score" `<details>` lazy-loads the detail on first open only (a second open reuses it): summary, each criterion with note, cites and `points / max` or "unknown", the `not_judged` lines, "What would raise the score", and a footer naming the run date and rubric version. A failed detail load shows the error in place.
@@ -206,7 +239,7 @@ See [Auth, roles and RLS](auth-roles-rls.md) for `app.my_org_ids()`, `app.is_sta
 
 ## From a match card to a proposal
 
-A match card is the only way a proposal begins. The card's `ProposalAction` (in `MatchCard.tsx`) shows what is already started for that org and funder, and, when the list's `may_run` is true (passed down as `mayStart`), a "Start a proposal" or "Start another" button. A member who may not run sees only "View proposal" or the count of proposals.
+A match card is the only way a proposal begins. The card's `ProposalAction` (in `MatchCard.tsx`) shows what is already started for that org and funder: one proposal gives a "Continue proposal →" button (for someone who may start) or "View proposal →" (for a member who may not), and several give "Proposals (n) →". When the list's `may_run` is true (passed down as `mayStart`) it also shows a "Start a proposal" or "Start another" button. A member who may not run therefore sees only the view or count actions.
 
 ```mermaid
 sequenceDiagram
@@ -226,11 +259,11 @@ sequenceDiagram
     C->>C: nav.open(id), list reloads
 ```
 
-1. **Naming.** The card opens an inline form prefilled with `"<funder> proposal"`. `startProposal(org.slug, funder.id, title)` in `proposals/api.ts` posts `{org, funder_id, title}` (title 1–200 characters) and refreshes the shared proposals store (`useProposals`) that also feeds the sidebar count and the "Has a proposal" filter. On success, `nav.open(id)` switches `AskWorkspace` to the Proposals view on that proposal. A failure is shown beside the form.
-2. **Permission.** `create_proposal` uses `funder_matches.find_org` on the caller's pool: 404 when the org is unseen, 403 ("for the organisation's admins and stewards") when the caller can read but not run. This is the same `may_run` rule that guards saving a run, and migration `0048_proposal_work.sql` aligned the `proposals` insert and update policies to `app.my_match_org_ids()` or staff, so RLS enforces it again. Members still read.
+1. **Naming.** The card opens an inline form prefilled with `"<funder> proposal"`. `startProposal(org.slug, funder.id, title)` in `proposals/api.ts` posts `{org, funder_id, title}` (title 1–200 characters) and refreshes the shared proposals store (`useProposals`) that also feeds the sidebar count and the "Has a proposal" filter. On success, `nav.open(id)` calls `AskWorkspace`'s `openProposals`, which sets the URL to `view=proposals&proposal=<id>` and so opens the Proposals view on that proposal. A failure is shown beside the form.
+2. **Permission.** `create_proposal` uses `funder_matches.find_org` on the caller's pool: 404 when the org is unseen or unreadable, 403 ("for the organisation's admins and stewards") when the caller can read but not run. This is the same `may_run` rule that guards saving a run, and migration `0048_proposal_work.sql` aligned the `proposals` insert and update policies to `app.my_match_org_ids()` or staff, so RLS enforces it again. Members still read.
 3. **A saved match is required.** `match_for` reads the funder's row, with its full detail, from the org's **latest** saved run only. If the funder is not in it, the route returns 409 "Run Funder Match first". A proposal therefore always rests on a stored, cited judgement, and not on a live recomputation.
-4. **Step 1 comes from the match detail.** `proposals/gates.build` is pure. It turns the saved `eligibility` criterion, its `not_judged` lines and its `cites` into the requirements the user answers in step 1: 12A, 80G and audited accounts, plus CSR Form 1 when the funder type is in `SECTION_135_TYPES` or the funder is `section_135_bound`. Each shows what the match found on record. CSR Form 1 is `hard`, so answering No stops the step. Each "The funder's own bar" line becomes a free-text requirement of 240 characters at most that Sangam does not check. `earlier_phase` is true when the `relationship` criterion earned points.
-5. **The record.** `new_work` stores the requirements, an empty `gates` map, the match id, score and `run_at`, the funder's newest `proposal_template` document when Sangam holds one, a default style, and `stage: 1`. `readiness.summary` gives the initial summary, and `repositories/proposals.create` inserts the row.
+4. **Step 1 comes from the match detail.** `proposals/gates.build` is pure. It turns the saved `eligibility` criterion, its `not_judged` lines and its `cites` into the requirements the user answers in step 1: 12A, 80G and audited accounts, plus CSR Form 1 when the funder type is in `SECTION_135_TYPES` or the funder is `section_135_bound`. Each shows what the match found on record. CSR Form 1 is `hard`, and `steps.exit_check` reports a hard requirement answered No as "needed by the funder", so that answer stops the step. Each "The funder's own bar" line becomes a free-text requirement of 240 characters at most that Sangam does not check. `earlier_phase` is true when the `relationship` criterion earned points.
+5. **The record.** `new_work` (in `api/routes/proposals.py`) stores the requirements and their cites, an empty `gates` map, `earlier_phase`, the match id, score and `run_at`, the proposal's `rubric_version`, the funder's newest `proposal_template` document (found by `repo.funder_form`) when Sangam holds one, a default style, and `stage: 1`, plus empty containers for later steps. `readiness.summary` gives the initial summary, and `repositories/proposals.create` inserts the row.
 
 After creation the proposal is edited through code-checked steps, which this page does not cover. See [Proposal Copilot](proposal-copilot.md) and [Proposal lifecycle](../workflows/proposal-lifecycle.md).
 
@@ -244,4 +277,6 @@ match-v1 (earlier) judged theme on Darpan `sector` tags. match-v2 (2026-10-11, #
 
 - `backend/tests/test_matching_rules.py` covers each rule's met, partial, fail and unknown path with pure fixtures. That includes the theme grains, programme cap, Others handling, geography levels, credential edge cases (claimed, lapsed, unreadable, untyped funder), funding size, the three-fiscal-year capacity window, and the taxonomy ancestor and clause rules.
 - `backend/tests/test_funder_match_runs.py` covers the saved-run row shape (scored and unscored), the run route's 201, 403, 404 and 401 cases, the list route's ordering, tiers and `prev_score`, and that `compare_fit` refuses before it reads any data (`TestCompareFitGate`; a caller with no chat user is also refused).
+- `backend/tests/test_scores.py` covers the separate `/scores` API: the adjustment route stamps the signed-in user as `adjusted_by`, returns 404 for an unknown score and 422 for an empty reason, the list uses the `items/total/limit/offset` envelope and rejects an oversized `limit` with 422, and `list_scores` passes `org`, `rubric`, `limit` and `offset` through `fetch_page`.
+- `frontend/features/ask/views/funder-match/__tests__/MatchCard.test.tsx` mocks `call` and the proposals store. It checks the rank, tier and "▼ 12 since the last run" delta, that the detail loads once from `/api/funder-matches/5/detail` (re-opening does not refetch), that a failed load shows its error, naming and starting a proposal (title trimmed, `nav.open` with the new id, failures keep the form open), and the "Proposals (n)", "Start another" and member-only "View proposal" variants. `views/__tests__/FunderMatchView.test.tsx` covers the list's `/api/funder-matches?org=` fetch, the rerun `POST` and the reload that follows, and `lib/__tests__/rest.test.ts` pins the three URL shapes.
 - `backend/tests/test_compare_fit.py` covers the text reply of `compare()` plus `render()` with prepared matches. The worst-case 37-funder shortlist stays under a 60,000-character budget (the 15k-token share of deepagents' 20k-token eviction limit) and spans many lines. Only the top `FULL_DETAIL_MAX` funders appear in full, with no `summary:` lines, and the rest are one-liners that end in their first gap. Named funders carry every field. A named funder with nothing shared counts as not scored (`scored 1: 1 medium · not scored 1`) with no "unknown across" line. The two not-scored lines keep "nothing in common" apart from "nothing recorded".

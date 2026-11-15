@@ -27,8 +27,7 @@ async def list_programs(
         pool, limit=page.limit, offset=page.offset,
         funder=funder, org=org, status=status,
     )
-    return Page(items=[ProgramOut.model_validate(r) for r in rows],
-                total=total, limit=page.limit, offset=page.offset)
+    return page.build_page(rows, total, ProgramOut)
 
 
 @router.get("/{program_id}", response_model=ProgramOut, summary="Program detail")

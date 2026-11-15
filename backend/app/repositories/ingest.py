@@ -4,7 +4,7 @@ from uuid import UUID
 
 from psycopg_pool import AsyncConnectionPool
 
-from app.ingest.source_guards import PRIVATE_URL_LIKE
+from app.ingest.research.source_guards import PRIVATE_URL_LIKE
 
 _COUNTS = """
 SELECT r.id, r.started_at, r.finished_at, r.status,

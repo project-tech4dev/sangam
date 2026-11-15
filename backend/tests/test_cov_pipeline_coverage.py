@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.ingest import coverage as cov
+from app.ingest.research import coverage as cov
 
 FUNDER = {
     "slug": "acme", "canonical_name": "Acme", "entity_kind": "funder",

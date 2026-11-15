@@ -190,6 +190,14 @@ class TestPublicResearchQuotesThePage:
         cited = public_fact(source_url="https://en.wikipedia.org/wiki/Udalguri_district")
         assert "Wikipedia" in fact_rules.off_page(cited, PAGE)
 
+    @pytest.mark.parametrize("url", ["https://wikipedia.org/wiki/X", "https://hi.m.wikipedia.org/wiki/X"])
+    def test_wikipedia_is_refused_on_any_of_its_hosts(self, url):
+        assert "Wikipedia" in fact_rules.off_page(public_fact(source_url=url), PAGE)
+
+    @pytest.mark.parametrize("url", ["https://notwikipedia.org/x", "https://example.org/wikipedia.org"])
+    def test_a_host_that_only_contains_wikipedia_is_not_wikipedia(self, url):
+        assert "Wikipedia" not in (fact_rules.off_page(public_fact(source_url=url), PAGE) or "")
+
     def test_a_number_the_quote_does_not_hold_is_refused(self):
         assert "every number" in fact_rules.off_page(public_fact(value="21.8%"), PAGE)
 

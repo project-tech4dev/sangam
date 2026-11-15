@@ -27,8 +27,7 @@ async def list_partner_lines(
     rows, total = await repo.list_partner_lines(
         pool, limit=page.limit, offset=page.offset, funder=funder, org=org, status=status,
     )
-    return Page(items=[PartnerLineOut.model_validate(r) for r in rows],
-                total=total, limit=page.limit, offset=page.offset)
+    return page.build_page(rows, total, PartnerLineOut)
 
 
 @router.get("/{line_id}", response_model=PartnerLineOut, summary="Partner line detail")

@@ -1,5 +1,5 @@
 import { authHeaders } from "@/lib/api/auth-headers";
-import { API } from "./rest";
+import { API } from "@/lib/api/rest";
 
 export type Doc = {
   id: number;

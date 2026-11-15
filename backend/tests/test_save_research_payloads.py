@@ -17,7 +17,7 @@ from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 
 from app.ingest.middleware import REFUSAL_LINES, SaveRefusal, parse_payload
-from app.ingest.research_records import EntityResearch
+from app.ingest.research.findings import EntityResearch
 from app.ingest.tools.research_tools import save_research
 
 SAVED: list[EntityResearch] = []

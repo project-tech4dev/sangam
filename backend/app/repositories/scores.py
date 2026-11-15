@@ -4,6 +4,8 @@ from uuid import UUID
 
 from psycopg_pool import AsyncConnectionPool
 
+from app.repositories.paging import fetch_page
+
 BASE = """
 SELECT fs.*, o.name AS org_name, f.name AS funder_name, r.version AS rubric_version,
        COUNT(*) OVER () AS total
@@ -21,13 +23,10 @@ async def list_scores(pool: AsyncConnectionPool, *, limit: int, offset: int,
     WHERE (%(org)s::text IS NULL OR o.slug = %(org)s OR o.id::text = %(org)s)
       AND (%(funder)s::text IS NULL OR f.slug = %(funder)s OR f.id::text = %(funder)s)
       AND (%(rubric)s::text IS NULL OR r.version = %(rubric)s)
-    ORDER BY r.version, fs.total_score DESC
-    LIMIT %(limit)s OFFSET %(offset)s
+    ORDER BY r.version, fs.total_score DESC, fs.id
     """
-    params = {"limit": limit, "offset": offset, "org": org, "funder": funder, "rubric": rubric}
-    async with pool.connection() as conn:
-        rows = await (await conn.execute(sql, params)).fetchall()
-    return rows, (rows[0]["total"] if rows else 0)
+    params = {"org": org, "funder": funder, "rubric": rubric}
+    return await fetch_page(pool, sql, params, limit=limit, offset=offset)
 
 
 async def get_score(pool: AsyncConnectionPool, fit_score_id: int) -> dict | None:
