@@ -45,7 +45,8 @@ class Gap(BaseModel):
     @model_validator(mode="after")
     def _year_only_when_yearly(self) -> Gap:
         if self.fiscal_year and self.concept not in YEARLY:
-            raise ValueError(f"{self.concept!r} is not by year; leave fiscal_year empty")
+            # The year means nothing on this concept, so it is kept as words rather than refused.
+            self.detail, self.fiscal_year = f"{self.detail} ({self.fiscal_year})", None
         if self.fiscal_year and not FISCAL_YEAR.match(self.fiscal_year):
             raise ValueError(f"fiscal_year must look like 'FY2023-24', got {self.fiscal_year!r}")
         return self
@@ -106,7 +107,8 @@ class EntityResearch(BaseModel):
         description="facts a source states that no concept has a field for: never dropped, never forced into one",
     )
 
-    _nulls = model_validator(mode="before")(classmethod(drop_null_extras))
+    # A save carrying its own summary's counts (fact_count, slug) is still the save; the counts are computed.
+    _nulls = model_validator(mode="before")(classmethod(lambda cls, data: drop_null_extras(cls, data, SUMMARY_ONLY)))
 
     @field_validator("years")
     @classmethod
@@ -200,6 +202,9 @@ class ResearchSummary(BaseModel):
     concepts_found: list[str] = Field(default_factory=list)
     not_found: list[str] = Field(default_factory=list)
     saved: bool = Field(default=False, description="true only if save_research returned success")
+
+
+SUMMARY_ONLY = frozenset(ResearchSummary.model_fields) - frozenset(EntityResearch.model_fields)
 
 
 
