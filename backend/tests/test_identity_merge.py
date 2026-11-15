@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from app.ingest import brief
-from app.ingest.promote import funder_from, org_from
+from app.ingest.catalog.promote_records import funder_from, org_from
 
 NOW = datetime(2026, 10, 22, tzinfo=UTC)
 ROW = {"slug": "resilience-fund", "entity_name": "Resilience Fund", "canonical_name": None,

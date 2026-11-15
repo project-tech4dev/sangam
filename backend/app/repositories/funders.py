@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from psycopg_pool import AsyncConnectionPool
 
+from app.repositories.paging import fetch_page
+
 LATEST_SCORES_SQL = """
 COALESCE(
   (SELECT jsonb_object_agg(sub.version, sub.total_score)
@@ -39,17 +41,14 @@ WHERE (%(tag)s::text IS NULL OR EXISTS (
         SELECT 1 FROM funder_tags ft2 JOIN tags tg2 ON tg2.id = ft2.tag_id
         WHERE ft2.funder_id = f.id AND (tg2.slug = %(tag)s OR tg2.label ILIKE %(tag)s)))
   AND (%(section_135)s::boolean IS NULL OR f.section_135_bound IS NOT DISTINCT FROM %(section_135)s)
-ORDER BY f.name
-LIMIT %(limit)s OFFSET %(offset)s
+ORDER BY f.name, f.id
 """
 
 
 async def list_funders(pool: AsyncConnectionPool, *, limit: int, offset: int,
                        tag: str | None = None, section_135: bool | None = None) -> tuple[list[dict], int]:
-    params = {"limit": limit, "offset": offset, "tag": tag, "section_135": section_135}
-    async with pool.connection() as conn:
-        rows = await (await conn.execute(LIST_SQL, params)).fetchall()
-    return rows, (rows[0]["total"] if rows else 0)
+    params = {"tag": tag, "section_135": section_135}
+    return await fetch_page(pool, LIST_SQL, params, limit=limit, offset=offset)
 
 
 async def get_funder(pool: AsyncConnectionPool, slug_or_id: str) -> dict | None:

@@ -1,15 +1,17 @@
-import { apiGet, type RegistryOut } from "@/lib/api";
+import { apiGet, type RegistryPage } from "@/lib/api";
 import { RegistryClient } from "@/features/registry/RegistryClient";
+import { filtersFrom, firstParams, PAGE, registryQuery, type RawParams } from "@/features/registry/filtersUrl";
 
 export const metadata = { title: "Registry — Sangam" };
 
-// Filters, including ?type=, are read in the browser from the address.
-export default async function RegistryPage() {
-  const { rows } = await apiGet<RegistryOut>("/api/registry");
+// Only the first page is rendered here; the browser asks for the rest as the person scrolls or filters.
+export default async function RegistryPage({ searchParams }: { searchParams: Promise<RawParams> }) {
+  const f = filtersFrom(firstParams(await searchParams));
+  const first = await apiGet<RegistryPage>(`/api/registry?${registryQuery(f, 0, PAGE)}`);
 
   return (
     <div className="page">
-      <RegistryClient rows={rows} />
+      <RegistryClient first={first} />
     </div>
   );
 }

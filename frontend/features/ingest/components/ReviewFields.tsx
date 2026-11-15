@@ -4,7 +4,7 @@ import { useState } from "react";
 import { formatInr } from "@/lib/format";
 import type { ReviewAnswer, ReviewFact, ReviewMissing } from "../lib/types";
 
-// Findings from a staff workbook cite this made-up host (backend app/ingest/staff_sources.py); it is not a page.
+// Findings from a staff workbook cite this made-up host (backend app/ingest/reading/staff_sources.py); it is not a page.
 const STAFF_SOURCE = "https://staff-sources.sangam.invalid/";
 const NOTE = {
   self_reported: "This is what they say about themselves. There's no certificate, number or document to back it up.",

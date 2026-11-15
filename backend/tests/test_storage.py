@@ -18,13 +18,36 @@ import pytest
 
 from app.core.config import Settings
 from app.ingest import brief
-from app.ingest.research_records import EntityResearch
+from app.ingest.catalog.writer import ensure_document
+from app.ingest.research.findings import EntityResearch
 from app.ingest.tools import research_tools as research
-from app.ingest.writer import ensure_document
 from app.integrations import storage
 
 MIGRATION = Path(__file__).resolve().parents[2] / "db" / "migrations" / "0020_storage_buckets.sql"
 BUCKETS = ("source-archive", "org-vault")
+
+
+def test_the_vault_bucket_takes_exactly_the_types_the_routes_allow():
+    """0055 and storage.VAULT_TYPES are one list written twice; a type in only one is refused somewhere."""
+    sql = (MIGRATION.parent / "0055_org_vault_pptx.sql").read_text(encoding="utf-8")
+    listed = set(re.findall(r"'([a-z]+/[a-z0-9.+-]+)'", sql))
+    assert listed == set(storage.VAULT_TYPES.values())
+
+
+@pytest.mark.parametrize("path, org_id, public, expected", [
+    ("org-vault/3/a.pdf", 3, False, ("org-vault", "3/a.pdf")),
+    ("org-vault/4/a.pdf", 3, False, None),
+    ("org-vault/33/a.pdf", 3, False, None),
+    ("org-vault/3/a.pdf", None, False, None),
+    ("staff-sources/kabil/x.xlsx", None, False, ("staff-sources", "kabil/x.xlsx")),
+    ("staff-sources/kabil/x.xlsx", 3, False, None),
+    ("staff-sources/kabil/x.xlsx", None, True, None),
+    ("source-archive/orgs/kabil/ar.pdf", 3, True, ("source-archive", "orgs/kabil/ar.pdf")),
+    ("elsewhere/3/a.pdf", 3, False, None),
+    (None, 3, False, None),
+])
+def test_a_path_is_trusted_only_inside_the_rows_own_folder(path, org_id, public, expected):
+    assert storage.owned_split(path, org_id=org_id, is_public=public) == expected
 
 
 class TestStorageIsOptional:
@@ -116,6 +139,13 @@ def transport(monkeypatch, handler):
 
     monkeypatch.setattr(storage, "_client", client)
     return seen
+
+
+@pytest.mark.parametrize("name,ends", [("a" * 200 + ".pdf", ".pdf"), ("b" * 200 + ".docx", ".docx")])
+def test_a_long_name_is_cut_short_but_keeps_its_extension(name, ends):
+    """The vault reads a file's type from its key, so a 200-character report must still end in .pdf."""
+    key = storage.vault_key(3, name)
+    assert key.endswith(ends) and len(key.rsplit("/", 1)[1]) <= 160
 
 
 class TestArchiveKey:
@@ -260,6 +290,104 @@ class TestRemove:
         seen = transport(monkeypatch, lambda r: httpx.Response(200))
         assert await storage.remove("org-vault", ["3/a.pdf"]) is False
         assert seen == []
+
+
+class TestTrash:
+    async def test_moves_each_key_under_trash(self, enabled, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={"message": "Successfully moved"}))
+        assert await storage.trash("org-vault", ["3/a.pdf", "3/b.pdf"]) is True
+        assert [json.loads(r.content) for r in seen] == [
+            {"bucketId": "org-vault", "sourceKey": "3/a.pdf", "destinationKey": "trash/3/a.pdf"},
+            {"bucketId": "org-vault", "sourceKey": "3/b.pdf", "destinationKey": "trash/3/b.pdf"},
+        ]
+
+    async def test_a_key_already_gone_counts(self, enabled, monkeypatch):
+        """Supabase answers a missing object with a 400 carrying statusCode 404."""
+        transport(monkeypatch, lambda r: httpx.Response(400, json={"statusCode": "404", "error": "not_found"}))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is True
+
+    async def test_an_older_file_in_the_trash_is_replaced(self, enabled, monkeypatch):
+        answers = iter([
+            httpx.Response(400, json={"statusCode": "409", "error": "Duplicate"}),
+            httpx.Response(200, json=[]),
+            httpx.Response(200, json={"message": "Successfully moved"}),
+        ])
+        seen = transport(monkeypatch, lambda r: next(answers))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is True
+        assert [r.method for r in seen] == ["POST", "DELETE", "POST"]
+        assert json.loads(seen[1].content) == {"prefixes": ["trash/3/a.pdf"]}
+
+    async def test_a_body_that_is_not_an_object_is_a_plain_failure(self, enabled, monkeypatch):
+        transport(monkeypatch, lambda r: httpx.Response(400, json=["not", "an", "object"]))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is False
+
+    async def test_a_failure_puts_back_what_already_moved(self, enabled, monkeypatch):
+        def answer(request):
+            body = json.loads(request.content)
+            return httpx.Response(500 if body["sourceKey"] == "3/b.pdf" else 200, json={})
+
+        seen = transport(monkeypatch, answer)
+        assert await storage.trash("org-vault", ["3/a.pdf", "3/b.pdf"]) is False
+        last = json.loads(seen[-1].content)
+        assert (last["sourceKey"], last["destinationKey"]) == ("trash/3/a.pdf", "3/a.pdf")
+
+    async def test_does_nothing_when_disabled(self, off, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200))
+        assert await storage.trash("org-vault", ["3/a.pdf"]) is False
+        assert seen == []
+
+
+class TestBucketSuffix:
+    """A local backend's files go to its own buckets; rows and callers keep the plain name."""
+
+    @pytest.fixture
+    def suffixed(self, monkeypatch):
+        monkeypatch.setattr(storage, "get_settings", lambda: Settings(**ENABLED, storage_bucket_suffix="-local"))
+        monkeypatch.setattr(storage, "_warned", False)
+
+    async def test_every_call_names_the_suffixed_bucket(self, suffixed, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={"signedURL": "/s", "url": "/u"}))
+        assert await storage.upload("org-vault", "3/a.pdf", b"x", "application/pdf") == "3/a.pdf"
+        await storage.download("org-vault", "3/a.pdf")
+        await storage.signed_url("org-vault", "3/a.pdf")
+        await storage.signed_upload_url("org-vault", "3/a.pdf")
+        await storage.remove("org-vault", ["3/a.pdf"])
+        await storage.list_prefix("org-vault", "3")
+        assert [r.url.path for r in seen] == [
+            "/storage/v1/object/org-vault-local/3/a.pdf",
+            "/storage/v1/object/org-vault-local/3/a.pdf",
+            "/storage/v1/object/sign/org-vault-local/3/a.pdf",
+            "/storage/v1/object/upload/sign/org-vault-local/3/a.pdf",
+            "/storage/v1/object/org-vault-local",
+            "/storage/v1/object/list/org-vault-local",
+        ]
+
+    async def test_a_move_and_the_trash_name_the_suffixed_bucket(self, suffixed, monkeypatch):
+        seen = transport(monkeypatch, lambda r: httpx.Response(200, json={}))
+        await storage.move("source-archive", "a", "b")
+        await storage.trash("org-vault", ["3/a.pdf"])
+        assert [json.loads(r.content)["bucketId"] for r in seen] == ["source-archive-local", "org-vault-local"]
+
+    async def test_a_failure_logs_the_bucket_actually_asked(self, suffixed, monkeypatch, caplog):
+        transport(monkeypatch, lambda r: httpx.Response(500))
+        assert await storage.download("org-vault", "3/a.pdf") is None
+        assert "reading org-vault-local/3/a.pdf failed" in caplog.text
+
+    @pytest.mark.parametrize("database_url,suffix", [
+        ("postgresql://sangam:sangam@localhost:5433/sangam", "-local"),
+        ("postgresql://postgres.proj:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres", ""),
+        ("host=db.proj.supabase.co user=postgres dbname=postgres", ""),
+        ("postgresql://postgres.other:pw@aws-0-ap-south-1.pooler.supabase.com:5432/postgres", "-local"),
+    ])
+    def test_the_storage_projects_own_database_keeps_the_plain_buckets(self, database_url, suffix):
+        """Staging rows name the plain buckets, so a script on that database ignores a -local from .env."""
+        settings = Settings(**ENABLED, database_url=database_url, storage_bucket_suffix="-local")
+        assert settings.bucket_suffix == suffix
+
+    def test_the_row_keeps_the_plain_name(self, suffixed):
+        assert storage.qualify("org-vault", "3/a.pdf") == "org-vault/3/a.pdf"
+        assert storage.split("org-vault/3/a.pdf") == ("org-vault", "3/a.pdf")
+        assert storage.split("org-vault-local/3/a.pdf") is None
 
 
 # --- the documents row, against a real Postgres ----------------------------
@@ -542,7 +670,7 @@ class TestABriefShowsPublicSourcesOnly:
         assert "private accounts" in text and brief.PRIVATE_NOTE not in text
 
     def test_the_private_domain_is_matched_by_host_not_by_substring(self):
-        from app.ingest.source_guards import is_private_source
+        from app.ingest.research.source_guards import is_private_source
 
         assert is_private_source(self.VAULT) and is_private_source(self.STAFF)
         assert not is_private_source("https://example.org/sangam.invalid/page")

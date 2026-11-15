@@ -29,8 +29,7 @@ async def list_tags(
 ) -> Page[TagOut]:
     rows, total = await repo.list_tags(pool, limit=page.limit, offset=page.offset,
                                        kind=kind, q=q)
-    return Page(items=[TagOut.model_validate(r) for r in rows],
-                total=total, limit=page.limit, offset=page.offset)
+    return page.build_page(rows, total, TagOut)
 
 
 @router.get("/locations", response_model=Page[LocationOut], summary="Location hierarchy")
@@ -43,5 +42,4 @@ async def list_locations(
 ) -> Page[LocationOut]:
     rows, total = await repo.list_locations(pool, limit=page.limit, offset=page.offset,
                                             kind=kind, parent=parent)
-    return Page(items=[LocationOut.model_validate(r) for r in rows],
-                total=total, limit=page.limit, offset=page.offset)
+    return page.build_page(rows, total, LocationOut)

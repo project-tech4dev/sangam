@@ -1,5 +1,5 @@
 import type { MatchDetail, MatchList } from "@/lib/api";
-import { call } from "../../lib/rest";
+import { call } from "@/lib/api/rest";
 
 export type RunSummary = { run_id: string; run_at: string; funders_checked: number; tiers: Record<string, number> };
 

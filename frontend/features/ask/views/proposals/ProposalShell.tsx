@@ -5,7 +5,7 @@ import { MessageCircle, Pencil, Trash2, Upload, X } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { shortDate } from "@/lib/format";
-import { type Doc, listVault, uploadToVault } from "../../lib/vault";
+import { type Doc, VAULT_ACCEPT, listVault, uploadToVault } from "../../lib/vault";
 import { advance, changedByLine, deleteProposal, deleteResearch, type Fact, researchAngles, type ResearchAsk, getProposal, missingFrom, type Part, type Proposal, type Reader, rename, type Saved, saveWork, type Section, startResearch } from "./api";
 import { FactList, source } from "./FactList";
 import { FinishCard } from "./FinishCard";
@@ -439,7 +439,7 @@ function SourcesStep({ proposal, save, send }: { proposal: Proposal; save: Save;
           <label className="btn btn-ghost pr-file">
             <Upload className="icon icon-sm" />
             {busy ? `Uploading ${busy}…` : "Upload a file"}
-            <input type="file" disabled={Boolean(busy)} onChange={(e) => upload(e.target.files?.[0], false)} />
+            <input type="file" accept={VAULT_ACCEPT} disabled={Boolean(busy)} onChange={(e) => upload(e.target.files?.[0], false)} />
           </label>
         )}
       </div>

@@ -9,11 +9,11 @@ from typing import Any
 from langchain_core.tools import tool
 
 from app.db.pool import get_pool
-from app.ingest import vault
 from app.ingest.brief import headline, record
-from app.ingest.source_guards import is_private_source
-from app.ingest.tools.library_tools import READABLE, _archived
-from app.ingest.vault import MAX_BYTES
+from app.ingest.reading import vault
+from app.ingest.reading.vault import MAX_BYTES
+from app.ingest.research.source_guards import is_private_source
+from app.ingest.tools.library_tools import READABLE, archived
 from app.integrations import storage
 from app.proposals import context, research, steps
 from app.proposals import facts as fact_rules
@@ -93,7 +93,7 @@ async def _public_file(document_id: int, where: str, args: tuple[Any, ...], star
     data = await storage.download(*parts, max_bytes=MAX_BYTES) if parts else None
     if data is None:
         return f"Document {document_id} could not be downloaded."
-    return await asyncio.to_thread(_archived, dict(doc), data, start_page, end_page)
+    return await asyncio.to_thread(archived, dict(doc), data, start_page, end_page)
 
 
 @tool
@@ -121,14 +121,15 @@ async def list_funder_documents() -> str:
 
 @tool
 async def read_org_file(document_id: int, start_page: int = 1, end_page: int | None = None, sheet: str = "",
-                        start_row: int = 1) -> str:
-    """Read the one file in your task, a range at a time: pages in a PDF, paragraphs in a Word file, lines in a
-    web page Sangam saved as text. An .xlsx workbook without `sheet` lists its sheets; with `sheet` it reads rows.
+                        start_row: int = 1) -> str | list[dict]:
+    """Read the one file in your task, a range at a time: pages in a PDF, paragraphs in a Word file, slides in a
+    PowerPoint file, lines in a CSV or a web page Sangam saved as text. An .xlsx workbook without `sheet` lists its
+    sheets; with `sheet` it reads rows. An uploaded image comes back as the image itself.
     The read's header says what a fact from it cites: the organisation's own upload, or a public page and its link.
 
     Args:
         document_id: the id in your task.
-        start_page: the first page, paragraph or line, from 1.
+        start_page: the first page, paragraph, slide or line, from 1.
         end_page: the last one; omit to read on until the output is cut.
         sheet: a workbook's sheet name.
         start_row: a workbook's first row to read.

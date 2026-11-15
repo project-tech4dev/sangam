@@ -7,7 +7,7 @@ import pytest
 from langgraph.errors import GraphInterrupt
 
 from app.core.security import CallerScope
-from app.ingest import run_sources
+from app.ingest.reading import run_sources
 from app.proposals import context
 from app.proposals import facts as fact_rules
 from app.proposals import questions as question_rules

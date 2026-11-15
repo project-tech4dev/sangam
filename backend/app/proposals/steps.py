@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.proposals import readiness, rubric
+from app.proposals import rubric
 
 # The screen's names for work.stage, as frontend/features/ask/views/proposals/steps.ts writes them.
 STAGES = {1: "Can you apply?", 2: "Your documents and style", 3: "Make a case", 4: "Make a plan",
@@ -13,13 +13,15 @@ STAGES = {1: "Can you apply?", 2: "Your documents and style", 3: "Make a case", 
 LAST = max(STAGES)
 CASE_FIRST = ("A2", "A3")  # the place and the problem; the Summary waits for the plan
 
+ANSWERS = ("yes", "will_have", "no")  # a step-1 requirement's answers
+
 
 def exit_check(stage: int, work: dict[str, Any]) -> list[str]:
     """What is missing before `stage` can be left; empty means it can."""
     if stage == 1:
         gates = work.get("gates") or {}
         missing = [f"answer {r['label']}" for r in work.get("requirements") or []
-                   if gates.get(r["key"]) not in readiness.ANSWERS]
+                   if gates.get(r["key"]) not in ANSWERS]
         stopped = [f"{r['label']} is needed by the funder" for r in work.get("requirements") or []
                    if r.get("hard") and gates.get(r["key"]) == "no"]
         return missing + stopped

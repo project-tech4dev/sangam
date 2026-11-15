@@ -78,7 +78,7 @@ def answer_contains_value(answer: str, value: Any) -> bool:
 
 def agent_values(row: dict[str, Any]) -> tuple:
     """A re-run agent row without the source and id columns the validator added for itself."""
-    from app.agent.tools.sql.validator import CITE_PREFIX, PROVENANCE_PREFIX
+    from app.ask.tools.sql.validator import CITE_PREFIX, PROVENANCE_PREFIX
 
     return tuple(v for k, v in row.items() if not k.startswith((PROVENANCE_PREFIX, CITE_PREFIX)))
 

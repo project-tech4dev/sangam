@@ -222,6 +222,17 @@ async def test_ticking_another_orgs_file_is_422(api, held, monkeypatch):
     assert kept.status_code == 200 and kept.json()["work"]["sources"] == [41]
 
 
+async def test_a_ticked_file_deleted_since_drops_out_and_others_still_tick(api, held, monkeypatch):
+    async def org_document_ids(pool, org_id, ids):
+        return {41, 43}
+
+    monkeypatch.setattr(documents_repo, "org_document_ids", org_document_ids)
+    held["row"]["work"]["sources"] = [41, 42]
+    async with api as c:
+        r = await c.patch("/api/proposals/11/work", json={"set": {"sources": [41, 42, 43]}})
+    assert r.status_code == 200 and r.json()["work"]["sources"] == [41, 43]
+
+
 async def test_advance_says_what_is_missing_then_moves_on(api, held):
     async with api as c:
         early = await c.post("/api/proposals/11/advance")
@@ -252,7 +263,7 @@ def grader(monkeypatch):
         return grade.Graded(covered=[], missing=["Current figures with source and year"])
 
     monkeypatch.setattr(grade, "grade", fake_grade)
-    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: object())
+    monkeypatch.setattr("app.agentkit.models.resolve_model", lambda spec: object())
     return calls
 
 
@@ -299,7 +310,7 @@ def _written(**extra):
 
 @pytest.fixture
 def smoother(monkeypatch):
-    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: object())
+    monkeypatch.setattr("app.agentkit.models.resolve_model", lambda spec: object())
 
     def use(result):
         async def smooth(written, style, model):
@@ -398,7 +409,7 @@ def former(monkeypatch, vault):
     seen = {"reads": 0, "answers": {}, "fail": None}
     monkeypatch.setattr(route, "get_settings", lambda: SimpleNamespace(
         storage_enabled=True, model="m", research_model="r"))
-    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: spec)
+    monkeypatch.setattr("app.agentkit.models.resolve_model", lambda spec: spec)
 
     async def read(pool, template, org_id, model):
         seen["reads"] += 1
@@ -510,7 +521,7 @@ async def test_messages_are_read_from_the_proposal_graph(api, held, monkeypatch)
 
 @pytest.fixture
 def angler(monkeypatch):
-    monkeypatch.setattr("app.agent.models.resolve_model", lambda spec: object())
+    monkeypatch.setattr("app.agentkit.models.resolve_model", lambda spec: object())
 
     def use(result):
         async def angles(work, model, avoid):
@@ -647,7 +658,7 @@ def deletes(monkeypatch, held):
         return True
 
     monkeypatch.setattr(repo, "delete", delete)
-    monkeypatch.setattr(route.storage, "remove", remove)
+    monkeypatch.setattr(route.storage, "trash", remove)
     return calls
 
 
@@ -676,6 +687,6 @@ async def test_a_draft_path_outside_the_vault_is_never_removed(monkeypatch):
     async def remove(bucket, keys):
         raise AssertionError("must not reach storage")
 
-    monkeypatch.setattr(route.storage, "remove", remove)
+    monkeypatch.setattr(route.storage, "trash", remove)
     assert await route._remove_drafts(["source-archive/7/proposals/11/v1.docx"]) is False
     assert await route._remove_drafts(["org-vault/7/proposals/../12/v1.docx"]) is False

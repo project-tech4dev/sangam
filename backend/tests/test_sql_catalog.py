@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.agent.tools.sql import catalog as cat
+from app.ask.tools.sql import catalog as cat
 
 
 class TestWithheld:

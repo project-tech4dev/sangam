@@ -38,8 +38,7 @@ async def list_documents(
 ) -> Page[DocumentOut]:
     rows, total = await repo.list_documents(pool, limit=page.limit, offset=page.offset,
                                             org=org, funder=funder, doc_type=doc_type, user_id=user_id)
-    return Page(items=[DocumentOut.model_validate(r) for r in rows],
-                total=total, limit=page.limit, offset=page.offset)
+    return page.build_page(rows, total, DocumentOut)
 
 
 # --- the Doc Vault ---------------------------------------------------------
@@ -51,7 +50,7 @@ async def list_documents(
 # keeps its three-file set in one place; the org arrives in the body, which is
 # where a create's owner belongs.
 
-EXTRACT_LIMIT_BYTES = 20 * 1024 * 1024
+EXTRACT_LIMIT_BYTES = storage.MAX_ARCHIVE_BYTES  # the bucket's ceiling, so every upload is checked
 
 
 def _require_storage() -> None:
@@ -66,6 +65,7 @@ async def create_upload_url(
     user_id: UUID = Depends(require_user),
 ) -> UploadUrlOut:
     _require_storage()
+    content_type = _vault_type(body.filename)
     org_id = await repo.org_id_for_member(pool, org=body.org, user_id=user_id, write=False)
     if org_id is None:
         # Deliberately the same answer for "no such org" and "not your org":
@@ -79,6 +79,7 @@ async def create_upload_url(
         upload_url=url,
         storage_path=storage.qualify(storage.ORG_VAULT, key),
         expires_in_seconds=storage.UPLOAD_URL_TTL_SECONDS,
+        content_type=content_type,
     )
 
 
@@ -101,6 +102,9 @@ async def confirm_upload(
     # row is not allowed to claim a file sitting in someone else's folder.
     if key.partition("/")[0] != str(org_id):
         raise HTTPException(403, "storage_path belongs to a different organisation")
+    _vault_type(key)
+    if await repo.upload_recorded(pool, storage_path=body.storage_path):
+        raise HTTPException(409, "that file is already recorded")
     if await storage.stat(bucket, key) is None:
         raise HTTPException(404, "no object at that storage_path — did the upload finish?")
 
@@ -108,6 +112,11 @@ async def confirm_upload(
     # honest way to fill content_hash: the browser held the bytes, so anything
     # it told us about them would be a claim rather than a measurement.
     data = await storage.download(bucket, key, max_bytes=EXTRACT_LIMIT_BYTES)
+    if data is None:
+        raise HTTPException(503, "the file could not be read back to check it; try again")
+    if not _bytes_match(data, key):
+        await storage.remove(bucket, [key])
+        raise HTTPException(415, "the file's contents do not match its type")
     content_md, content_hash = _extract(data, key)
     if content_md:
         content_md = content_md.replace("\x00", "") or None  # some PDFs' text carries NULs, which Postgres refuses
@@ -119,27 +128,52 @@ async def confirm_upload(
     return DocumentOut.model_validate(row)
 
 
-def _extract(data: bytes | None, key: str) -> tuple[str | None, str | None]:
-    """(text, sha256) from the uploaded bytes. Both None when it could not be
-    read — the row is still worth having, and status stays 'received'.
-    """
-    if data is None:
-        logger.warning("uploaded object %s could not be read back; stored without text", key)
-        return None, None
+_VAULT_NAMES = "PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), CSV, Markdown, text and PNG, JPEG or WebP images"
+_SIGNATURES: dict[str, bytes] = {
+    ".pdf": b"%PDF-", ".docx": b"PK\x03\x04", ".xlsx": b"PK\x03\x04", ".pptx": b"PK\x03\x04",
+    ".png": b"\x89PNG\r\n\x1a\n", ".jpg": b"\xff\xd8\xff", ".jpeg": b"\xff\xd8\xff",
+}
+
+
+def _vault_type(name: str) -> str:
+    """The stored type for a Doc Vault file name; 415 for anything the vault cannot read."""
+    content_type = storage.VAULT_TYPES.get(Path(name).suffix.lower())
+    if content_type is None:
+        raise HTTPException(415, f"the Doc Vault takes {_VAULT_NAMES} files")
+    return content_type
+
+
+def _bytes_match(data: bytes, key: str) -> bool:
+    """Whether the bytes are what the extension says: a renamed .exe is not a PDF."""
+    ext = Path(key).suffix.lower()
+    if ext == ".webp":
+        return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
+    if ext in _SIGNATURES:
+        return data.startswith(_SIGNATURES[ext])
+    return data.startswith((b"\xff\xfe", b"\xfe\xff")) or b"\x00" not in data[:8192]
+
+
+def _extract(data: bytes, key: str) -> tuple[str | None, str]:
+    """(text, sha256) from the uploaded bytes; text is None when it could not be read, and the row is still kept."""
     digest = storage.content_hash(data)
     name = key.lower()
-    if name.endswith((".docx", ".xlsx")):
-        from app.ingest import office
+    if name.endswith((".docx", ".xlsx", ".pptx")):
+        from app.core import extract
 
         try:
-            text = "\n\n".join(office.docx_paragraphs(data)) if name.endswith(".docx") else office.xlsx_markdown(data)
+            if name.endswith(".docx"):
+                text = "\n\n".join(extract.docx_paragraphs(data))
+            elif name.endswith(".pptx"):
+                text = "\n\n".join(f"## Slide {n}\n{s}" for n, s in enumerate(extract.pptx_slides(data), 1) if s)
+            else:
+                text = extract.xlsx_markdown(data)
         except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
             logger.warning("no text from %s (%s: %s)", key, type(exc).__name__, exc)
             return None, digest
         return (text or None), digest
     if not name.endswith(".pdf"):
         return None, digest
-    from app.agent.tools.files import extract_pdf_text  # agent-tool module; only an upload needs it
+    from app.core.extract import extract_pdf_text
 
     with tempfile.NamedTemporaryFile(suffix=".pdf") as handle:
         handle.write(data)
@@ -162,13 +196,11 @@ async def document_file(
     row = await repo.readable_document(pool, document_id=document_id, user_id=user_id)
     # One 404 for "no such document" and "not yours": whether a private
     # document exists is itself private.
-    if row is None or not row["storage_path"]:
+    if row is None:
         raise HTTPException(404, f"document {document_id} has no readable file")
-    parts = storage.split(row["storage_path"])
+    # The row is readable, but its path is only trusted inside the row's own org folder.
+    parts = storage.owned_split(row["storage_path"], org_id=row["org_id"], is_public=row["is_public"])
     if parts is None:
-        raise HTTPException(404, f"document {document_id} has no readable file")
-    # Only the upload script writes staff-sources paths, always on a private, org-less row.
-    if parts[0] == storage.STAFF_SOURCES and (row["is_public"] or row["org_id"] is not None):
         raise HTTPException(404, f"document {document_id} has no readable file")
     url = await storage.signed_url(*parts)
     if url is None:
@@ -184,7 +216,7 @@ async def _remove_vault_file(storage_path: str, org_id: int) -> bool:
     if parts[1].partition("/")[0] != str(org_id):
         logger.warning("not removing %s: not in organisation %s's folder", storage_path, org_id)
         return False
-    return await storage.remove(parts[0], [parts[1]])
+    return await storage.trash(parts[0], [parts[1]])
 
 
 @router.delete("/{document_id}", status_code=204, summary="Delete a Doc Vault upload and its file (staff)",

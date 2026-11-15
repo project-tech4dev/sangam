@@ -7,8 +7,8 @@ from uuid import UUID
 
 import pytest
 
-from app.ingest import manual_checks
-from app.ingest.writer import Conflict
+from app.ingest.catalog import manual_checks
+from app.ingest.catalog.writer import Conflict
 from tests.cov_ingest_fakes import ScriptConn, ScriptPool
 
 STAFF = UUID(int=1)

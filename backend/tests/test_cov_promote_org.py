@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.ingest.promote import org_match, promote
-from app.ingest.writer import Gate
+from app.ingest.catalog.promote import org_match, promote
+from app.ingest.catalog.writer import Gate
 from tests.test_cov_promote import finding, funder, money, no_storage, one, org, research, rows, states, tag
 
 pytestmark = pytest.mark.integration

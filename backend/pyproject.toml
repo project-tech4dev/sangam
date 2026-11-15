@@ -1,6 +1,6 @@
 [project]
 name = "sangam-backend"
-version = "0.1.1"
+version = "0.2.0"
 description = "SANGAM grant-intelligence agent: FastAPI + LangGraph deep agent over Postgres, exposed via AG-UI for CopilotKit"
 requires-python = ">=3.11"
 dependencies = [
@@ -11,7 +11,6 @@ dependencies = [
     "langchain-openai>=1.0",
     "langchain-anthropic>=1.0",
     "langchain-google-genai>=3.0",
-    "langchain-mcp-adapters>=0.1.9",
     "langchain-tavily>=0.2",
     "langgraph>=1.0,<2",
     "langgraph-checkpoint-postgres>=3.1",

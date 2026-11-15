@@ -7,11 +7,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.ingest import writer
-from app.ingest.matcher import Match
-from app.ingest.promote import promote
-from app.ingest.records import FunderRecord, OrgIdentifierRecord
-from app.ingest.writer import GATE, Gate, Owner
+from app.ingest.catalog import writer, writer_funder, writer_org
+from app.ingest.catalog.matcher import Match
+from app.ingest.catalog.promote import promote
+from app.ingest.catalog.rows import FunderRecord, OrgIdentifierRecord
+from app.ingest.catalog.writer import GATE, Gate, Owner
 from tests.test_cov_promote import finding, funder, money, no_storage, one, org, research, rows, tag
 
 pytestmark = pytest.mark.integration
@@ -164,24 +164,24 @@ async def test_activity_lines_the_tables_checks_would_refuse_are_held_first(db):
     spend = rec(activity_kind="spend", fiscal_year="FY2023-24", designation=None, project_name="P",
                 partner_name=None, classified_by=None, classification_note=None, implementation_mode=None,
                 partner_csr1=None, outlay=None, amount=None, project_count=None, is_ongoing=None)
-    status, why = await writer.write_csr_spend(db, spend, fid, program_id=None, state_id=None, district_id=None,
+    status, why = await writer_funder.write_csr_spend(db, spend, fid, program_id=None, state_id=None, district_id=None,
                                                csr_sector_id=None, domain_id=None, theme_id=None, document_id=None)
     assert (status, why) == ("held", {"reason": "a spend line needs an amount"})
 
     domain = (await one(db, "SELECT id FROM tags WHERE kind = 'domain' LIMIT 1"))["id"]
     spend.amount = 10.0
-    status, why = await writer.write_csr_spend(db, spend, fid, program_id=None, state_id=None, district_id=None,
+    status, why = await writer_funder.write_csr_spend(db, spend, fid, program_id=None, state_id=None, district_id=None,
                                                csr_sector_id=None, domain_id=domain, theme_id=None, document_id=None)
     assert why["reason"].startswith("a domain needs classified_by")
 
     foot = rec(activity_kind="footprint", fiscal_year="FY2023-24", name_as_printed=None)
-    status, why = await writer.write_footprint(db, foot, fid, program_id=None, state_id=None, district_id=None,
+    status, why = await writer_funder.write_footprint(db, foot, fid, program_id=None, state_id=None, district_id=None,
                                                document_id=None)
     assert why == {"reason": "a footprint line needs a place"}
 
     prog = rec(activity_kind="programme", fiscal_year="FY2023-24", classified_by="report",
                classification_note=None, amount=None)
-    status, why = await writer.write_programme_spend(db, prog, fid, program_id=None, domain_id=None, theme_id=None,
+    status, why = await writer_funder.write_programme_spend(db, prog, fid, program_id=None, domain_id=None, theme_id=None,
                                                      document_id=None)
     assert why["reason"].startswith("a programme line needs")
     assert not await one(db, "SELECT 1 FROM funder_activity WHERE funder_id = %s", fid)
@@ -196,7 +196,7 @@ async def test_a_confirmed_classification_is_never_re_inferred(db):
     spend = rec(activity_kind="spend", fiscal_year="FY2023-24", designation=None, project_name="Wells",
                 partner_name=None, classified_by="filed_sector", classification_note=None, implementation_mode=None,
                 partner_csr1=None, outlay=None, amount=7.0, project_count=None, is_ongoing=None)
-    status, _ = await writer.write_csr_spend(db, spend, fid, program_id=None, state_id=None, district_id=None,
+    status, _ = await writer_funder.write_csr_spend(db, spend, fid, program_id=None, state_id=None, district_id=None,
                                              csr_sector_id=None, domain_id=tags[1]["id"], theme_id=None,
                                              document_id=None)
     line = await one(db, "SELECT amount, domain_tag_id, classified_by FROM funder_activity WHERE funder_id = %s", fid)
@@ -214,7 +214,7 @@ async def test_an_ngo_partner_line_never_overwrites_the_funders_amount(db):
                start_date=None, end_date=None, relationship_status="active", notes="first line\nsecond line",
                source_type="aggregator", evidence_tier="claimed")
     found: list = []
-    status, _ = await writer.write_partner(db, line, fid, program_id=None, document_id=None, fill_only=True,
+    status, _ = await writer_funder.write_partner(db, line, fid, program_id=None, document_id=None, fill_only=True,
                                            conflicts=found)
     stored = await one(db, "SELECT amount, notes, relationship_status, source_type FROM funder_activity "
                            "WHERE funder_id = %s", fid)
@@ -241,23 +241,23 @@ async def test_an_eligibility_document_follows_the_newest_text(db):
             "disqualifiers": None, "not_stated": False, "as_of": None, "doc_type": "funder_eligibility"}
     first = rec(**base, own_bar="Audited accounts.")
     first.content_md = lambda: "## Its own bar\n\nAudited accounts."
-    doc, status = await writer.write_eligibility_document(db, first, fid)
+    doc, status = await writer_funder.write_eligibility_document(db, first, fid)
     assert status == "added"
-    assert (await writer.write_eligibility_document(db, first, fid))[1] == "matched"
+    assert (await writer_funder.write_eligibility_document(db, first, fid))[1] == "matched"
     second = rec(**base, own_bar="Three years.")
     second.content_md = lambda: "## Its own bar\n\nThree years."
-    assert await writer.write_eligibility_document(db, second, fid) == (doc, "updated")
+    assert await writer_funder.write_eligibility_document(db, second, fid) == (doc, "updated")
     with gated(Gate(plan=True)):
-        assert await writer.write_eligibility_document(db, second, fid) == (0, "planned")
+        assert await writer_funder.write_eligibility_document(db, second, fid) == (0, "planned")
 
 
 async def test_set_registered_location_fills_only_a_blank(db):
     oid = await org(db, f"Zz Reg Org {tag()}")
     states = await rows(db, "SELECT id FROM locations WHERE kind = 'state' ORDER BY id LIMIT 2")
-    assert await writer.set_registered_location(db, Owner.org(oid), states[0]["id"])
-    assert not await writer.set_registered_location(db, Owner.org(oid), states[1]["id"])
+    assert await writer_org.set_registered_location(db, Owner.org(oid), states[0]["id"])
+    assert not await writer_org.set_registered_location(db, Owner.org(oid), states[1]["id"])
     with gated(Gate(plan=True)):
-        assert not await writer.set_registered_location(db, Owner.org(oid), states[1]["id"])
+        assert not await writer_org.set_registered_location(db, Owner.org(oid), states[1]["id"])
     assert (await one(db, "SELECT registered_location_id FROM orgs WHERE id = %s", oid))[
         "registered_location_id"] == states[0]["id"]
 
@@ -267,10 +267,10 @@ async def test_write_funder_appends_aliases_and_a_plan_returns_unwritten(db):
     fid = await funder(db, name, aliases=["Old Spelling"])
     record = FunderRecord(name=name, aliases=["old spelling", "New Spelling"], source_url="https://x.example.org",
                           source_name="r", fetched_at=NOW, content_hash="h", extractor_version="v")
-    status, _, changes = await writer.write_funder(db, record, Match("exact", fid))
+    status, _, changes = await writer_funder.write_funder(db, record, Match("exact", fid))
     assert status == "updated" and changes["aliases"]["new"] == ["Old Spelling", "New Spelling"]
     with gated(Gate(plan=True)) as gate:
-        status, new_id, _ = await writer.write_funder(db, record.model_copy(update={"name": f"Zz Brand New {tag()}"}),
+        status, new_id, _ = await writer_funder.write_funder(db, record.model_copy(update={"name": f"Zz Brand New {tag()}"}),
                                                       Match("none"))
     assert (status, new_id) == ("added", writer.UNWRITTEN) and gate.items[0]["case"] == 5
 
@@ -288,7 +288,7 @@ async def test_a_number_from_a_weaker_source_than_the_open_row_is_its_own_row(db
     oid = await org(db, f"Zz Fcra Org {tag()}")
     await db.execute("INSERT INTO org_identifiers (org_id, id_type, status, source_type, evidence) "
                      "VALUES (%s, 'fcra', 'not_found', 'registry', 'evidenced')", (oid,))
-    status, _, found = await writer.write_org_identifier(db, ident(id_value=f"FCRA{tag()}"), oid, None)
+    status, _, found = await writer_org.write_org_identifier(db, ident(id_value=f"FCRA{tag()}"), oid, None)
     assert status == "added" and [c.column for c in found] == ["status"]
     assert (await one(db, "SELECT count(*) AS n FROM org_identifiers WHERE org_id = %s", oid))["n"] == 2
 
@@ -297,10 +297,10 @@ async def test_a_blocked_check_confirms_nothing_and_any_finding_replaces_it(db):
     oid = await org(db, f"Zz Blocked Org {tag()}")
     await db.execute("INSERT INTO org_identifiers (org_id, id_type, status, source_type, evidence) "
                      "VALUES (%s, 'fcra', 'check_blocked', 'registry', 'evidenced')", (oid,))
-    status, _, found = await writer.write_org_identifier(db, ident(status="check_blocked", id_value=None), oid, None)
+    status, _, found = await writer_org.write_org_identifier(db, ident(status="check_blocked", id_value=None), oid, None)
     assert (status, found) == ("matched", [])
     number = f"FCRA{tag()}"
-    status, _changes, _ = await writer.write_org_identifier(
+    status, _changes, _ = await writer_org.write_org_identifier(
         db, ident(id_value=number, source_type="aggregator", evidence_tier="claimed"), oid, None)
     row = await one(db, "SELECT id_value, status, source_type FROM org_identifiers WHERE org_id = %s", oid)
     assert status == "updated" and row == {"id_value": number, "status": "registered", "source_type": "aggregator"}
@@ -310,7 +310,7 @@ async def test_a_status_with_no_number_updates_the_one_current_registration(db):
     oid = await org(db, f"Zz Expired Org {tag()}")
     await db.execute("INSERT INTO org_identifiers (org_id, id_type, id_value, status, source_type, evidence) "
                      "VALUES (%s, 'fcra', %s, 'registered', 'aggregator', 'claimed')", (oid, f"FC{tag()}"))
-    status, _, _ = await writer.write_org_identifier(
+    status, _, _ = await writer_org.write_org_identifier(
         db, ident(status="not_available", id_value=None, source_type="registry"), oid, None)
     row = await one(db, "SELECT count(*) AS n, min(status) AS status FROM org_identifiers WHERE org_id = %s", oid)
     assert status == "updated" and row == {"n": 1, "status": "not_available"}
@@ -320,7 +320,7 @@ async def test_an_application_with_no_stronger_registration_fills_the_open_row(d
     oid = await org(db, f"Zz Applied Org {tag()}")
     await db.execute("INSERT INTO org_identifiers (org_id, id_type, status, source_type, evidence) "
                      "VALUES (%s, '80g', 'not_found', 'aggregator', 'claimed')", (oid,))
-    status, _, _found = await writer.write_org_identifier(
+    status, _, _found = await writer_org.write_org_identifier(
         db, ident(id_type="80g", status="applied", id_value=None, application_ref="ACK-1"), oid, None)
     row = await one(db, "SELECT status, application_ref, source_type FROM org_identifiers WHERE org_id = %s", oid)
     assert status == "updated" and row == {"status": "applied", "application_ref": "ACK-1",

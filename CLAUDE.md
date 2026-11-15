@@ -12,7 +12,7 @@ You do not need to read the code to learn how a subsystem works. Three layers, e
 - **`docs/ARCHITECTURE.md`**: the hand-written *why*: invariants, decisions and known regressions, one section per area.
 - **`docs/CHANGELOG.md`**: everything that shipped, by subsystem and PR, plus **"Not finished"**.
 
-Source code and tests win over all three. Nested `CLAUDE.md` files in `backend/app/agent/`, `backend/app/ingest/`,
+Source code and tests win over all three. Nested `CLAUDE.md` files in `backend/app/ask/`, `backend/app/ingest/`,
 `backend/app/matching/`, `backend/app/core/`, `db/` and `frontend/` load on their own and point at their pages.
 A PR that changes a tool, table, route or flow runs `make wiki-update`; one that changes a rule edits ARCHITECTURE.md;
 one that ships adds a CHANGELOG line. **Never hand-edit `openwiki/`**: correct it with `make wiki-fix MSG="..."`.
@@ -141,11 +141,13 @@ and, with `make up ENV=staging`, the local stack itself. The containers stay you
 only the data is shared. Think before using that one: a research run from your
 machine then writes straight into the database the deployed app serves.
 
-**Supabase Storage is global, so the two halves of a document can disagree.**
-`SUPABASE_URL`/`SUPABASE_SERVICE_KEY` are not environment-scoped: with the backend
-on the local Postgres, `fetch_document` still archives the file to the cloud bucket,
-so the `documents` row is local and the object it names is not. Running
-`ENV=staging` puts both in the same place.
+**Supabase Storage is one project, so a local backend gets its own buckets.**
+`SUPABASE_URL`/`SUPABASE_SERVICE_KEY` are not environment-scoped, so `STORAGE_BUCKET_SUFFIX`
+(`-local` in docker-compose and `.env.example`) sends a local backend's files to
+`org-vault-local`, `source-archive-local` and `staff-sources-local`; rows keep the plain
+bucket name. It is ignored on the Storage project's own database (staging, deployed, and
+`make staff-source`/`client-docs ENV=staging`), since those rows name the plain buckets.
+A backend with no suffix on a database outside the Storage project warns at boot.
 
 **`STAGING_DB_*` are local-tooling variables only.** The backend itself reads
 `DATABASE_URL` (`backend/app/core/config.py`). Setting `STAGING_DB_*` on a deployed host does
@@ -175,11 +177,15 @@ backend/app/
   api/             router.py (the one aggregate router) · deps.py · routes/<resource>.py
   repositories/    hand-written SQL, one module per resource
   schemas/         Pydantic, one module per resource
-  agent/           build.py (builds the deep agent) · models.py · tools/
+  agentkit/        what every deep agent shares: models.py · harness.py · middleware.py
+  ask/             agent.py (builds Ask Sangam) · tools/
                    instructions.md (the system prompt) · prompt.py (loads it)
   ingest/          agent.py (builds Sangam Import) · instructions.md · skills/
                    tools/ every tool it has, and nothing else in ingest/ is one
-                   the rest is the pipeline: runner · writer · promote · matcher
+                   research/ what a researcher must find and the shape it saves (findings, contract)
+                   reading/ where a run may read (access, registry, run and staff sources, vault)
+                   catalog/ from the brief to Sangam's tables (save, promote*, writer*, matcher, undo)
+                   runner · brief · news/ · calls/ · adapters/ stay at the top
   matching/        Funder Match: rubric · rules · match (pure) · service (a saved run) · run (make match)
   integrations/    graphiti.py (Neo4j client lifecycle) · tracing.py (Langfuse) · storage.py (Supabase Storage)
 
@@ -201,7 +207,7 @@ Things worth knowing before changing anything:
 from source text and is rebuildable from Postgres (`seed/graph_seed.py`). Keep that
 property — nothing should live only in the graph.
 
-**The agent reaches the database through tools, not the API.** `backend/app/agent/tools/sql_tools.py`
+**The agent reaches the database through tools, not the API.** `backend/app/ask/tools/sql_tools.py`
 runs model-written SELECTs against it directly. `backend/app/api/routes/` serves the frontend's REST calls. They
 share `repositories/` but are separate paths; changing one does not change the other.
 
@@ -225,8 +231,8 @@ Routers take the pool as `pool: PoolDep` (from `app/db/pool.py`) rather than cal
 outside any request, still call `get_pool()` directly; Ask Sangam's SQL executor then sets the
 caller itself (below).
 
-**Only one file is called `graph`**: `app/agent/tools/graph_tools.py`, the `search_graph` agent
-tool. The deep agent is built in `app/agent/build.py`, and the Graphiti/Neo4j client lifecycle
+**Only one file is called `graph`**: `app/ask/tools/graph_tools.py`, the `search_graph` agent
+tool. The deep agent is built in `app/ask/agent.py`, and the Graphiti/Neo4j client lifecycle
 (`open_graph`, `graph_status`, `client`) lives in `app/integrations/graphiti.py`. Both used to
 be called `graph.py` too, which made tracebacks ambiguous.
 
@@ -244,7 +250,7 @@ route that needs a graph calls `get_graph(app, "ask_graph" | "ingest_graph")`; a
 imports agent code at the top undoes this, so `routes/` imports it inside the function that uses it.
 
 **The agent has exactly six tools, and there is ONE open path to the database.**
-`app/agent/build.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
+`app/ask/agent.py` registers `db_list_tables`, `db_describe_table`, `db_profile_column`,
 `db_query`, `search_graph` and `compare_fit`. Nothing else, and no subagent, so there
 is no `task` tool. `compare_fit` is the one exception to "the model writes its own SELECT": funder
 matching is a fixed checklist, so its queries are fixed too (`app/repositories/matching.py`, in a
@@ -275,12 +281,12 @@ insert (`app.my_match_org_ids()`), with `run_by` their own id; members read. No 
 a run. `compare_fit` refuses in chat for anyone else, by the same rule. Design:
 `docs/features/2026-10-10-funder-match-saved-runs.md`.
 
-That sentence was false for a while and `app/agent/harness.py` is what makes it true again.
+That sentence was false for a while and `app/agentkit/harness.py` is what makes it true again.
 `create_deep_agent` adds eight filesystem tools of its own — including `write_file`, `delete`
 and `execute` — and, whenever any subagent is declared, a `general-purpose` subagent carrying
 **the main agent's entire tool list** under deepagents' generic prompt. Ask Sangam was running
 fifteen tools; Sangam Import twenty-one, with a subagent that could call `run_import_now` and
-`promote_research` under none of its instructions. `app/agent/harness.py` removes both, by
+`promote_research` under none of its instructions. `app/agentkit/harness.py` removes both, by
 two different mechanisms, and the difference matters: a `HarnessProfile` is registered per
 **provider**, so it is global to every agent sharing a model — right for the subagent, wrong for
 tools, since both supervisors need `ls` to find a skill and no subagent may hold it. So
@@ -311,15 +317,13 @@ relationships and answered seven. Two paths to the same rows also meant two plac
 correct — a data caveat added to the catalog reached `db_query` and not `search_orgs`. The cost
 is latency: a curated lookup was one tool call, the same question in SQL is three to five.
 
-`app/agent/tools/mcp.py` (GitHub and Playwright MCP servers) is complete but imported nowhere, and
-the `Settings` fields that feed it — `github_pat`, `github_mcp_url`, `playwright_mcp_url`,
-`mcp_servers` — therefore do nothing. `web.make_web_search` (Tavily) is not an Ask tool, but Sangam
-Import's `search_public_sources` and the news pipeline use it, so `tavily_api_key` matters.
+Ask has no web tool. Sangam Import's `search_public_sources` (`research_tools.make_web_search`) and the news
+pipeline call Tavily, so `tavily_api_key` matters.
 
 **The SQL tools let the model write its own SELECT, behind four layers.** Full design in
 `docs/SQL_AGENT.md`; the parts you need before touching them:
 
-- `app/agent/tools/sql/catalog.py` is the **allowlist, as data** — 37 tables, and a column not
+- `app/ask/tools/sql/catalog.py` is the **allowlist, as data** — 37 tables, and a column not
   listed there does not exist as far as the tool is concerned. It also carries `defects`:
   evidence-backed caveats about the *data* that get injected into every result touching the
   table, so the model cannot report "0 rows" as "none exist". Delete a defect line when a
@@ -341,10 +345,12 @@ Import's `search_public_sources` and the news pipeline use it, so `tavily_api_ke
   the owner. Every catalog column must be SELECT-able by `authenticated` (`test_agent_rls.py`), or
   `SELECT *` breaks. `compare_fit` and Sangam Import still read as the owner, by design.
 
-`SQL_AUDIT_MODEL` turns on a post-answer audit (`app/agent/audit.py`): a cheap second model
+`SQL_AUDIT_MODEL` turns on a post-answer audit (`app/ask/audit.py`): a cheap second model
 checks grain, missing filters, false zeros and whether the figures in the prose match the rows,
-then appends a caveat. It never blocks and never edits — by the time it runs the answer has
-already streamed. On by default, on the cheap tier; `SQL_AUDIT_MODEL=off` turns it off.
+and sends its verdict to Langfuse as the `answer_audit` score. **The person never sees it**: it
+used to append a ⚠️ caveat, and most of those were wrong (#322). It comes back into the answer
+only once the scores show it is right. On by default where Langfuse is set, on the cheap tier; `SQL_AUDIT_MODEL=off`
+turns it off.
 
 Adding a table to the catalog is a **security decision**, not bookkeeping: a new table is
 invisible to the agent until someone puts it there, and boot logs any live table that is
@@ -357,6 +363,32 @@ neither catalogued nor in `KNOWN_EXCLUDED`.
 `import-<uuid>`, and the backend, endpoint and prompts keep "ingest"/"Import". Scout is one chat
 thread like Ask: task cards over the composer, sources ticked in the right rail before the first
 message (they answer `choose_sources`, so no card asks mid-run), then every turn inline.
+
+## Code boundaries
+
+The backend refactor (`docs/features/2026-11-05-backend-refactor-plan.md`) adds one rule per PR, each with a check
+in `tests/test_architecture.py`.
+
+- **No dead code (R6).** A function or class defined at the top of a module in `app/` has a caller in `app/`,
+  `seed/` or `scripts/`; a test is not one. Delete it with its tests rather than keeping it "in case". A decorated
+  definition (a route, a `@tool`) and a script's `main()` are exempt, since something else calls them.
+- **Only a builder imports from `tools/` (R1).** `ask/agent.py`, `ingest/agent.py`, `proposals/agent.py` and
+  `ingest/news/verify.py` build agents and may import tools; a route, a middleware or another module imports the
+  shared helper from where it lives instead (`ingest/catalog/save.py`, `core/extract.py`, `proposals/records.py`).
+  Ask's SQL engine under `ask/tools/sql/` is not a tool and is exempt.
+- **An import inside a function needs a reason (R2).** Routes, `lifespan`, `migrate`, `integrations/` and the
+  news and calls crons import lazily to keep a cold start light. Anywhere else the import goes at the top; a
+  circular import is fixed, not hidden, and the four left are listed in `CYCLES`, which may only shrink.
+- **The agents share code through `agentkit/` and `core/`, not each other (R3).** `agentkit/` holds model tiers,
+  the harness and the middleware every deep agent uses (`tool_errors`, `fallback`, `cheap_summarizer`, `AgUiState`).
+  Pitch may use Import's public reading pieces (brief, vault, geography, source rules, reading tools); the list is
+  `SHARED_ACROSS_AGENTS`. Each agent's entry point is its `agent.py`, and `import app.main` must not load
+  `deepagents` or `langchain`.
+- **No file over 800 lines (R4).** Split at a line the file already draws (funder/org, records/facts), never into
+  layers; aim for 300–500. `LONG_BY_DESIGN` exempts the two files that are one entry per table or concept. A
+  name a sibling module imports is public: no leading underscore.
+- **A move is its own PR (R5).** `git mv` and import edits only, no behaviour change and no re-export shim, then
+  `make wiki-update`.
 
 ## Conventions
 
@@ -373,23 +405,24 @@ name). Which PR added each one, and what it did, is in `docs/CHANGELOG.md`; the 
 **Every fetch of a model-supplied URL goes through `guarded_client` (`app/core/egress.py`)**, which refuses
 private, loopback and metadata addresses on every redirect hop. TLS is always verified,
 against certifi plus `app/core/certs/intermediates.pem`: a site that omits its intermediate gets that one certificate
-added there, never `verify=False`; an expired or mismatched certificate (nrlm.gov.in, rchiips.org) stays refused.
+added there (its root must be in certifi), never `verify=False`; an expired or mismatched certificate (nrlm.gov.in, rchiips.org)
+stays refused, and so does a site under a CA certifi dropped (censusindia.gov.in, emSign).
 
 **Agent tools never raise, and every row they return is cited.** Two conventions that the
 product depends on and that a new tool silently breaks:
 
 - *Errors are return values.* A raised exception aborts the entire agent run; a returned
-  error string lets the model see the failure and adapt. Every tool body in `app/agent/tools/` is
+  error string lets the model see the failure and adapt. Every tool body in `app/ask/tools/` is
   wrapped in `try/except` returning `f"<tool> failed: {exc}"`. `tool_errors()` (`ToolErrorMiddleware`, on every agent and
   subagent) is the backstop for one that forgets: it returns the exception's type, never its message.
 - *Every database and graph row carries a citation marker* — `[org:N]`, `[funder:N]`,
-  `[activity:N]`, `[score:N]`, `[news:N]`, `[graph:<uuid8>]` — because `app/agent/instructions.md` requires the
+  `[activity:N]`, `[score:N]`, `[news:N]`, `[graph:<uuid8>]` — because `app/ask/instructions.md` requires the
   model to repeat it inline next to each fact. A tool that returns uncited rows produces
   uncitable answers. Ask has no web tool: `fetch_url` was removed so a page it read could not steer
   `db_query` rows out to a URL.
 
-Adding a tool: write the async function in `app/agent/tools/` with both conventions, register it
-in `app/agent/build.py`, describe it in `app/agent/instructions.md` (a test asserts every
+Adding a tool: write the async function in `app/ask/tools/` with both conventions, register it
+in `app/ask/agent.py`, describe it in `app/ask/instructions.md` (a test asserts every
 registered tool is named there), and add a label to
 `frontend/features/ask/lib/toolLabels.ts` (unlabelled tools fall back to a humanised name).
 For Sangam Import the four places are the same shape but different files:
@@ -436,11 +469,11 @@ the design system's iconography page says.
 that every field traces to a source.
 
 **A tool of either agent lives under a `tools/` package, and nothing else does.**
-`app/agent/tools/` for Ask Sangam, `app/ingest/tools/` for Sangam Import — five modules
+`app/ask/tools/` for Ask Sangam, `app/ingest/tools/` for Sangam Import — five modules
 there, split by what the tool touches: `pipeline_tools.py` (the adapter path),
 `catalog_tools.py` (what Sangam already holds), `research_tools.py` (the open web),
 `library_tools.py` (public documents Sangam archived), `vault_tools.py` (an org's Doc Vault).
-Both agents register their list in one place — `build.py` and `agent.py` respectively — and
+Both agents register their list in one place, their `agent.py` — and
 a test walks the package to prove every tool defined is also registered.
 
 **Sangam Import has one human-in-the-loop step before it reads anything: `choose_sources`.**
@@ -459,8 +492,8 @@ reasons: Ask Sangam and the Import supervisor, where one wrong join or merge is 
 mistake and the model runs once per turn. `RESEARCH_MODEL` (Sonnet 5.5) runs the
 `entity-researcher`s: they read long pages, up to `MAX_PARALLEL_RESEARCH` at once, so they are
 most of an import's tokens, and judging evidence still needs a capable model. The `vault-reader`, which reads an org's own Doc Vault files with no web tools, runs on it too. `UTILITY_MODEL`
-(Haiku 4.5) does work with a fixed shape — article extraction, the `catalog-writer`, the
-`workbook-reader` — and `SQL_AUDIT_MODEL` (Haiku 4.5) the post-answer audit. A blank or unset
+(Haiku 5.5, at low effort) does work with a fixed shape — article extraction, the `catalog-writer`, the
+`workbook-reader` — and `SQL_AUDIT_MODEL` (Haiku 5.5, also at low effort) the post-answer audit. A blank or unset
 model variable means the default in `config.py`, the only place defaults are written; `SQL_AUDIT_MODEL=off`
 disables the audit. A deployed backend reads these from its
 Vercel env, which beats the code defaults.
@@ -497,12 +530,12 @@ with it** (`catalog-mapping` before a write, `catalog-write-report` after). The 
 groups split by entity kind because the kinds genuinely differ; the record, the mapping and the report do not. **The pull pair is the researcher's contract**: they live under
 `skills/research/`, which `entity-researcher` declares and the supervisor's listing skips (that folder holds no
 `SKILL.md` itself). It reads the one for its kind with `read_file`, and `save_research` refuses a save that
-leaves a field with neither a finding nor a gap (`app/ingest/contract.py`). The other five are the supervisor's. Constraints never live there: progressive disclosure
+leaves a field with neither a finding nor a gap (`app/ingest/research/contract.py`). The other five are the supervisor's. Constraints never live there: progressive disclosure
 means the model chooses whether to load, and the money-unit rule, the entity-confirmation step and
 the access rules cannot be optional. `docs/SKILLS.md` has the mechanism, the discovery rules and
 the honest cost.
 
-**Ask Sangam loads its matching procedures the same way**, from `app/agent/skills/`:
+**Ask Sangam loads its matching procedures the same way**, from `app/ask/skills/`:
 `funder-matching` (resolve the organisation → one `compare_fit` over the catalog),
 `funder-comparison` (named funders → one `compare_fit` with their ids), `funder-shortlist-brief`
 (the write-up), and `news-brief` (what changed in the news for one org or funder, cited `[news:N]`). The rules they lean on — compare_fit judges, call it once, an unknown is "not
@@ -555,6 +588,17 @@ and `auth-headers.server.ts` (server components). REST routes already run as the
 (`PoolDep` sets the role and JWT claims per transaction); agent tools, Import and the matching reader
 still use the owner pool. The plan is `features-plans/access/auth-plan.md`; its Phase 2 (email-domain
 matching, join requests) is not built.
+
+## Before opening a pull request
+
+Run all three on the branch's diff before `gh pr create`, fix what they find, and say in the PR body
+that they ran:
+
+1. **Code review**: `/code-review`.
+2. **Security review**: `/security-review`.
+3. **Design system sync**: if the PR touches `frontend/components/`, `globals.css` or a screen the UI kit
+   recreates, update "Sangam Design System v2" in the same PR (`docs/DESIGN_SYSTEM.md`). Otherwise
+   say so in the PR body.
 
 ## Deployment
 

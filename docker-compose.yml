@@ -78,6 +78,7 @@ services:
       # LangSmith tracing stayed silently dead.
       SUPABASE_URL: ${SUPABASE_URL:-${NEXT_PUBLIC_SUPABASE_URL:-}}
       SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
+      STORAGE_BUCKET_SUFFIX: ${STORAGE_BUCKET_SUFFIX--local}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
       LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}

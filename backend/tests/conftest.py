@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 import httpx
@@ -24,6 +25,12 @@ class _SentinelPool:
         raise AssertionError("unit test used the pool — monkeypatch the repository instead")
 
 
+@pytest.fixture(autouse=True)
+def _plain_buckets(monkeypatch):
+    """A shell's STORAGE_BUCKET_SUFFIX would rename every bucket a test expects."""
+    monkeypatch.delenv("STORAGE_BUCKET_SUFFIX", raising=False)
+
+
 def make_app(*routers) -> FastAPI:
     app = FastAPI()
     for router in routers:
@@ -34,6 +41,43 @@ def make_app(*routers) -> FastAPI:
     # every router — no per-module list to keep in sync when a resource is added.
     app.dependency_overrides[get_pool] = _SentinelPool
     return app
+
+
+class RecordingPool:
+    """A pool whose connection records every query and answers each with the next of `results`; one more fails."""
+
+    def __init__(self, *results: list[dict]):
+        self.results, self.calls = list(results), []
+
+    @property
+    def sql(self) -> str:
+        return self.calls[0][0]
+
+    @property
+    def params(self) -> dict:
+        return self.calls[0][1]
+
+    @asynccontextmanager
+    async def connection(self):
+        pool = self
+
+        class _Conn:
+            async def execute(self, sql, params):
+                pool.calls.append((sql, params))
+                assert pool.results, f"unexpected query #{len(pool.calls)}: {sql[:80]!r}"
+                rows = pool.results.pop(0)
+
+                class _Cur:
+                    async def fetchall(self):
+                        return rows
+                return _Cur()
+
+        yield _Conn()
+
+
+@pytest.fixture
+def recording_pool():
+    return RecordingPool
 
 
 @pytest.fixture
@@ -76,8 +120,9 @@ def build_import(monkeypatch):
 
     from langchain_core.language_models.fake_chat_models import FakeListChatModel
 
+    from app.agentkit import middleware
     from app.core.config import Settings
-    from app.ingest import agent, middleware
+    from app.ingest import agent
 
     def fake(spec: str) -> FakeListChatModel:
         return FakeListChatModel(responses=["ok"], name=spec)

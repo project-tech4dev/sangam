@@ -11,15 +11,19 @@ from langchain_core.messages import SystemMessage
 
 from app.core import security
 from app.core.security import CallerScope, chat_scope
-from app.ingest import caller, promote
+from app.ingest import caller
+from app.ingest.catalog import promote
+from app.ingest.catalog import save as catalog_save
+from app.ingest.catalog.writer import Gate
 from app.ingest.tools import catalog_tools, pipeline_tools, research_tools
-from app.ingest.writer import Gate
+from tests.cov_ingest_fakes import patch_catalog
 
 ME = UUID(int=2)
 MEMBER = CallerScope(ME, False, {7: "member"}, {7: "Arpan"})
 STEWARD = CallerScope(UUID(int=3), False, {7: "steward", 8: "steward"}, {7: "Arpan", 8: "Kabil"})
 STAFF = CallerScope(UUID(int=1), True)
 ARPAN_STEWARD = CallerScope(UUID(int=4), False, {7: "steward"}, {7: "Arpan"})
+KABIL_STEWARD = CallerScope(UUID(int=5), False, {8: "steward"}, {8: "Kabil"})
 
 STAFF_URL = "https://staff-sources.sangam.invalid/12"
 PUBLIC_URL = "https://example.org/csr"
@@ -90,7 +94,7 @@ class TestStaffToolsRefuseEveryoneElse:
 
 
 class TestSavingResearch:
-    from app.ingest.research_records import EntityResearch
+    from app.ingest.research.findings import EntityResearch
 
     FUNDER = EntityResearch(entity_name="Acme Foundation", entity_kind="funder", status="not_found",
                             summary="Nothing public about this one, in any source read.")
@@ -132,36 +136,36 @@ class TestSavingResearch:
 
 class TestPromotingResearch:
     async def test_a_member_promotes_one_slug_at_a_time(self, monkeypatch):
-        monkeypatch.setattr(catalog_tools, "get_pool", lambda: pytest.fail("reached the database"))
+        patch_catalog(monkeypatch, "get_pool", lambda: pytest.fail("reached the database"))
         with running_as(MEMBER):
             out = await catalog_tools.promote_research.ainvoke({})
         assert out.startswith("REFUSED")
 
     async def test_anyone_signed_in_may_save_a_funder(self):
-        assert await catalog_tools._may_save(_Conn([]), MEMBER, {"slug": "acme", "entity_kind": "funder"}) is None
+        assert await catalog_save._may_save(_Conn([]), MEMBER, {"slug": "acme", "entity_kind": "funder"}) is None
         nobody = CallerScope(None, False)
-        assert await catalog_tools._may_save(_Conn([]), nobody, {"slug": "acme", "entity_kind": "funder"})
+        assert await catalog_save._may_save(_Conn([]), nobody, {"slug": "acme", "entity_kind": "funder"})
 
     @pytest.mark.parametrize(("scope", "org", "allowed"), [
         (STEWARD, 8, True), (STEWARD, 9, False), (MEMBER, 7, False),
     ])
     async def test_an_ngo_needs_its_steward(self, scope, org, allowed):
         row = {"slug": "kabil", "entity_kind": "org", "resolved_org_id": org}
-        assert (await catalog_tools._may_save(_Conn([]), scope, row) is None) is allowed
+        assert (await catalog_save._may_save(_Conn([]), scope, row) is None) is allowed
 
     async def test_a_new_ngo_is_the_teams_to_add(self, monkeypatch):
-        from app.ingest.matcher import Match
+        from app.ingest.catalog.matcher import Match
 
         async def no_match(conn, name, identifiers=None, website=None):
             return Match(method="none")
 
         monkeypatch.setattr(promote, "resolve_org", no_match)
-        why = await catalog_tools._may_save(_Conn([]), STEWARD, {"slug": "new-ngo", "entity_kind": "org"})
+        why = await catalog_save._may_save(_Conn([]), STEWARD, {"slug": "new-ngo", "entity_kind": "org"})
         assert "Sangam team adds new NGOs" in why
 
     @pytest.mark.parametrize(("choice", "allowed"), [("update", True), ("new", False), (None, False)])
     async def test_a_steward_who_says_a_close_name_is_theirs_may_save(self, monkeypatch, choice, allowed):
-        from app.ingest.matcher import Match
+        from app.ingest.catalog.matcher import Match
 
         kabil = {"id": 8, "name": "Kabil Trust", "score": 0.7}
 
@@ -173,7 +177,7 @@ class TestPromotingResearch:
         asked.on_entity("orgs", "Kabil", kabil)
         decisions = {asked.items[0]["id"]: choice} if choice else {}
         row = {"slug": "kabil", "entity_name": "Kabil", "entity_kind": "org"}
-        assert (await catalog_tools._may_save(_Conn([]), STEWARD, row, decisions) is None) is allowed
+        assert (await catalog_save._may_save(_Conn([]), STEWARD, row, decisions) is None) is allowed
 
 
 ROW = {"slug": "acme", "entity_kind": "funder", "summary": "From the sheet", "fact_count": 2,
@@ -190,12 +194,12 @@ class TestOnlyStaffSeePrivateFindings:
 
     async def test_research_rows_are_filtered_for_non_staff(self):
         for scope, n in [(MEMBER, 1), (STAFF, 2)]:
-            rows = await catalog_tools._research_rows(_Pool([dict(ROW)]), "acme", scope)
+            rows = await catalog_save.research_rows(_Pool([dict(ROW)]), "acme", scope)
             assert len(rows[0]["findings"]) == n
 
     async def test_a_tool_without_a_caller_sees_public_findings_only(self):
         with running_as(None):
-            rows = await catalog_tools._research_rows(_Pool([dict(ROW)]), "acme")
+            rows = await catalog_save.research_rows(_Pool([dict(ROW)]), "acme")
         assert len(rows[0]["findings"]) == 1
 
 
@@ -296,7 +300,7 @@ class TestStaffUndoAndDelete:
     def app_as(self, monkeypatch):
         from app.api.routes import ingest as ingest_api
         from app.db.pool import get_pool
-        from app.ingest import undo
+        from app.ingest.catalog import undo
         from tests.conftest import make_app
         from tests.test_access import as_caller
 
@@ -363,12 +367,12 @@ class TestSaveFromTheScreen:
             if slug == "missing":
                 raise LookupError(slug)
             if slug == "kabil" and not caller.is_staff:
-                raise catalog_tools.SaveRefused("Kabil is an NGO; only its stewards and the Sangam team save research about it.")
+                raise catalog_save.SaveRefused("Kabil is an NGO; only its stewards and the Sangam team save research about it.")
             return [{"slug": slug, "entity": {"kind": "funder", "id": 9, "name": "Acme", "status": "created"},
                      "promotion_id": 4, "written": {"funders": {"added": 1}, "contacts": {"same": 2, "updated": 1}},
                      "held": ["contact: no source"], "reasons": []}]
 
-        monkeypatch.setattr(catalog_tools, "save_to_catalog", fake_save)
+        patch_catalog(monkeypatch, "save_to_catalog", fake_save)
 
         async def _post(scope, slug, body):
             app = make_app(ingest_api.router)
@@ -406,7 +410,7 @@ class TestACloseNameIsAsked:
     CLOSE = {"id": 12, "name": "Peoples Resource Development Association", "score": 0.6}
 
     def _answer(self, choice):
-        from app.ingest.matcher import Match
+        from app.ingest.catalog.matcher import Match
 
         asked = Gate(plan=True)
         asked.on_entity("orgs", "PRDA", self.CLOSE)

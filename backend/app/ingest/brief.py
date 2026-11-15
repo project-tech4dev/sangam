@@ -10,9 +10,9 @@ import json
 import re
 from typing import Any
 
-from app.ingest.expectations import CONCEPT_TITLES
-from app.ingest.research_records import TYPED_SINCE, to_inr
-from app.ingest.source_guards import is_private_source
+from app.ingest.research.expectations import CONCEPT_TITLES
+from app.ingest.research.finding_types import TYPED_SINCE, to_inr
+from app.ingest.research.source_guards import is_private_source
 from app.ingest.taxonomy import VOCABULARY
 from app.integrations import storage
 

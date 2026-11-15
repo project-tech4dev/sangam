@@ -8,10 +8,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.proposals import rubric
+from app.proposals import rubric, steps
+from app.proposals.steps import ANSWERS
 
-ANSWERS = ("yes", "will_have", "no")
-_GAP = re.compile(r"\[Add:[^\]]*\]")
+_GAP = re.compile(r"\[Add:[^\[\]]*\]")
 
 
 def _plural(n: int, one: str, many: str) -> str:
@@ -19,8 +19,6 @@ def _plural(n: int, one: str, many: str) -> str:
 
 
 def summary(work: dict[str, Any]) -> dict[str, Any]:
-    from app.proposals import steps  # steps reads ANSWERS from here
-
     requirements = work.get("requirements") or []
     gates = work.get("gates") or {}
     sections = work.get("sections") or {}

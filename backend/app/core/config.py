@@ -3,26 +3,11 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any
+from urllib.parse import urlparse
 
+from psycopg.conninfo import conninfo_to_dict
 from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-# GitHub MCP tools the agent may use when no explicit allowlist is configured.
-# Kept from deep-agent-app: read/inspect + propose-PR only, never merge/delete.
-DEFAULT_GITHUB_TOOL_ALLOWLIST = [
-    "get_me",
-    "search_repositories",
-    "search_code",
-    "search_issues",
-    "get_file_contents",
-    "list_branches",
-    "list_commits",
-    "list_issues",
-    "issue_read",
-    "list_pull_requests",
-    "pull_request_read",
-]
 
 
 class Settings(BaseSettings):
@@ -39,7 +24,7 @@ class Settings(BaseSettings):
 
     # Work that needs no reasoning: a fixed record from one article, the catalog-writer (two tools, a
     # report) and the workbook-reader (one tool, a list of names).
-    utility_model: str = "anthropic:claude-haiku-4-5"
+    utility_model: str = "anthropic:claude-haiku-5-5"
 
     # Local only: also accept `Authorization: Bearer dev` as the seeded dev user. Never set when deployed.
     dev_auth: bool = False
@@ -60,7 +45,7 @@ class Settings(BaseSettings):
     langfuse_secret_key: str = ""
     langfuse_host: str = "https://cloud.langfuse.com"
 
-    # Where download_file saves what it fetches, and read_pdf reads from.
+    # Where Import's research tools save the files they fetch.
     downloads_dir: str = "/tmp/sangam-downloads"
 
     # Supabase Storage: the provenance archive for fetched documents and the
@@ -71,6 +56,9 @@ class Settings(BaseSettings):
     # access token; empty keeps the single seeded dev user.
     supabase_url: str = ""
     supabase_service_key: str = ""
+    # Appended to every bucket name on the wire (`-local` → org-vault-local), so a local backend's files stay
+    # out of the deployed buckets. Rows keep the plain name; ignored on the Storage project's own database.
+    storage_bucket_suffix: str = ""
 
     # Optional tool integrations — all disabled when empty.
     tavily_api_key: str = ""
@@ -98,21 +86,14 @@ class Settings(BaseSettings):
     news_verify_page_limit: int = 3
     news_verify_call_limit: int = 8
     news_verify_cost_usd: float = 0.08
-    github_pat: str = ""
-    github_mcp_url: str = "https://api.githubcopilot.com/mcp/"
-    playwright_mcp_url: str = ""
-    # Extra MCP servers as JSON in langchain-mcp-adapters connection format.
-    mcp_servers: dict[str, Any] = {}
-    github_tool_allowlist: str = ""
 
     # Text-to-SQL tool (db_query). See docs/SQL_AGENT.md. sql_reader_role is the NOLOGIN role the query runs
     # as via SET LOCAL ROLE; empty disables that guard and leaves only the validator and the read-only.
     sql_timeout_ms: int = 5_000
     sql_max_rows: int = 50
-    sql_max_attempts: int = 5
     # A cheap second opinion on each SQL answer (grain, filters, false zeros, numbers). `off` disables it;
     # it is a real extra model call per SQL turn, so it runs on the cheapest tier.
-    sql_audit_model: str = "anthropic:claude-haiku-4-5"
+    sql_audit_model: str = "anthropic:claude-haiku-5-5"
 
     # Graph steps per turn, not tool calls: every middleware hook is its own node, so one model-then-tool
     # cycle costs several. Bound in build_agent(); LangGraph's own default is 25, which a SQL turn exceeds.
@@ -188,12 +169,6 @@ class Settings(BaseSettings):
         return False if value == "" else value
 
     @property
-    def github_allowlist(self) -> list[str]:
-        if self.github_tool_allowlist.strip():
-            return [t.strip() for t in self.github_tool_allowlist.split(",") if t.strip()]
-        return DEFAULT_GITHUB_TOOL_ALLOWLIST
-
-    @property
     def auth_enabled(self) -> bool:
         return bool(self.supabase_url)
 
@@ -208,6 +183,29 @@ class Settings(BaseSettings):
     @property
     def storage_enabled(self) -> bool:
         return bool(self.supabase_url and self.supabase_service_key)
+
+    @property
+    def storage_project(self) -> str:
+        """The Supabase project ref Storage lives in; empty when SUPABASE_URL is not a hosted project."""
+        host = urlparse(self.supabase_url).hostname or ""
+        return host.removesuffix(".supabase.co") if host.endswith(".supabase.co") else ""
+
+    @property
+    def database_in_storage_project(self) -> bool:
+        """Whether DATABASE_URL is the Storage project's own database, direct or through its pooler."""
+        ref = self.storage_project
+        if not ref:
+            return False
+        try:
+            info = conninfo_to_dict(self.database_url)
+        except Exception:  # noqa: BLE001 - a malformed DSN is simply not that project
+            return False
+        return info.get("host") == f"db.{ref}.supabase.co" or (info.get("user") or "").endswith(f".{ref}")
+
+    @property
+    def bucket_suffix(self) -> str:
+        """storage_bucket_suffix, except on the Storage project's own database, whose rows name the plain buckets."""
+        return "" if self.database_in_storage_project else self.storage_bucket_suffix
 
     @property
     def origins(self) -> list[str]:

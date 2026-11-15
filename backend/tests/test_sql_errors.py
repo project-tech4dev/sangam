@@ -6,7 +6,7 @@ import psycopg
 import psycopg_pool
 import pytest
 
-from app.agent.tools.sql.errors import FAILED_PREFIX, MAX_MESSAGE_CHARS, explain_db_error
+from app.ask.tools.sql.errors import FAILED_PREFIX, MAX_MESSAGE_CHARS, explain_db_error
 
 
 class FakeDiag:

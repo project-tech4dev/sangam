@@ -24,15 +24,6 @@ _HOST = re.compile(r"^(?:https?://)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)(?:[/?#].*)?$")
 _BY_SECTION = {"A3": "problem", "A2": "place", "A4": "elsewhere", "A14": "government"}
 
 
-def topic_of(fact: dict[str, Any]) -> str:
-    """A fact saved before facts carried a topic falls back to its section, as the screen does."""
-    if fact.get("topic") in LABELS:
-        return fact["topic"]
-    if fact.get("section") == "F1":
-        return "sdg" if str(fact.get("subject") or "").strip().upper().startswith("SDG") else "government"
-    return _BY_SECTION.get(fact.get("section") or "", "problem")
-
-
 def bad_ask(ask: Any) -> str | None:
     """Why a stored research ask is malformed, or None."""
     if not isinstance(ask, dict) or ask.get("kind") not in ASK_KINDS or not ask.get("at"):
@@ -94,7 +85,6 @@ def reset(work: dict[str, Any]) -> dict[str, Any]:
 
 DEEPER_FROM = ("A1", "A2", "A3")  # the case: what "Research deeper" reads
 DEEPER_NEEDS = ("A2", "A3")  # marked done first; the Summary waits for the plan, so it is read but not needed
-_CITE = re.compile(r"\s*⟦k\d+⟧")
 
 ANGLES_PROMPT = """You turn the case an Indian NGO wrote for a grant proposal into search angles for public research:
 government data, research and evaluations on the problem and the place. Give up to eight angles, each a few words
@@ -120,7 +110,7 @@ def case_text(work: dict[str, Any]) -> str:
     """The case's written parts, citations taken out: the angles come from what it says, not its fact ids."""
     held = work.get("sections") or {}
     labels = {s.code: s.label for s in rubric.CORE}
-    parts = [(labels[c], _CITE.sub("", (held.get(c) or {}).get("text") or "").strip()) for c in DEEPER_FROM]
+    parts = [(labels[c], trace.drop_cites((held.get(c) or {}).get("text") or "", None).strip()) for c in DEEPER_FROM]
     return "\n\n".join(f"## {label}\n{text}" for label, text in parts if text)
 
 

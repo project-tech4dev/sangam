@@ -8,6 +8,7 @@ const deleteFromVault = vi.fn();
 vi.mock("@/features/ask/lib/vault", () => ({
   uploadToVault: (...a: unknown[]) => uploadToVault(...a),
   deleteFromVault: (...a: unknown[]) => deleteFromVault(...a),
+  VAULT_ACCEPT: ".pdf,.docx,.xlsx,.csv,.md,.txt,.png,.jpg,.jpeg,.webp",
 }));
 const proposals = vi.hoisted(() => ({ rows: [] as unknown[], old: false }));
 vi.mock("@/features/ask/views/proposals/api", () => ({

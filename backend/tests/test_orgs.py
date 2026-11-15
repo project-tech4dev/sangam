@@ -54,3 +54,12 @@ async def test_detail_404(client_for, monkeypatch):
         response = await client.get("/api/orgs/nope")
     assert response.status_code == 404
     assert "not found" in response.json()["detail"]
+
+
+async def test_list_orgs_pages_its_filters_through_fetch_page(recording_pool):
+    from app.repositories.orgs import list_orgs
+
+    pool = recording_pool([{"id": 4, "total": 15}])
+    rows, total = await list_orgs(pool, limit=2, offset=6, state="Assam", q="kab")
+    assert ([r["id"] for r in rows], total) == ([4], 15)
+    assert pool.params == {"tag": None, "state": "Assam", "district": None, "q": "kab", "limit": 2, "offset": 6}

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from app.ingest.contract import _numbers, quoted_only, unanswered
-from app.ingest.expectations import concepts_for
-from app.ingest.research_records import YEARLY, EntityResearch
+from app.ingest.research.contract import _numbers, quoted_only, unanswered
+from app.ingest.research.expectations import concepts_for
+from app.ingest.research.finding_types import YEARLY
+from app.ingest.research.findings import EntityResearch
 
 URL = "https://example.org/csr-report.pdf"
 SUMMARY = "Example Foundation funds sports and water projects in Assam."

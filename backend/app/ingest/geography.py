@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.ingest.writer import GATE
+from app.ingest.catalog.writer import GATE
 
 # The 28 states and 8 union territories. Canonical spelling on the left; the
 # right is what sources actually print, including names changed years ago that

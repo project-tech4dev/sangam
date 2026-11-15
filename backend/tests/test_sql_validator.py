@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 import sqlglot
 
-from app.agent.tools.sql.validator import (
+from app.ask.tools.sql.validator import (
     HARD_MAX_ROWS,
     MAX_SQL_CHARS,
     SqlRejected,

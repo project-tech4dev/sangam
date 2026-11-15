@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { Message } from "@ag-ui/client";
-import { ApiError, call } from "../../lib/rest";
+import { ApiError, call } from "@/lib/api/rest";
 
 export type Answer = "yes" | "will_have" | "no";
 

@@ -13,7 +13,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from psycopg_pool import AsyncConnectionPool
 from pydantic import BaseModel
 
-from app.agent.models import resolve_model
+from app.agentkit.models import resolve_model
 from app.core.config import Settings
 from app.schemas.ingest import AskLiveIn, AskLiveOut
 

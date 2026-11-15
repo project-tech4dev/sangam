@@ -8,7 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from app.core.config import Settings
 from app.core.security import CallerScope
-from app.ingest import run_sources
+from app.ingest.reading import run_sources
 from app.proposals import context, readers, steps
 from app.proposals import facts as fact_rules
 from app.proposals import work as rules

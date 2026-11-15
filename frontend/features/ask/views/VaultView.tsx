@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { Tag, Toast } from "@/components/ui";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { authHeaders } from "@/lib/api/auth-headers";
-import { API } from "../lib/rest";
+import { API } from "@/lib/api/rest";
 import { hostOf } from "../lib/sources";
-import { type Doc, deleteFromVault, uploadToVault } from "../lib/vault";
+import { type Doc, VAULT_ACCEPT, deleteFromVault, uploadToVault } from "../lib/vault";
 
 type Problem = { title: string; body: string };
 
@@ -72,7 +72,7 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
         </div>
         <label className="pill vault-upload" data-busy={busy} data-off={!orgSlug}>
           {busy ? "Uploading…" : "Upload a document"}
-          <input type="file" onChange={onPick} disabled={busy || !orgSlug} hidden />
+          <input type="file" accept={VAULT_ACCEPT} onChange={onPick} disabled={busy || !orgSlug} hidden />
         </label>
       </div>
       {problem ? (

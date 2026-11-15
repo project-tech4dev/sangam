@@ -2,19 +2,20 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "@/features/ask/lib/rest";
+import { ApiError } from "@/lib/api/rest";
 import type { Fact, Proposal, Reader, Work } from "@/features/ask/views/proposals/api";
 import { proposal } from "./fixtures";
 
 const call = vi.fn();
-vi.mock("@/features/ask/lib/rest", async (original) => ({
-  ...(await original<typeof import("@/features/ask/lib/rest")>()),
+vi.mock("@/lib/api/rest", async (original) => ({
+  ...(await original<typeof import("@/lib/api/rest")>()),
   call: (...a: unknown[]) => call(...a),
 }));
 const vault = vi.hoisted(() => ({ list: vi.fn(), upload: vi.fn() }));
 vi.mock("@/features/ask/lib/vault", () => ({
   listVault: (...a: unknown[]) => vault.list(...a),
   uploadToVault: (...a: unknown[]) => vault.upload(...a),
+  VAULT_ACCEPT: ".pdf,.docx,.xlsx,.csv,.md,.txt,.png,.jpg,.jpeg,.webp",
 }));
 // The chat is tested on its own; here it only hands the step its send function.
 const chat = vi.hoisted(() => ({ send: vi.fn(), ready: true }));

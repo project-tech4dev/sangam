@@ -1,17 +1,25 @@
 ### 5d. Post-answer audit — built, off by default
 
-`app/agent/audit.py`, wired as `after_agent` middleware. Four checks the guard cannot make
+`app/ask/audit.py`, wired as `after_agent` middleware. Four checks the guard cannot make
 because they are about meaning rather than safety: **grain** (does the SQL count the entity the
 question asked about?), **filters** (is every condition in the question present?), **false zero**
 (could an empty result mean a wrong filter *value*?), **numbers** (do the figures in the prose
-match the rows?). It appends a caveat and never blocks.
+match the rows?). Its verdict is the Langfuse `answer_audit` score; since #322 it appends no caveat, and it never blocks.
+
+It reads every result the answer could draw on: each `db_query` with its SQL, `db_profile_column` and
+`search_graph` (4,000 characters each), `compare_fit` (16,000, enough for a shortlist), and a result paged back from
+`/large_tool_results/`. A cut result says so, and a failed or empty one is a short note, so "could not be retrieved"
+is not unsupported. Past 30,000 characters it keeps whole results, newest first. It also gets today's date in India.
+A turn where nothing returned data, where `compare_fit` refused the caller, or that ended on a canned stop (retry
+limit, call cap) is not audited. It used to see only the last query, cut to 2,000 characters, and no date, so it flagged facts that came from
+earlier queries or from `compare_fit`, and called recent dates future.
 
 `after_agent`, not `after_model` — it must run once on the finished answer, not after every
-model call in the loop. It appends rather than edits because by then the answer has already
-streamed to the user; there is nothing left to correct in place, only something to add.
+model call in the loop. By then the answer has already streamed, so it cannot correct anything
+in place; it used to append a caveat, and now only scores (#322).
 
-**Off unless `SQL_AUDIT_MODEL` is set**, because it is a real extra model call on every SQL
-turn. Everything in it fails open: a turn must not break because a second opinion could not be
+**Off unless `SQL_AUDIT_MODEL` and the Langfuse keys are both set**, because it is a real extra model call on every
+SQL turn and its score has nowhere else to go. Everything in it fails open: a turn must not break because a second opinion could not be
 obtained.
 
 Measured live against `anthropic:claude-haiku-4-5` on four planted turns — a sound answer
@@ -115,12 +123,12 @@ Four rules everything else follows from:
 ### New files
 
 ```
-backend/app/agent/tools/sql/catalog.py     allowlist as data + verify_against_db()
-backend/app/agent/tools/sql/validator.py   sqlglot; pure; returns ValidatedQuery
-backend/app/agent/tools/sql/executor.py    Executor Protocol + PsycopgExecutor
-backend/app/agent/tools/sql/errors.py      psycopg error → model-facing fix instruction
-backend/app/agent/tools/sql/render.py      rows → compact cited string
-backend/app/agent/tools/sql_tools.py       the four @tool functions
+backend/app/ask/tools/sql/catalog.py     allowlist as data + verify_against_db()
+backend/app/ask/tools/sql/validator.py   sqlglot; pure; returns ValidatedQuery
+backend/app/ask/tools/sql/executor.py    Executor Protocol + PsycopgExecutor
+backend/app/ask/tools/sql/errors.py      psycopg error → model-facing fix instruction
+backend/app/ask/tools/sql/render.py      rows → compact cited string
+backend/app/ask/tools/sql_tools.py       the four @tool functions
 backend/tests/test_sql_{validator,errors,render,tools}.py   pure unit
 backend/tests/test_sql_integration.py      @pytest.mark.integration
 backend/tests/evals/                       golden cases (see below)
@@ -339,7 +347,7 @@ columns `authenticated` can SELECT (`org_identifiers.evidence_document_id` left 
 ### 5. The four tools
 
 `db_list_tables()` · `db_describe_table(tables: str)` · `db_profile_column(table, column)` ·
-`db_query(sql: str, purpose: str)`. Registered in `app/agent/build.py`. The repo's tool
+`db_query(sql: str, purpose: str)`. Registered in `app/ask/agent.py`. The repo's tool
 conventions apply unchanged — never raise, return error strings, cite every row.
 
 **No `check_sql` tool.** Validation is folded into `db_query` so it cannot be skipped, and a
@@ -455,7 +463,7 @@ A cheap second-model pass after the answer (`llm_calls/turn_audit.py`), scoring 
 **grain** (does the SQL count the entity the question asked about?), **filters** (is every
 condition in the question present?), **false zero** (could a 0 result mean a wrong filter
 *value* rather than absent data?), **numbers** (do the figures in the answer match the result
-table?). It emits a caveat and a Langfuse score and **never blocks the answer**.
+table?). It emits a Langfuse score (no caveat since #322) and **never blocks the answer**.
 
 Worth it here specifically because of the known defects: the false-zero check is exactly what
 turns *"0 news mentions for KABIL"* into *"0 rows — but `news_mentions.org_id` is unpopulated,
@@ -744,7 +752,7 @@ The server-side boundary, complete and proven, still unreachable by the agent.
 - `executor.py` — the `Executor` Protocol and `PsycopgExecutor`: read-only transaction,
   `SET LOCAL statement_timeout`, the `Semaphore(2)`, routed through
   `traced_fetch`.
-- `Settings.sql_timeout_ms / sql_max_rows / sql_max_attempts`.
+- `Settings.sql_timeout_ms / sql_max_rows`.
 - `test_sql_integration.py` — the tests that prove the tiers are independent, especially
   `test_nothing_leaks_onto_the_pooled_connection` (this pool also serves the checkpointer) and
   `test_reader_role_cannot_read_checkpoints`.

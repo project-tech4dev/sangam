@@ -41,6 +41,9 @@ in the PR that ships a change, under its subsystem.
 - 2026-10-21 · (unmerged) · `0050`: proposals at step 3 or later move up one step, in `work` and `summary`, for Make a case.
 - 2026-10-28 · #348 · `0051`: `GRANT DELETE ON documents` to `authenticated`, and `documents_delete`: staff only, and only a private, org-owned `vault_upload`.
 - 2026-10-28 · #350 · `0052`: `GRANT DELETE ON proposals`, `proposals_delete` and `documents_delete_draft`: a proposal and its `proposal_draft` rows, for the org's admins and stewards and staff.
+- 2026-10-30 · #353 · `0053`: `deleted_documents` and the `log_document_delete` trigger: every deleted `documents` row is kept, and the vault and proposal deletes move the file to `org-vault/trash/`.
+- 2026-11-02 · #358 · `0054`: `org-vault` takes only PDF, Word, Excel, CSV, Markdown, text and PNG/JPEG/WebP files; the upload routes refuse any other extension (415), and a file whose bytes are not its type is refused at confirm and removed (#307 §4).
+- 2026-11-04 · #361 · `0055`: `org-vault` takes PowerPoint (`.pptx`) too, so earlier slide decks can be imported; its slide text is saved at upload, and Pitch and Scout read it a slide at a time, cited `[vault:<id>#slide<n>]`.
 
 Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · `0021` #89 · `0022` #74 ·
 `0023`–`0029` #92/#97 · `0030` #98 · `0032` #105 · `0035` #127 · `0036`–`0037` #100 · `0038` #130 ·
@@ -61,6 +64,8 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-19 · Ask efficiency M4: `fetch_url` removed, so Ask fetches no model-supplied URL (#247); `db_profile_column` errors carry their own prefix and count toward the 5-attempt limit; prompt rules that restated a tool's description shrink to a line.
 - 2026-10-19 · Ask's limits in code: a question stops after `ASK_MODEL_CALL_LIMIT` (25) model calls, `compare_fit` refuses a repeat of the same arguments and a fourth call, and Ask falls back to `RESEARCH_MODEL` and summarizes on `UTILITY_MODEL` as Import and Pitch do (#248, #249).
 - 2026-10-19 · Ask efficiency M3: the prompt carries the table list (`{{TABLE_MAP}}`, from `catalog.py`); `db_query` adds each table's id when none is selected, so plain rows come back cited; a one-row result shows text up to 2,000 characters; a table's caveats come in full once a turn, then as one line; the SQL that ran moves from the text to the tool's artifact (the evidence rail shows the model's SELECT).
+- 2026-11-12 · #402 · The answer audit no longer adds a ⚠️ caveat under Ask's answer: 18 of 39 production answers had one and only 2–3 were real. Its verdict still reaches Langfuse as `answer_audit` (#322 step 1).
+- 2026-11-12 · #403 · The answer audit reads every query result in the turn with its SQL, `compare_fit`'s output and today's date, and skips refusal turns; it used to see only the last query and flagged facts from the others (#322 step 2).
 
 ## Knowledge graph
 
@@ -106,7 +111,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-04 · (unmerged) · Promotion merges every identity finding, within a run and across runs: tags, aliases and fields on a second finding or an older run are no longer dropped (#308).
 - 2026-11-04 · (unmerged) · A re-run on the same day reads as unsaved again, so its new findings get their own Review & save; research is "saved" only when the save came after it (#222).
 - 2026-11-04 · (unmerged) · A programme's tags roll up to its funder or org as `secondary`; a described programme with no theme is refused at save unless a gap names it (#241).
-- 2026-11-05 · (unmerged) · `save_research` repairs a payload instead of refusing it for a split URL, summary counts, a year on a non-yearly gap or an office's mailbox; a refusal for a top-level field also lists the contract's missing fields (#171).
+- 2026-11-05 · #367 · `save_research` repairs a payload instead of refusing it for a split URL, summary counts, a year on a non-yearly gap or an office's mailbox; a refusal for a top-level field also lists the contract's missing fields (#171).
 
 ## Funder Match and the taxonomy
 
@@ -128,6 +133,9 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-12 · #181 · One read policy each on `users` and `org_members`, three FK indexes.
 - 2026-10-14 · Each agent route declares its access in `AGENT_ACCESS`; a route with none fails at boot instead of falling back.
 - 2026-10-15 · Only a thread's owner may post a turn in it, staff included, so rows read as one user are never replayed to another.
+- 2026-11-10 · #190 · `/api/copilotkit` serves only the routes the chat client calls (`info`, `agent/run|connect|stop|suggest`); the runtime's `threads/*`, `memories/*` and `inspector/*`, which handed every in-memory run to anyone, are 404 (#189).
+- 2026-11-10 · (unmerged) · `0056`: a `documents` row may only name a file in its own org's vault folder, and the file link, the vault reader and Pitch's form reader refuse one that does not (#329).
+- 2026-11-10 · (unmerged) · Scout's `save_research` saves an NGO's research only for staff or a steward of the NGO it writes to (by match or slug), and `funder_dossier` applies RLS on the owner pool: private contacts, documents and registrations to staff and their own org, private `funder_activity` lines and hidden funders to staff (#328).
 
 ## Frontend and design system
 
@@ -198,6 +206,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-16 · CI on every PR: ruff, unit and integration tests (pgvector, migrate, seed), coverage on Codecov (no drop over 1%, 70% of changed lines), and the frontend's lint, types and build.
 - 2026-10-19 · langchain 1.4.6, deepagents 0.7.28; `ToolErrorMiddleware` on every agent and subagent, so a tool that raises answers the model with its error type instead of ending the run (#252, #253).
 - 2026-10-21 · (unmerged) · Outbound fetches trust certifi plus `app/core/certs/intermediates.pem`, so censusindia.gov.in (which omits emSign SSL CA - G1) can be read; verification stays on, and a test fails a year before an intermediate expires.
+- 2026-11-10 · (unmerged) · certifi 2026.10.18 (supersedes #383), which drops the emSign roots over compromised intermediate keys; `intermediates.pem` loses emSign SSL CA - G1 and is loaded only when it holds a certificate, so censusindia.gov.in is refused again, like nrlm.gov.in.
 - 2026-10-21 · MIT license. The frontend gets Vitest and its own Codecov flag; backend and frontend coverage are gated and badged separately in the README.
 - 2026-10-21 · The README is rewritten for newcomers (127 lines from 449: features, how it works, quickstart); setup and conventions move to `CONTRIBUTING.md`, beside `SECURITY.md`, a code of conduct and issue and PR templates.
 - 2026-10-21 · README screenshots in `docs/assets/readme/`: Ask with citations as the hero, then Registry, Funder Match and Scout.
@@ -209,6 +218,14 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
   - checkpointer DDL moved from every cold start to `make migrate`;
   - one who-may-do-what table in ARCHITECTURE §8.
 - 2026-10-22 · `search_public_sources` checks its hits at once, not in turn (a Pitch search took 10–34 s against Tavily's 2–7 s); Pitch and Import both use it.
+- 2026-10-30 · #356 · `STORAGE_BUCKET_SUFFIX`: a local backend writes to `-local` buckets, so its files and proposal drafts never land in, or overwrite, the deployed ones (#307 §3); a backend sharing the deployed buckets from another database warns at boot.
+- 2026-11-10 · Dependabot alerts with no PR of their own: `next` 16.4.6 (RCEs in `use cache` and SVG image optimisation), aiohttp 3.14.5, langgraph-checkpoint-postgres 3.2.0, and `@hono/node-server` 2, `graphql-scalars` 2 and typescript-estree's `minimatch` 11 as overrides past CopilotKit's and typescript-eslint's ranges.
+- 2026-11-10 · (unmerged) · CodeQL alerts fixed: Pitch's gap, citation and amount regexes run in linear time, its Wikipedia check matches the host rather than a suffix, and the Registry brief strips HTML comments until none is left.
+- 2026-11-10 · #360 · `entity_tags` reaches a tag's domain through its parent and grandparent (the taxonomy is domain → theme → sub_theme) instead of walking every tag, and counts programmes in one grouped join; the Registry index uses `entity_tag_domains`, with no programme count. A Registry page over 2,000 orgs: 885 ms → 25 ms.
+- 2026-11-11 · #366 · The ten paged lists read through one `fetch_page` and answer through `PageParams.build_page`. Each sorts on a unique id (eight did not, so tied rows could repeat or vanish between pages), a page past the end reports the list's real total instead of 0, and `fetch_page` refuses SQL that does not end in `ORDER BY … id`.
+- 2026-11-11 · (unmerged) · #341's last items: `research_counts` finds an entity's runs through three equality joins and two new indexes on `entity_research`'s resolved ids (0057) instead of a `CASE … OR` join; the Registry and both profiles show a loading line at once (`loading.tsx`). At 2,050 entities a Registry page's queries take 15–17 ms on local Postgres.
+- 2026-11-11 · (unmerged) · Codecov judges a commit only once all three coverage uploads are in (`after_n_builds: 3`). It used to post the frontend checks before the frontend job uploaded, and `codecov/project/frontend` on #366 stayed in progress.
+- 2026-11-12 · #379 · `UTILITY_MODEL` and `SQL_AUDIT_MODEL` default to Claude Haiku 5.5 at low effort, about a tenth of Haiku 4.5's price; the audit and news headlines read the reply's text, since Haiku 5.5 can start with a thinking block (#378).
 
 ## Tracing and evals
 
@@ -238,12 +255,25 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-16 · #232 · M3: the RFP Watch screen in Ask (For you · Closing soon · Saved, search, a theme filter, Save, Not for us, Ask about this call); no longer "Coming soon".
 - 2026-10-19 · #246 · M4: Scout runs the pull: a staff-only "Check open calls" task and `run_import_now(sources="funder_calls")` with its own approval card. A re-run reuses only a page the pull itself read, not the report a research call names.
 
+## Code structure
+
+- 2026-11-06 · #368 · Refactor phase 0, dead code deleted: `mcp.py`, its five settings and `langchain-mcp-adapters` (9 packages out of the bundle); `_http`'s unused polite client; `sql_max_attempts`; 8 more functions and classes nothing called. `_filled` now lives once, as `expectations.filled`. `tests/test_architecture.py` fails on a top-level name with no caller outside tests (R6).
+- 2026-11-06 · #369 · Refactor phase 1, tools are tools: the save path a route shares with `promote_research` moved out of `catalog_tools.py` to `ingest/catalog_save.py`; `ingest/office.py` and the PDF reader became `core/extract.py`; the staff-lock and save-question middleware moved from `agent/` to `ingest/middleware.py`; the record text Pitch's tools share moved to `proposals/records.py`. Every other import hidden inside a function went to the top of its module; four circular ones stay listed. `test_architecture.py` checks R1 and R2.
+- 2026-11-06 · #370 · Refactor phase 2, `agentkit/`: model tiers, the harness and the shared middleware (`tool_errors`, `clear_old_tool_results`, `fallback`, `cheap_summarizer`, `AgUiState`) moved out of Ask's and Import's packages into `app/agentkit/`. `agent/build.py` is `agent/agent.py`, like Import's and Pitch's. The never-registered `download_file`/`read_pdf` tools are deleted; Import keeps its download folder and Tavily search in `research_tools.py`. `test_architecture.py` checks R3 and that a cold start does not load `deepagents`.
+- 2026-11-06 · #371 · Refactor phase 3, `ingest/research/`: what a researcher must find and the shape it saves. `research_records.py` (1,105 lines) is split into `finding_types.py` (the per-concept models) and `findings.py` (`EntityResearch`, `Gap`, the summaries); `contract`, `expectations`, `coverage` and `source_guards` move in. The `research_records` ↔ `source_guards` circular import is gone, and R2's `CYCLES` list is down to one.
+- 2026-11-06 · #372 · Refactor phase 4, `ingest/reading/`: where a run may read. `access`, `run_sources`, `staff_sources` and `vault` move in, and `sources.py` (the source registry) becomes `reading/registry.py`. Pitch may import anything under `reading/` (R3).
+- 2026-11-06 · #373 · Refactor phase 5, `ingest/catalog/`: from the brief to Sangam's tables. `catalog_save` becomes `catalog/save.py` and `records` becomes `catalog/rows.py`; `matcher`, `undo`, `review` and `manual_checks` move in. `promote.py` (1,626 lines) splits into `promote` (entry and matching), `promote_records`, `promote_documents` and `promote_facts`; `writer.py` (1,395) into `writer` (the gate, upserts, ranking, tags), `writer_funder` and `writer_org`. Helpers a sibling imports lost their underscore. `test_architecture.py` caps a file at 800 lines (R4).
+- 2026-11-06 · #374 · Refactor phase 6: `app/agent/` is `app/ask/`, so the folder names say which agent is which (`ask/`, `ingest/`, `proposals/`) beside the `agentkit/` they share. Paths in CLAUDE.md, CONTRIBUTING.md and docs/ follow; dated plans keep the paths they were written with.
+
+---
+
 ## Not finished
 
 Plans that shipped in part, and what is left. Check here before assuming a plan doc describes the code.
 
 | Plan | Shipped | Left |
 |---|---|---|
+| `2026-11-03-registry-server-paging.md` | #360, #366 | Every paged list counts all its matching rows on each request (`COUNT(*) OVER ()`), which for funders builds every row's arrays first. A Registry page builds an index of every entity and then queries the page's details again, and the place and theme rules are written twice, in SQL and Python: fold the details into the index's one query. |
 | `2026-10-15-rfp-watch.md` | M1 (#228), M2 (#231), M3 (#232), M4 (#246) | The staging exit gates; the design-system sync of the Ask page. |
 | `2026-10-11-drop-copilotkit.md` | M1 (#168), M2 (#169) | **#178 removed `emit_raw_events=False`, so raw events stream again** (`core/lifespan.py`). M3 (drop CopilotKit from the frontend) and M4 (from `pyproject.toml`) not started. |
 | `2026-10-13-import-researcher-contract.md` | M1–M4 (#194–#197) | M5: backfill KABIL and Axis on staging. |
@@ -259,7 +289,7 @@ Plan docs whose status line is out of date (the work did ship): `2026-09-30-supa
 Superseded: `2026-10-04-funder-eligibility.md` (table dropped by `0031`), `2026-10-08-import-storage-picker.md`
 (replaced by `choose_sources`), `2026-10-07-funder-matching-in-code.md` (replaced by match-v1).
 
-Unmerged branches with real work: `fix/ask-sql-runs-as-caller`, `fix/copilotkit-runtime-routes`,
+Unmerged branches with real work: `fix/ask-sql-runs-as-caller`,
 `feat/access-check`, `fix/funder-tags-from-programmes` (#172), `docs/proposals-spec`, `docs/funder-match-spec`,
 `docs/import-comprehensive-data`, and the graph branches `graphiti`, `graphiti-supabase`, `supabase-graphiti`,
 `add-episode-ui`.

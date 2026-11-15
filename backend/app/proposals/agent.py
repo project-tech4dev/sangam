@@ -9,12 +9,11 @@ from deepagents import create_deep_agent
 from deepagents.backends.state import StateBackend
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
-from app.agent.harness import filesystem as filesystem_tools
-from app.agent.harness import install as install_harness
-from app.agent.middleware import clear_old_tool_results, tool_errors
-from app.agent.models import resolve_model
+from app.agentkit.harness import filesystem as filesystem_tools
+from app.agentkit.harness import install as install_harness
+from app.agentkit.middleware import cheap_summarizer, clear_old_tool_results, fallback, tool_errors
+from app.agentkit.models import resolve_model
 from app.core.config import Settings
-from app.ingest.middleware import cheap_summarizer, fallback
 from app.ingest.tools.research_tools import (
     fetch_document,
     read_document_pages,

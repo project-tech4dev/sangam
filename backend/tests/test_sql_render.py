@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from app.agent.tools.sql.render import (
+from app.ask.tools.sql.render import (
     MAX_CELL_CHARS,
     MAX_OUTPUT_CHARS,
     MAX_SOURCES,
@@ -17,7 +17,7 @@ from app.agent.tools.sql.render import (
     render_rows,
     render_sources,
 )
-from app.agent.tools.sql.validator import CitationPlan, ProvenancePlan
+from app.ask.tools.sql.validator import CitationPlan, ProvenancePlan
 
 ORG = CitationPlan(output_column="id", kind="org")
 

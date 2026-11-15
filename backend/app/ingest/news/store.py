@@ -7,8 +7,8 @@ from datetime import date
 from typing import Any
 
 from app.ingest.adapters.tavily_news import Hit
+from app.ingest.catalog.matcher import name_key
 from app.ingest.geography import canonical_state, district_key
-from app.ingest.matcher import name_key
 from app.ingest.news import links
 from app.ingest.news.feeds import FEEDS, Subject
 

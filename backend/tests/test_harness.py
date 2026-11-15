@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 from langchain_core.tools import tool
 
-from app.agent.harness import (
+from app.agentkit.harness import (
     FILESYSTEM_TOOLS,
     REQUIRED_MINIMUM,
     SKILL_READING_TOOLS,
@@ -40,7 +40,7 @@ class TestTheProfileIsInstalled:
     def test_it_resolves_for_the_model_we_run(self):
         from deepagents.profiles.harness.harness_profiles import _harness_profile_for_model
 
-        from app.agent.models import resolve_model
+        from app.agentkit.models import resolve_model
         from app.core.config import get_settings
 
         install()
@@ -55,7 +55,7 @@ class TestTheProfileIsInstalled:
         # middleware instead.
         from deepagents.profiles.harness.harness_profiles import _harness_profile_for_model
 
-        from app.agent.models import resolve_model
+        from app.agentkit.models import resolve_model
         from app.core.config import get_settings
 
         install()
@@ -80,7 +80,7 @@ class TestTheFilesystemMiddlewareIsReplaced:
     def test_only_the_named_tools_exist(self):
         from deepagents.backends.state import StateBackend
 
-        from app.agent.harness import filesystem
+        from app.agentkit.harness import filesystem
 
         assert [t.name for t in filesystem(StateBackend()).tools] == ["read_file"]
         kept = {t.name for t in filesystem(StateBackend(), keep=SKILL_READING_TOOLS).tools}
@@ -95,7 +95,7 @@ class TestTheFilesystemMiddlewareIsReplaced:
 
 class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
     def test_ask_sangam_has_no_subagents(self):
-        from app.agent.build import build_agent
+        from app.ask.agent import build_agent
         from app.core.config import get_settings
 
         tools = build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name
@@ -104,7 +104,7 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         assert "task" not in tools
 
     def test_ask_sangam_holds_its_six_tools_and_the_skill_readers(self):
-        from app.agent.build import build_agent
+        from app.ask.agent import build_agent
         from app.core.config import get_settings
 
         tools = set(build_agent(get_settings(), None).nodes["tools"].bound.tools_by_name)
@@ -114,7 +114,7 @@ class TestTheBuiltAgentsAdvertiseOnlyWhatWeDeclared:
         }
 
     def test_neither_agent_can_write_a_file_or_run_a_command(self):
-        from app.agent.build import build_agent
+        from app.ask.agent import build_agent
         from app.core.config import get_settings
         from app.ingest.agent import build_ingest_agent
 
@@ -180,6 +180,15 @@ class TestEachTierGetsItsModel:
         s = Settings(_env_file=None)
         assert "opus" in s.model and "sonnet" in s.research_model and "haiku" in s.utility_model
         assert "haiku" in s.sql_audit_model
+
+    def test_haiku_5_5_runs_at_low_effort(self, monkeypatch):
+        """It thinks at medium by default; the utility tier's short jobs need little or none."""
+        from app.agentkit import models
+
+        monkeypatch.setattr(models, "init_chat_model", lambda name, **kw: kw)
+        assert models.resolve_model("anthropic:claude-haiku-5-5")["output_config"] == {"effort": "low"}
+        assert models.resolve_model("anthropic:claude-haiku-5-5-20261007")["output_config"] == {"effort": "low"}
+        assert "output_config" not in models.resolve_model("anthropic:claude-opus-5-5")
 
     def test_the_module_level_specs_are_not_mutated(self, build_import):
         # build_ingest_agent copies each spec before adding a model, so builds cannot leak between them.
@@ -339,9 +348,9 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         from langchain_core.messages import AIMessage, ToolMessage
         from langgraph.prebuilt.tool_node import ToolCallRequest
 
-        from app.agent.middleware import STAFF_LOCK_REPLY
         from app.core.config import get_settings
         from app.ingest.agent import build_ingest_agent
+        from app.ingest.middleware import STAFF_LOCK_REPLY
 
         task = build_ingest_agent(get_settings(), None).nodes["tools"].bound.tools_by_name["task"]
         graphs = next(c.cell_contents for c in (task.func or task.coroutine).__closure__
@@ -352,7 +361,7 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         call = {"name": "read_page", "args": {"url": "https://example.org"}, "id": "2", "type": "tool_call"}
         request = ToolCallRequest(tool_call=call, tool=node.tools_by_name["read_page"],
                                   state={"messages": staff}, runtime=None)
-        from app.ingest import run_sources
+        from app.ingest.reading import run_sources
 
         # With no sources chosen nothing is read; with the web chosen, staff rows still close it.
         assert node._wrap_tool_call(request, lambda r: None).content.startswith("REFUSED: no sources")

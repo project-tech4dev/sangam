@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 PROMPT = (Path(__file__).parent / "prompts" / "form_fill.md").read_text(encoding="utf-8")
 UNITS = {"chars": "characters", "words": "words", "pages": "pages"}
 How = Literal["answered", "add", "you_fill"]
-_GAP = re.compile(r"\[Add:[^\]]*\]")
+_GAP = re.compile(r"\[Add:[^\[\]]*\]")
 _CUT = re.compile(r"[.!?\];](?=\s)")  # where a cut leaves whole clauses
-_YOU = re.compile(r"\[You fill:[^\]]*\]")
+_YOU = re.compile(r"\[You fill:[^\[\]]*\]")
 
 
 class Answer(BaseModel):

@@ -50,6 +50,12 @@ Generated map: [platform](../openwiki/architecture/platform.md).
 - **Agents are built on the first chat turn, not at boot.** Most cold starts serve a REST call, and two-thirds of the
   import time was the agent stack. A REST module therefore imports agent code inside the function that uses it, never at
   the top.
+- **Code boundaries are rules with a test**: CLAUDE.md's "Code boundaries" lists them and `tests/test_architecture.py`
+  checks them, one rule per refactor phase (`docs/features/2026-11-05-backend-refactor-plan.md`). R6: nothing in `app/`
+  is defined without a caller outside tests.
+- **A paged list goes through `repositories/paging.py::fetch_page`, and its SQL ends in `ORDER BY …, <table>.id`**, the
+  listed table's own id: without a unique last key, tied rows (two contacts named "Asha") swap between page queries.
+  `fetch_page` refuses SQL not ending in an id, but cannot tell a joined table's id from the row's own.
 - **Boot raises when the SQL catalog and the live schema disagree**, on purpose: a catalog that is wrong produces
   confidently wrong answers.
 
@@ -60,14 +66,17 @@ Generated detail (tools, skills, middleware order, prompt rules): [ask-sangam](.
 - **The model writes its own SQL**; there are no curated lookup tools. The four removed ones (`search_orgs`, …) were a
   cached query plan, and a worse one: asked about Assam, `search_orgs` returned ten orgs, the model's own SQL found seven.
 - **The tool list is pinned by tests.** deepagents adds filesystem tools and a general-purpose subagent with every tool;
-  `harness.py` strips both, and the next library upgrade is free to add more.
+  `agentkit/harness.py` strips both, and the next library upgrade is free to add more.
 - **The SQL path has four layers** (`docs/SQL_AGENT.md`): the catalog is the allowlist, the regenerated sqlglot AST is
   what executes (never the model's string), a read-only transaction with a timeout, and cited rendering.
 - **Ask's SQL runs on the owner pool, a superuser**, so the catalog is the only guard. Adding a table to it is a security
   decision. Running it as the caller is branch `fix/ask-sql-runs-as-caller`, not merged.
 - **Tools never raise, and every row is cited.** A raised exception aborts the run; a returned error lets the model adapt.
   An uncited row makes an uncitable answer.
-- **The answer audit never blocks or edits** — the answer has already streamed when it runs. It appends a caveat.
+- **The answer audit is a score, not a caveat.** It runs after the answer has streamed and sends `answer_audit` to Langfuse;
+  the person sees nothing. 18 of 39 production answers got a ⚠️, and only 2–3 were real (#322). It returns to the answer
+  only once its scores agree with hand labels. It judges an answer against everything the answer could draw on: every
+  query result and `compare_fit` output in the turn, and today's date; a turn where nothing returned data, or a refusal, is not audited.
 
 ## 4. Sangam Import / Scout
 
@@ -77,7 +86,7 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
 
 - **The person makes every choice.** `choose_sources` comes before any read, and `RunSources` refuses a read outside it;
   `run_import_now` and every catalog-writer `promote_research` pause too.
-- **The supervisor never reads the web or writes catalog rows.** Researchers read; `writer.py` writes, always with fixed
+- **The supervisor never reads the web or writes catalog rows.** Researchers read; `catalog/writer*.py` writes, always with fixed
   SQL. The model never writes SQL here.
 - **The brief is the record** (`source-archive/entities/<slug>.md`, no table). Every run merges into it by `fact_key`; the
   later run wins unless the earlier source is stronger. Facts no column can hold stay in the brief only. Promotion reads
@@ -194,7 +203,7 @@ and [writing a migration](../openwiki/workflows/writing-a-migration.md).
   migrated by hand after a backup.
 - **Provenance on every scraped or extracted table** (`source_url`, `source_name`, `fetched_at`, `content_hash`,
   `extractor_version`): every field traces to a source.
-- **Storage is global, not per environment**: a local backend still writes to the cloud bucket.
+- **Storage is one Supabase project**: a local backend keeps its files apart only through `STORAGE_BUCKET_SUFFIX` (`-local` buckets).
 - `proposals` exists but nothing uses it; proposals live in the browser.
 
 ## 8. Auth, roles and RLS
@@ -204,6 +213,10 @@ Generated detail: [auth-roles-rls](../openwiki/architecture/auth-roles-rls.md).
 - **Two pools.** REST runs as the caller (`CallerPool` sets the role and JWT claims per transaction, so RLS applies).
   Agent tools, Import, the matching reader and seeds run on the **owner** pool, a superuser, and check access themselves.
 - **RLS is on for every table** (`0027`); a new table needs its policies in the same migration.
+- **A `documents.storage_path` is trusted only inside the row's own folder.** The service key can sign any object,
+  so an `org-vault/` key's first segment must be the row's `org_id` and a `staff-sources/` file must sit on a private,
+  org-less row. `documents_insert` refuses any other path (`0056`), and every signer or reader checks it again with
+  `storage.owned_split` for rows the owner pool wrote. Example: org 3's row naming `org-vault/4/report.pdf` is a 404.
 - Not built yet: Phase 2 of `features-plans/access/auth-plan.md` (email-domain matching, join requests).
 
 ### Who may do what
@@ -226,7 +239,7 @@ listed as open.
 | start or edit a proposal | — | — | ✓ | ✓ | ✓ | `require_principal` + RLS `app.my_match_org_ids()` (`0048`) |
 | delete a proposal and its saved Word versions | — | — | ✓ | ✓ | ✓ | `require_principal` + RLS `proposals_delete`, `documents_delete_draft` (`0052`); only drafts under `<org>/proposals/<id>/` |
 | chat with Sangam Pitch | — | 403 | ✓ own | ✓ own | ✓ own | `proposal_chat_access`, then `CallerScope.can_edit_proposal` |
-| upload to the Doc Vault | — | ✓ | ✓ | ✓ | ✓ | `require_user` + RLS `documents_insert` (`0048`) |
+| upload to the Doc Vault | — | ✓ | ✓ | ✓ | ✓ | `require_user` + RLS `documents_insert` (`0048`); the file only under `org-vault/<org>/` (`0056`) |
 | delete a Doc Vault upload and its file | — | — | — | — | ✓ | `require_staff` + RLS `documents_delete` (`0051`) |
 | add or edit a contact | — | ✓ | ✓ | — | ✓ | `require_user` + RLS `app.my_writable_org_ids()` |
 | save or dismiss an RFP match | — | ✓ | ✓ | — | ✓ | `require_user` + RLS `app.my_writable_org_ids()` |

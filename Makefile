@@ -340,7 +340,7 @@ db-upgrade: db-backup  ## Volume-level schema rebuild; superseded by make migrat
 ##@ Run outside Docker
 dev-backend:  ## Run uvicorn on the host against the compose Postgres
 	cd backend && DATABASE_URL="host=localhost port=5433 user=sangam password=sangam dbname=sangam" \
-		uvicorn app.main:app --reload
+		STORAGE_BUCKET_SUFFIX="$${STORAGE_BUCKET_SUFFIX--local}" uvicorn app.main:app --reload
 
 dev-frontend:  ## Run next dev on the host against a host backend
 	cd frontend && set -a && source <(grep -E '^NEXT_PUBLIC_SUPABASE_' ../.env) && set +a && \

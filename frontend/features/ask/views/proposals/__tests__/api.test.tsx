@@ -1,10 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "@/features/ask/lib/rest";
+import { ApiError } from "@/lib/api/rest";
 
 const call = vi.fn();
-vi.mock("@/features/ask/lib/rest", async (original) => ({
-  ...(await original<typeof import("@/features/ask/lib/rest")>()),
+vi.mock("@/lib/api/rest", async (original) => ({
+  ...(await original<typeof import("@/lib/api/rest")>()),
   call: (...args: unknown[]) => call(...args),
 }));
 
