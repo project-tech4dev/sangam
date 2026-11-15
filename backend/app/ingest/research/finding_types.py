@@ -83,11 +83,11 @@ _NOTE_HELP = ("REQUIRED with a theme: the evidence in a few words. Left empty, i
               "classified_by names, and the finding is refused if that field is empty too")
 
 
-def drop_null_extras(cls: type[BaseModel], data: Any) -> Any:
-    """A null under a key the model lacks says nothing, so it is dropped rather than refused."""
+def drop_null_extras(cls: type[BaseModel], data: Any, also: frozenset[str] = frozenset()) -> Any:
+    """A null under a key the model lacks says nothing, so it is dropped rather than refused; so is a key in `also`."""
     if not isinstance(data, dict):
         return data
-    return {k: v for k, v in data.items() if v is not None or k in cls.model_fields}
+    return {k: v for k, v in data.items() if k in cls.model_fields or (v is not None and k not in also)}
 
 
 def _code(v: Any) -> Any:
@@ -533,6 +533,11 @@ class MetricFinding(FindingBase, OptionallySourced):
         return self
 
 
+# An office's name ends in one of these, and its mailbox may repeat it: "Company Secretariat", secretariat@.
+OFFICE_WORDS = frozenset({"secretariat", "office", "desk", "cell", "team", "department", "division", "committee",
+                          "foundation", "trust", "helpdesk", "csr"})
+
+
 class ContactFinding(FindingBase, OptionallySourced):
     """Publicly disclosed CSR roles only. No private personal data."""
 
@@ -570,7 +575,7 @@ class ContactFinding(FindingBase, OptionallySourced):
             )
         local = self.email.split("@")[0].lower()
         surname = self.name.split()[-1].lower().strip(".")
-        if len(surname) > 2 and surname in local.replace(".", "").replace("-", ""):
+        if len(surname) > 2 and surname not in OFFICE_WORDS and surname in local.replace(".", "").replace("-", ""):
             raise ValueError(
                 f"{self.email!r} contains {surname!r} from the contact's own name, so it "
                 f"reads as a personal address rather than a shared one."

@@ -129,8 +129,7 @@ class TestAPayloadSentAsAString:
         assert "not valid JSON" in refused(json.dumps(research()) + " and that is everything")
 
     def test_a_broken_string_says_where_it_broke_and_to_send_an_object(self):
-        # Seen once: a quote dropped mid-URL, "source_url":"https":"//…".
-        text = json.dumps(research()).replace('"source_url": "https://', '"source_url": "https": "//', 1)
+        text = json.dumps(research()).replace('"summary": "', '"summary": ', 1)
         msg = refused(text)
         assert "not valid JSON" in msg and "at character" in msg and "near" in msg
         assert "as an object, not a string" in msg
@@ -154,7 +153,8 @@ class TestTheStatusAndItsReason:
 
     def test_a_missing_stopped_reason_with_many_findings_still_lists_only_the_fix(self):
         msg = refused(research(*[spend(classification_note="project 'x'")] * 49, stopped_reason=None))
-        assert msg.count("\n- ") == 1 and "Fix these 1" in msg
+        fixes = msg.split("Also,")[0]
+        assert fixes.count("\n- ") == 1 and "Fix these 1" in msg and "Sports scholarships" not in msg
 
     def test_complete_needs_no_reason(self):
         assert saved(research(status="complete", stopped_reason=None)).status == "complete"
@@ -274,3 +274,71 @@ class TestWhatTheModelIsTold:
 
     def test_a_multi_year_grant_says_its_start_year(self, schema):
         assert "in the fiscal_year it started" in schema
+
+
+def contact(**over) -> dict:
+    return {
+        "concept": "contact", "name": "ONGC Company Secretariat", "kind": "other",
+        "email": "secretariat@ongc.co.in", "is_role_mailbox": True, "confidence": "medium", "source_url": URL,
+        "evidence": "Shareholders may write to the Company Secretariat at secretariat@ongc.co.in.", **over,
+    }
+
+
+def gap(**over) -> dict:
+    return {"concept": "metric", "reason": "not_stated", "detail": "No reach figures found.", **over}
+
+
+class TestAUrlSplitAtItsColon:
+    def test_the_url_is_rejoined_and_saved(self):
+        # Seen in two runs in a row (IRCTC, 43 KB): "source_url":"https":"//…".
+        text = json.dumps(research()).replace('"source_url": "https://', '"source_url":"https":"//', 1)
+        assert saved(text).findings[0].source_url == URL
+
+
+class TestTheSummarysCountsInTheSave:
+    def test_summary_keys_are_dropped(self):
+        assert saved(research(fact_count=0, slug="example-foundation", saved=False)).entity_name
+
+    def test_a_misspelt_key_is_still_refused(self):
+        assert "`factcount` is not a field" in refused(research(factcount=0))
+
+
+class TestAYearOnAGapThatIsNotByYear:
+    def test_the_year_moves_into_the_detail(self):
+        [g] = saved(research(gaps=[gap(fiscal_year="FY2025-26")])).gaps
+        assert (g.fiscal_year, g.detail) == (None, "No reach figures found. (FY2025-26)")
+
+    def test_a_bad_year_on_a_yearly_concept_is_still_refused(self):
+        assert "must look like 'FY2023-24'" in refused(research(gaps=[gap(concept="csr_spend", fiscal_year="2025")]))
+
+
+class TestAnOfficesMailbox:
+    def test_an_office_named_contact_saves(self):
+        assert saved(research(spend(classification_note="project 'Sports scholarships'"), contact())).findings[1].email
+
+    def test_a_persons_surname_in_the_address_is_still_refused(self):
+        assert "from the contact's own name" in refused(research(contact(name="Rahul Sharma", email="rsharma@x.org")))
+
+
+class TestTheStaffOnlyGapRule:
+    def test_the_prompt_puts_it_under_its_own_concept(self):
+        prompt = (Path(__file__).parents[1] / "app/ingest/prompts/entity_researcher.md").read_text()
+        assert "under the concept it belongs to" in prompt
+
+
+class TestOneRefusalForEverything:
+    def test_a_schema_refusal_also_lists_what_the_contract_needs(self):
+        payload = research(status="complete", stopped_reason=None)
+        del payload["summary"]
+        msg = refused(payload)
+        assert "summary: Field required" in msg
+        assert "identity: no finding and no gap" in msg and "Also" in msg
+
+    def test_a_broken_finding_gets_only_its_own_lines(self):
+        # Which concept a broken item was meant for is a guess, so the contract waits for the next try.
+        msg = refused(research(spend(amount=None), status="complete", stopped_reason=None))
+        assert "finding 0 (csr_spend" in msg and "Also" not in msg
+
+    def test_a_save_with_no_kind_keeps_the_schema_lines(self):
+        msg = refused(research(entity_kind="donor"))
+        assert "entity_kind" in msg and "Also" not in msg
