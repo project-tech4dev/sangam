@@ -54,6 +54,14 @@ async def list_threads(
         return await cur.fetchall()
 
 
+async def owner_of(pool: AsyncConnectionPool, *, thread_id: str) -> UUID | None:
+    """Who claimed the thread; None while no turn has been posted in it."""
+    async with pool.connection() as conn:
+        cur = await conn.execute("SELECT user_id FROM threads WHERE thread_id = %s", (thread_id,))
+        row = await cur.fetchone()
+    return row["user_id"] if row else None
+
+
 async def can_open(pool: AsyncConnectionPool, *, thread_id: str, user_id: UUID) -> bool:
     async with pool.connection() as conn:
         cur = await conn.execute("SELECT app.can_open_thread(%s, %s) AS ok", (thread_id, user_id))
