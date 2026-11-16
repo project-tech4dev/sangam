@@ -210,10 +210,29 @@ describe("VaultView", () => {
     expect(screen.queryByText("Untitled document")).toBeNull();
   });
 
+  it("offers upload only for an organisation the person belongs to, and opens on theirs", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ items: [] }) })));
+    render(<VaultView orgs={ORGS} memberOf={["seva"]} />);
+    await screen.findByText("No documents linked yet");
+    expect(screen.getByRole("button", { name: "Seva" })).toHaveAttribute("data-active", "true");
+    expect(screen.getByText("Upload a document")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "KABIL" }));
+    expect(screen.queryByText("Upload a document")).not.toBeInTheDocument();
+  });
+
+  it("offers upload to no one without a membership, and to staff everywhere", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ items: [] }) })));
+    const { rerender } = render(<VaultView orgs={ORGS} />);
+    await screen.findByText("No documents linked yet");
+    expect(screen.queryByText("Upload a document")).not.toBeInTheDocument();
+    rerender(<VaultView orgs={ORGS} isStaff />);
+    expect(screen.getByText("Upload a document")).toBeInTheDocument();
+  });
+
   it("uploads a file and reloads, or shows why it failed", async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ items: [] }) }));
     vi.stubGlobal("fetch", fetchMock);
-    const { container } = render(<VaultView orgs={ORGS} />);
+    const { container } = render(<VaultView orgs={ORGS} memberOf={["kabil"]} />);
     await screen.findByText("No documents linked yet");
     const input = container.querySelector<HTMLInputElement>("input[type=file]")!;
     const file = new File(["x"], "report.pdf");
