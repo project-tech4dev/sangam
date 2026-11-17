@@ -318,6 +318,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             SaveRefusal(),
             # Only what the person chose on the sources card; staff rows last.
             RunSources(),
+            # Before the rubric, so its exit hook runs only once the grader lets the researcher finish.
+            DropFilesOnExit(),
             staff_last_lock(),
             *([ReadingLimit(settings.research_page_limit)] if settings.research_page_limit is not None else []),
             *_call_limit(settings.research_model_call_limit),
@@ -342,7 +344,10 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     reader = {
         **WORKBOOK_READER,
         "model": utility,
-        "middleware": [filesystem_tools(backend), tool_errors(), RunSources(), *fallback(utility_spec, research_spec, settings.model)],
+        "middleware": [
+            filesystem_tools(backend), tool_errors(), RunSources(), DropFilesOnExit(),
+            *fallback(utility_spec, research_spec, settings.model),
+        ],
     }
     vault_reader = {
         **VAULT_READER,

@@ -9,8 +9,11 @@ library upgrade cannot quietly restore them.
 
 from __future__ import annotations
 
+from typing import Annotated
+
 import pytest
-from langchain_core.tools import tool
+from langchain_core.tools import InjectedToolCallId, tool
+from langgraph.types import Command
 
 from app.agentkit.harness import (
     FILESYSTEM_TOOLS,
@@ -409,3 +412,64 @@ class TestOnlyTheWriterIsCheckpointed:
         graphs = _subagent_graphs(build_ingest_agent(get_settings(), None))
         # The run's 200 would stop a researcher at ~66 model turns; its limits are its call and page caps.
         assert {g.config["recursion_limit"] for g in graphs.values()} == {graphs["catalog-writer"].config["recursion_limit"]}
+
+
+class TestASubagentLeavesNoFiles:
+    """A researcher's evicted pages merged into Scout's state, saved at every later step and handed to the next."""
+
+    def test_the_researcher_and_both_readers_drop_their_files_on_exit(self):
+        from app.core.config import get_settings
+        from app.ingest.agent import build_ingest_agent
+
+        graphs = _subagent_graphs(build_ingest_agent(get_settings(), None))
+        drops = {n for n, g in graphs.items() if "DropFilesOnExit.after_agent" in g.nodes}
+        assert drops == {"entity-researcher", "workbook-reader", "vault-reader"}
+
+    def test_the_rubric_grades_before_the_files_go(self):
+        from app.core.config import get_settings
+        from app.ingest.agent import build_ingest_agent
+
+        researcher = _subagent_graphs(build_ingest_agent(get_settings(), None))["entity-researcher"]
+        edges = {(e.source, e.target) for e in researcher.get_graph().edges}
+        # A revision jumps back to the model with its pages; only a finished researcher drops them.
+        assert ("ResearchRubric.after_agent", "DropFilesOnExit.after_agent") in edges
+
+    async def test_through_an_unsaved_subagent_the_parent_keeps_its_own_and_gets_none(self):
+        from deepagents import create_deep_agent
+        from deepagents.backends.state import StateBackend
+        from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+        from langchain_core.messages import AIMessage, ToolMessage
+
+        from app.agentkit.harness import filesystem
+        from app.ingest.agent import _unsaved
+        from app.ingest.middleware import DropFilesOnExit
+
+        def file(text):
+            return {"content": [text], "created_at": "2026-11-17", "modified_at": "2026-11-17"}
+
+        @tool
+        def evicted(tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
+            """Leaves a file in state, as an eviction would."""
+            return Command(update={"files": {"/large_tool_results/page": file("annual report")},
+                                   "messages": [ToolMessage("ok", tool_call_id=tool_call_id)]})
+
+        class Fake(GenericFakeChatModel):
+            def bind_tools(self, tools, **kw):
+                return self
+
+        def says(*msgs):
+            return Fake(messages=iter(msgs))
+
+        backend = StateBackend()
+        researcher = _unsaved({
+            "name": "entity-researcher", "description": "r", "system_prompt": "r", "tools": [evicted],
+            "response_format": None,
+            "middleware": [filesystem(backend, evict=False), DropFilesOnExit()],
+            "model": says(AIMessage("", tool_calls=[{"name": "evicted", "args": {}, "id": "e"}]), AIMessage("done")),
+        }, backend)
+        task = {"name": "task", "args": {"description": "go", "subagent_type": "entity-researcher"}, "id": "t"}
+        parent = create_deep_agent(model=says(AIMessage("", tool_calls=[task]), AIMessage("fin")),
+                                   tools=[], subagents=[researcher], backend=backend)
+        out = await parent.ainvoke({"messages": [{"role": "user", "content": "go"}],
+                                    "files": {"/conversation_history/scout": file("Scout's own")}})
+        assert sorted(out["files"]) == ["/conversation_history/scout"]
