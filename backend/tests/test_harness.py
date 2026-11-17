@@ -417,13 +417,13 @@ class TestOnlyTheWriterIsCheckpointed:
 class TestASubagentLeavesNoFiles:
     """A researcher's evicted pages merged into Scout's state, saved at every later step and handed to the next."""
 
-    def test_the_researcher_and_both_readers_drop_their_files_on_exit(self):
+    def test_every_subagent_drops_its_files_on_exit(self):
         from app.core.config import get_settings
         from app.ingest.agent import build_ingest_agent
 
         graphs = _subagent_graphs(build_ingest_agent(get_settings(), None))
         drops = {n for n, g in graphs.items() if "DropFilesOnExit.after_agent" in g.nodes}
-        assert drops == {"entity-researcher", "workbook-reader", "vault-reader"}
+        assert drops == set(graphs)
 
     def test_the_rubric_grades_before_the_files_go(self):
         from app.core.config import get_settings
@@ -432,7 +432,9 @@ class TestASubagentLeavesNoFiles:
         researcher = _subagent_graphs(build_ingest_agent(get_settings(), None))["entity-researcher"]
         edges = {(e.source, e.target) for e in researcher.get_graph().edges}
         # A revision jumps back to the model with its pages; only a finished researcher drops them.
-        assert ("ResearchRubric.after_agent", "DropFilesOnExit.after_agent") in edges
+        assert {t for s, t in edges if s == "ResearchRubric.after_agent"} == {
+            "SkillsMiddleware.before_model", "DropFilesOnExit.after_agent",
+        }
 
     async def test_through_an_unsaved_subagent_the_parent_keeps_its_own_and_gets_none(self):
         from deepagents import create_deep_agent

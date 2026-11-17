@@ -337,6 +337,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             filesystem_tools(backend),
             tool_errors(),
             save_questions(),
+            # Runs only once the writer ends, so its paused approval keeps everything it needs.
+            DropFilesOnExit(),
             call_limit(WRITER_MODEL_CALL_LIMIT),
             *fallback(utility_spec, research_spec, settings.model),
         ],

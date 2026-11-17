@@ -107,7 +107,7 @@ Summary: one PR per milestone, each stacked on the last, with a review stop betw
 | M | issue | ships | priority |
 |---|---|---|---|
 | M1 | #310 fix 1 | researchers and readers write no checkpoints | PR #421 |
-| M2 | #415 | researcher and workbook-reader drop files on exit | PR, stacked on #421 |
+| M2 | #415 | every subagent drops its files on exit | PR, stacked on #421 |
 | M3 | #416 | `make checkpoint-sizes` | high |
 | M4 | #417 | before/after numbers; decides M7 | high |
 | M5 | #418 | daily prune of subagent namespaces | high |
@@ -121,7 +121,7 @@ Summary: one PR per milestone, each stacked on the last, with a review stop betw
 #### Milestone 2: drop a subagent's files on exit (#415) ✓
 - **Deliverable**: after a researcher returns, Scout's `files` holds none of its pages.
 - **Touches**: backend.
-- **Key tasks**: [x] add `DropFilesOnExit` to two stacks, before the researcher's rubric [x] test the three stacks carry it
+- **Key tasks**: [x] add `DropFilesOnExit` to the researcher (before its rubric), workbook-reader and writer [x] test the three stacks carry it
   [x] test that a parent keeps its own files and gets none of an unsaved subagent's
 - **Acceptance**: `pytest tests/test_harness.py` passes.
 
