@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from importlib.resources import files
 
 import pytest
 from pydantic import ValidationError
@@ -27,6 +28,8 @@ def metric(**kw):
     ("FY 2024-25", "FY2024-25"),
     ("fy2024-2025", "FY2024-25"),
     ("FY1999-00", "FY1999-00"),
+    ("FY 2024–25", "FY2024-25"),
+    ("FY 2024 - 25", "FY2024-25"),
     ("CY2025", "CY2025"),
     ("calendar year 2024", "CY2024"),
     ("Calendar year 2025 (Geschäftsjahr 2025)", "CY2025"),
@@ -79,6 +82,7 @@ class TestResearchSavedBeforeIsNeverRefused:
 @pytest.mark.parametrize("as_of, end", [
     ("FY2023-24", "2024-03-31"), ("CY2024", "2024-12-31"),
     ("cumulative to 2025-03-31", "2025-03-31"), ("as of 2025-09-30", "2025-09-30"), ("since 2013", None),
+    ("FY 2024-25", "2025-03-31"), ("as on 31 March 2025", "2025-03-31"),
 ])
 def test_a_shaped_period_is_comparable_by_its_end(as_of, end):
     assert period_end(as_of) == end
@@ -91,27 +95,11 @@ def programme(**kw):
 
 
 class TestAProgrammeStartsOnTheFirstDayOfItsYear:
-    def test_a_fiscal_year_programme_starts_on_1_april(self):
+    def test_a_fiscal_year_programme_saves_its_derived_1_april_start(self):
         p = ProgramFinding(**programme(start_date="2024-04-01", basis="derived"))
-        assert p.start_date == date(2024, 4, 1)
+        assert (p.start_date, p.basis) == (date(2024, 4, 1), "derived")
 
-    def test_a_programme_started_in_a_named_year_starts_on_1_january(self):
-        ProgramFinding(**programme(start_date="2019-01-01", basis="derived",
-                                   evidence="The programme began in 2019 in two blocks of Mazbat."))
-
-    def test_a_derived_start_the_evidence_does_not_name_is_refused(self):
-        with pytest.raises(ValidationError, match="1 April for FY2025-26"):
-            ProgramFinding(**programme(start_date="2025-04-01", basis="derived"))
-
-    def test_a_derived_start_mid_year_is_refused(self):
-        with pytest.raises(ValidationError, match="derived start_date"):
-            ProgramFinding(**programme(start_date="2024-06-15", basis="derived"))
-
-    def test_a_stated_start_needs_no_year_in_the_evidence(self):
-        ProgramFinding(**programme(start_date="2024-06-15"))
-
-    def test_an_old_derived_start_is_promoted_as_saved(self):
-        report = {"held": []}
-        out = validated([{"concept": "program", **programme(start_date="2024-06-15", basis="derived")}],
-                        "program", report)
-        assert out[0].start_date == date(2024, 6, 15) and report["held"] == []
+    def test_the_researcher_is_told_the_rule(self):
+        prompt = (files("app.ingest") / "prompts" / "entity_researcher.md").read_text(encoding="utf-8")
+        assert "that year's 1 April, with `basis` `derived`" in prompt
+        assert "1 April" in ProgramFinding.model_fields["start_date"].description

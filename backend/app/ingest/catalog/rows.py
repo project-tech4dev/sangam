@@ -159,6 +159,7 @@ PERIOD_SHAPES = "'FY2024-25', 'CY2025', 'cumulative to 2025-03-31' or 'as of 202
 _PERIOD_FY = re.compile(r"^fy ?(\d{4})-(\d{2}|\d{4})$")
 _PERIOD_CY = re.compile(r"^(?:cy|calendar year) ?(\d{4})(?: \((.*)\))?$")
 _PERIOD_TO = re.compile(r"^(cumulative to|as of|as on) (.+)$")
+_DASH = re.compile(r" ?[-–—] ?")
 
 
 def _period_fy(text: str) -> str | None:
@@ -187,7 +188,8 @@ def _period_date(text: str) -> date | None:
 
 def shape_period(value: str) -> str | None:
     """A metric period in one of PERIOD_SHAPES, or None when the text cannot be rewritten exactly."""
-    text = " ".join(value.split()).lower()
+    # Reports print "FY 2024–25" and "FY 2024 - 25" as often as FY2024-25.
+    text = _DASH.sub("-", " ".join(value.split()).lower())
     if fy := _period_fy(text):
         return fy
     if m := _PERIOD_CY.match(text):

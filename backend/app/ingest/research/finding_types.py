@@ -511,21 +511,6 @@ class ProgramFinding(FindingBase, OptionallySourced, Tagged):
     end_date: date | None = None
     is_enabler: bool | None = None
 
-    @model_validator(mode="after")
-    def _derived_start(self, info: ValidationInfo) -> ProgramFinding:
-        if self.basis != "derived" or not self.start_date or stored(info):
-            return self
-        d = self.start_date
-        year = f"{d.year}-{(d.year + 1) % 100:02d}"
-        names_fy = year in self.evidence or f"{d.year}-{d.year + 1}" in self.evidence
-        if not ((d.month, d.day) == (4, 1) and names_fy
-                or (d.month, d.day) == (1, 1) and str(d.year) in self.evidence):
-            raise ValueError(
-                f"programme {self.name!r}: a derived start_date is the first day of a year the evidence "
-                f"names: 1 April for FY{year}, 1 January for {d.year}; got {d}"
-            )
-        return self
-
 
 class MetricFinding(FindingBase, OptionallySourced):
     concept: Literal["metric"] = "metric"

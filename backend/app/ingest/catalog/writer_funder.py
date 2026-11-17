@@ -439,7 +439,7 @@ async def stored_period(conn: Any, owner: Owner, name: str, period: str | None, 
     rows = await (
         await conn.execute(
             f"SELECT period FROM metrics WHERE {owner.column} = %s AND name = %s "
-            "AND program_id IS NOT DISTINCT FROM %s AND period IS NOT NULL",
+            "AND program_id IS NOT DISTINCT FROM %s AND period IS NOT NULL ORDER BY id",
             (owner.id, name, program_id),
         )
     ).fetchall()
@@ -466,7 +466,7 @@ async def write_metric(
     if owner.column == "org_id" and rec.source_type is not None:
         status, changes, found = await upsert_ranked(
             conn, "metrics", key, ranked_values(METRIC_UPDATABLE), proposed, Tier.of(rec), document_id,
-            row=f"[org:{owner.id}] metric {rec.name!r} {rec.period or ''}".strip(),
+            row=f"[org:{owner.id}] metric {rec.name!r} {period or ''}".strip(),
         )
         sink_conflicts(conflicts, found)
         return status, changes
