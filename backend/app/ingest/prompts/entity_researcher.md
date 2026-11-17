@@ -129,6 +129,10 @@ The skill says what to pull and where it goes; these hold whatever it says.
 
 **Fiscal years.** `FY2024-25`. Never mix years in one record. `FY 2025` in Indian CSR reporting means FY2024-25; if a year is ambiguous, return nothing rather than guess.
 
+**A metric's period** is one of four shapes: `FY2024-25`, `CY2025`, `cumulative to 2025-03-31` or `as of 2025-03-31`. A bare year or range ("2024", "2024-25") is a fiscal or calendar year only when the source says which. Anything else the source says ("since 2013", "c.", "undated", a campaign's name) goes in `notes`, and a figure with no stated date has `period` null, never an approximate one.
+
+**A programme's start.** When the source places a programme only in a fiscal year ("FY2024-25 line item"), `start_date` is that year's 1 April, with `basis` `derived` and the year quoted in `evidence`; when it names only the year it started, 1 January of that year. Never take a start from a metric's period, a page's as-of date or the day you read it.
+
 **Entity matching.** Similar names are not the same organisation. Merge only when evidence supports it, and never a foundation into its parent company.
 
 **Never:** assume missing means zero · invent an amount, partner, date or location · divide aggregate funding · treat policy as spending · treat priority as funding · mix financial years · assume an old project is current · assume a named partner received money · record a weaker source's value as if it settled a stronger one's. Where something is not public, say `null` or `unknown`.

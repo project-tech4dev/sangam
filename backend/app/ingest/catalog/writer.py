@@ -14,6 +14,7 @@ from urllib.parse import unquote, urlsplit
 from psycopg import sql
 
 from app.ingest.catalog.matcher import TRIGRAM_FLOOR, close_names
+from app.ingest.catalog.rows import shape_period
 from app.ingest.research.expectations import RESERVED_DOC_TYPES
 from app.ingest.taxonomy import TAG_KINDS, TAG_SLUGS
 
@@ -109,15 +110,20 @@ _FY = re.compile(r"^FY(\d{4})-\d{2}$")
 
 
 _DATE = re.compile(r"^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?")
+_CY = re.compile(r"^CY(\d{4})$")
+_UP_TO = re.compile(r"^(?:cumulative to|as of) (?=\d{4}-\d{2}-\d{2}$)")
 
 
 def period_end(value: Any) -> str | None:
-    """A comparable ISO date for an as_of: FY2023-24 ends 2024-03-31; 2024-03 and 2024 pad out."""
+    """A comparable ISO date for an as_of: FY2023-24 ends 2024-03-31, CY2024 on 2024-12-31; 2024-03 pads out."""
     if value is None:
         return None
     text = str(value).strip()
+    text = _UP_TO.sub("", shape_period(text) or text)
     if m := _FY.match(text):
         return f"{int(m[1]) + 1}-03-31"
+    if m := _CY.match(text):
+        return f"{m[1]}-12-31"
     if m := _DATE.match(text):
         return f"{m[1]}-{m[2] or '12'}-{m[3] or '31'}"
     return None

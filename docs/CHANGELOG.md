@@ -112,6 +112,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-04 · (unmerged) · A re-run on the same day reads as unsaved again, so its new findings get their own Review & save; research is "saved" only when the save came after it (#222).
 - 2026-11-04 · (unmerged) · A programme's tags roll up to its funder or org as `secondary`; a described programme with no theme is refused at save unless a gap names it (#241).
 - 2026-11-05 · #367 · `save_research` repairs a payload instead of refusing it for a split URL, summary counts, a year on a non-yearly gap or an office's mailbox; a refusal for a top-level field also lists the contract's missing fields (#171).
+- 2026-11-17 · (unmerged) · A metric's period is one of four shapes, rewritten when exact and refused otherwise; old research is rewritten, never refused (#200). A programme placed only in a fiscal year starts on its 1 April, `basis: derived` (#199).
 
 ## Funder Match and the taxonomy
 

@@ -9,6 +9,7 @@ from app.ingest.catalog.matcher import Match
 from app.ingest.catalog.rows import (
     FunderCsrYearRecord,
     FunderRecord,
+    shape_period,
 )
 from app.ingest.catalog.writer import (
     CLASSIFICATION,
@@ -431,12 +432,29 @@ async def write_program(
     return status, row["id"], changes
 
 
+async def stored_period(conn: Any, owner: Owner, name: str, period: str | None, program_id: int | None) -> str | None:
+    """The spelling a row saved before periods had a shape gives this period, so it is updated, not doubled."""
+    if period is None:
+        return None
+    rows = await (
+        await conn.execute(
+            f"SELECT period FROM metrics WHERE {owner.column} = %s AND name = %s "
+            "AND program_id IS NOT DISTINCT FROM %s AND period IS NOT NULL ORDER BY id",
+            (owner.id, name, program_id),
+        )
+    ).fetchall()
+    spellings = [r["period"] for r in rows]
+    if period in spellings:
+        return period
+    return next((p for p in spellings if shape_period(p) == period), period)
+
+
 async def write_metric(
     conn: Any, rec: Any, owner: Owner, *, program_id: int | None,
     location_id: int | None, document_id: int | None, conflicts: list[Conflict] | None = None,
 ) -> tuple[str, dict]:
-    key = {owner.column: owner.id, "name": rec.name, "period": rec.period,
-           "program_id": program_id}
+    period = await stored_period(conn, owner, rec.name, rec.period, program_id)
+    key = {owner.column: owner.id, "name": rec.name, "period": period, "program_id": program_id}
     proposed = {
         "value": rec.value, "target": rec.target, "unit": rec.unit, "stage": rec.stage,
         "method": rec.method, "is_self_reported": rec.is_self_reported,
@@ -448,7 +466,7 @@ async def write_metric(
     if owner.column == "org_id" and rec.source_type is not None:
         status, changes, found = await upsert_ranked(
             conn, "metrics", key, ranked_values(METRIC_UPDATABLE), proposed, Tier.of(rec), document_id,
-            row=f"[org:{owner.id}] metric {rec.name!r} {rec.period or ''}".strip(),
+            row=f"[org:{owner.id}] metric {rec.name!r} {period or ''}".strip(),
         )
         sink_conflicts(conflicts, found)
         return status, changes
