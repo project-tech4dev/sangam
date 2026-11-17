@@ -127,6 +127,20 @@ async def test_re_promoting_under_the_gate_counts_rows_that_did_not_change(db):
     assert again["csr_years"][0]["status"] == "matched"
 
 
+async def test_a_metric_stored_before_periods_had_a_shape_is_updated_not_doubled(db):
+    t = tag()
+    name = f"Zz Period Ltd {t}"
+    url = "https://x.example.org/r"
+    fid = await funder(db, name)
+    await db.execute("INSERT INTO metrics (funder_id, name, value, period) VALUES (%s, 'Wells dug', 3, "
+                     "'calendar year 2024')", (fid,))
+    findings = [finding("identity", url, name=name),
+                finding("metric", url, name="Wells dug", value=4, period="CY2024")]
+    await promote(db, await research(db, name, findings))
+    stored = await rows(db, "SELECT period, value FROM metrics WHERE funder_id = %s", fid)
+    assert [(r["period"], r["value"]) for r in stored] == [("calendar year 2024", 4)]
+
+
 # --- writers called directly -------------------------------------------------------------------
 
 
