@@ -253,8 +253,8 @@ class EscalateAfterFailedSave(AgentMiddleware):
 
 
 class DropFilesOnExit(AgentMiddleware):
-    """Deletes every file in a subagent's state as it ends. Its files flow back to the parent and on into
-    the next subagent, so anything the vault-reader offloaded (a summary, a long read) would reach a researcher."""
+    """Deletes every file in a subagent's state as it ends. Its files merge into Scout's saved state and on into
+    the next subagent: an evicted page saved at every later step, or private vault text reaching a researcher."""
 
     def _drop(self, state: Any) -> dict[str, Any] | None:
         files = (state.get("files") if isinstance(state, dict) else getattr(state, "files", None)) or {}

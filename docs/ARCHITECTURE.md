@@ -313,6 +313,8 @@ Generated detail: [deploy-and-vendors](../openwiki/operations/deploy-and-vendors
     thread's 169 MB, when checkpoints were 98% of the database.
   - Its findings are already rows (`entity_research`, `vault_research`), so a dead one restarts instead of resuming.
   - The writer keeps the parent's checkpointer: its approval card is an interrupt, and resuming needs one.
+  - All four drop their files as they finish (`DropFilesOnExit`). Otherwise an evicted page merges into Scout's
+    state, is saved at each later step and reaches the next researcher. Scout's own files are untouched.
 
 ## 12. Knowledge graph
 
