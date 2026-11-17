@@ -1,5 +1,5 @@
 .PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
-        db-init-remote db-push-remote migrate migrate-status psql db-url \
+        db-init-remote db-push-remote migrate migrate-status psql db-url checkpoint-sizes \
         dev-backend dev-frontend frontend-reinstall evals
 
 SHELL := /bin/bash
@@ -280,6 +280,11 @@ db-push-remote:  ## Copy the local database, schema AND data, to a managed one
 # Interactive shell against whichever database ENV selects.
 psql:  ## Interactive shell against whichever database ENV selects
 	$(COMPOSE) run --rm --no-deps --entrypoint psql postgres "$(DB_URL)"
+
+# One saved query, so before-and-after numbers compare like with like. Read-only.
+checkpoint-sizes:  ## Checkpoint bytes by table, thread and channel; THREAD=<id> for one
+	$(COMPOSE) run --rm --no-deps -T -v $(CURDIR)/scripts/sql:/sql:ro --entrypoint psql postgres "$(DB_URL)" \
+	  -v ON_ERROR_STOP=1 -v thread="$(THREAD)" -f /sql/checkpoint_sizes.sql
 
 ##@ Local-only maintenance
 # Empty every table but keep the schema and the applied-migration ledger, so a

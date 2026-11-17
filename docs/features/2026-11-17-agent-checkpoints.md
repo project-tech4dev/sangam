@@ -108,7 +108,7 @@ Summary: one PR per milestone, each stacked on the last, with a review stop betw
 |---|---|---|---|
 | M1 | #310 fix 1 | researchers and readers write no checkpoints | PR #421 |
 | M2 | #415 | every subagent drops its files on exit | PR, stacked on #421 |
-| M3 | #416 | `make checkpoint-sizes` | high |
+| M3 | #416 | `make checkpoint-sizes` | PR, stacked on M2 |
 | M4 | #417 | before/after numbers; decides M7 | high |
 | M5 | #418 | daily prune of subagent namespaces | high |
 | M6 | #419 | `checkpoint_mb` per Import turn in Langfuse | low |
@@ -125,11 +125,13 @@ Summary: one PR per milestone, each stacked on the last, with a review stop betw
   [x] test that a parent keeps its own files and gets none of an unsaved subagent's
 - **Acceptance**: `pytest tests/test_harness.py` passes.
 
-#### Milestone 3: one saved size query (#416)
+#### Milestone 3: one saved size query (#416) ✓
 - **Deliverable**: `make checkpoint-sizes` prints bytes by thread, namespace and channel.
 - **Touches**: scripts, Makefile.
-- **Key tasks**: [ ] the SQL file [ ] the target [ ] a line in `make help`
-- **Acceptance**: `make checkpoint-sizes THREAD=import-208baf8a-…` shows `subagent | messages | 17 MB` locally.
+- **Key tasks**: [x] the SQL file [x] the target [x] a line in `make help`
+- **Acceptance**: `make checkpoint-sizes` shows `subagent | messages | 17 MB` locally. Done: the Import thread is
+  480 kB top level and 19 MB in 3 subagent runs.
+- **Note**: from a worktree, set `COMPOSE_PROJECT_NAME=sangam`, or compose looks for a Postgres of its own.
 
 #### Milestone 4: measure (#417)
 - **Deliverable**: numbers on #310 from two paid one-organisation Imports on the same funder with a long annual
