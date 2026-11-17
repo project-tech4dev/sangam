@@ -100,6 +100,45 @@ def export_span(span: Any) -> bool:
     )
 
 
+def model_call_name(metadata: dict | None, root: str) -> str | None:
+    """`<agent>/<node>`, e.g. `entity-researcher/model`: every call is otherwise just `ChatAnthropic`."""
+    ns = (metadata or {}).get("langgraph_checkpoint_ns")
+    if not ns:
+        return None
+    agent = metadata.get("lc_agent_name")
+    node = ns.rsplit("|", 1)[-1].split(":", 1)[0]
+    return f"{agent if agent and agent != 'None' else root}/{node}"
+
+
+def _usage_message(message: Any) -> Any:
+    usage = dict(message.usage_metadata)
+    # The ephemeral_* details split cache_creation again, and Langfuse would subtract them from input twice.
+    details = {k: v for k, v in (usage.get("input_token_details") or {}).items() if not k.startswith("ephemeral_")}
+    usage["input_token_details"] = details
+    metadata = {k: v for k, v in message.response_metadata.items() if k != "usage"}
+    return message.model_copy(update={"response_metadata": metadata, "usage_metadata": usage})
+
+
+def one_usage_shape(response: Any) -> Any:
+    """Drop Anthropic's raw `usage` where LangChain's usage_metadata exists: Langfuse prefers the raw one,
+    so an invoked call's cached tokens were `cache_read_input_tokens` and a streamed one's `input_cache_read`."""
+    try:
+        generations = [
+            [
+                g.model_copy(update={"message": _usage_message(g.message)})
+                if getattr(getattr(g, "message", None), "usage_metadata", None)
+                and "usage" in (g.message.response_metadata or {})
+                else g
+                for g in batch
+            ]
+            for batch in response.generations
+        ]
+        return response.model_copy(update={"generations": generations})
+    except Exception:  # never fail a turn over telemetry
+        logger.debug("usage normalisation failed", exc_info=True)
+        return response
+
+
 def flush_traces() -> None:
     """Send what is buffered: a serverless function freezes once it has answered."""
     try:
@@ -117,6 +156,8 @@ def configure_langfuse(settings: Settings) -> bool:
     try:
         from langfuse import Langfuse
 
+        # Read when Langfuse builds its tracer provider; unset, every span is `unknown_service:python`.
+        os.environ.setdefault("OTEL_SERVICE_NAME", "sangam-backend")
         client = Langfuse(
             public_key=settings.langfuse_public_key,
             secret_key=settings.langfuse_secret_key,
@@ -241,8 +282,8 @@ def root_output(outputs: Any) -> Any:
     return answer or outputs
 
 
-def _build_handler(settings: Settings):
-    """The LangChain handler, bound to the client configure_langfuse() built."""
+def _build_handler(settings: Settings, root: str = TRACE_NAME):
+    """The LangChain handler, bound to the client configure_langfuse() built; `root` names the top agent's calls."""
     from langfuse.langchain import CallbackHandler
 
     class _CancellationTolerantHandler(CallbackHandler):
@@ -284,10 +325,14 @@ def _build_handler(settings: Settings):
             )
 
         def on_chat_model_start(self, serialized, messages, *, run_id, parent_run_id=None, metadata=None, **kwargs):
+            kwargs["name"] = kwargs.get("name") or model_call_name(metadata, root)
             return super().on_chat_model_start(
                 serialized, messages, run_id=run_id, parent_run_id=self._known_parent(parent_run_id, metadata),
                 metadata=metadata, **kwargs,
             )
+
+        def on_llm_end(self, response, **kwargs):
+            return super().on_llm_end(one_usage_shape(response), **kwargs)
 
         def on_llm_start(self, serialized, prompts, *, run_id, parent_run_id=None, metadata=None, **kwargs):
             return super().on_llm_start(
@@ -349,7 +394,7 @@ def trace_config(
     try:
         return {
             **base,
-            "callbacks": [_build_handler(settings)],
+            "callbacks": [_build_handler(settings, name)],
             "metadata": {"langfuse_trace_name": name, "langfuse_tags": ["sangam", *tags, settings.model]},
         }
     except Exception:  # telemetry must never take the app down
