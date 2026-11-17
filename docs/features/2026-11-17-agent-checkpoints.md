@@ -102,7 +102,7 @@ Summary: one PR per milestone, each stacked on the last, with a review stop betw
 | M2 | #415 | every subagent drops its files on exit | PR #422, stacked on #421 |
 | M3 | #416 | `make checkpoint-sizes` | PR #423, stacked on #422 |
 | M4 | #417 | before/after numbers; decides M7 | closed: numbers on hand, no paid run |
-| M5 | #418 | one-off cleanup of Dev's old subagent namespaces (runbook) | high |
+| M5 | #418 | one-off cleanup of Dev's old subagent namespaces (runbook) | PR, stacked on #424; Dev after deploy |
 | M6 | #419 | `checkpoint_mb` per Import turn in Langfuse | PR, stacked on #423 |
 | M7 | #420, #310 fixes 4, 5 | only what M4's rules call for | none: #420 closed, fix 5 not needed, fix 4 open |
 
@@ -135,19 +135,25 @@ Summary: one PR per milestone, each stacked on the last, with a review stop betw
   - Fix 4 (own pool): build if `/health` shows pool waits during the next real 8-organisation run with Ask in use.
 - **Acceptance**: both runs' `make checkpoint-sizes` output and wall-clock time posted on #310.
 - **Outcome**: closed without the paid runs. A local Import saved before M1 and M2, a worst case, held 480 kB at the
-  top level and no top-level `files`; Dev's largest thread was ~3 MB per organisation. Both rules come out "no"
-  (numbers on #417). The gap, a run where Scout reads a long report itself, is watched by M6 on real Imports.
+  top level, 398 kB of it Scout's `files` (first misread as none: delta channels are saved as writes, not blobs);
+  Dev's largest thread was ~3 MB per organisation. Fix 5 is "no". #420's 5 MB arm is far off; its 10% arm is met
+  only because the total is now that small, so it is judged on bytes and left closed (numbers on #417). The gap, a run where Scout reads a long report itself, is watched by M6 on real Imports.
 
 #### Milestone 5: one-off cleanup of Dev (#418)
 - **Deliverable**: Dev's subagent namespaces from before M1 are gone, and its disk shrinks. Runs once, after M1 is deployed.
 - **Touches**: one SQL file; no code in `app/`.
 - **Runbook**:
   1. `make checkpoint-sizes ENV=staging` (before), and `make db-backup ENV=staging`.
-  2. The script without `apply`: the list of threads and bytes it would delete.
-  3. The script with `-v apply=1`.
+  2. `make prune-checkpoints ENV=staging`: the dry run, listing threads and bytes it would delete.
+  3. `make prune-checkpoints ENV=staging APPLY=1`.
   4. `pg_repack` the three tables (or `VACUUM FULL` in a quiet hour: it locks them).
   5. `make checkpoint-sizes ENV=staging` (after); reopen three old chats (one Ask, one Import, one Pitch).
 - **Acceptance**: steps 1–5 on the local database first, then on Dev, with the before/after numbers posted on #418.
+- **Local, done**: `make prune-checkpoints APPLY=1` took the old Import thread from 20 MB to 480 kB, and it reopens with
+  the same 15 messages and files. `tests/test_prune_checkpoints.py` holds the same on real LangGraph checkpoints, and a
+  paused thread keeps its namespace and resumes, for a subagent as a node and inside a tool call (it fails without
+  the guard). A thread with any write on its latest checkpoint (a pause, or a run that died mid-step) is skipped, and so
+  is one that moved on between the dry-run list and the delete.
 
 #### Milestone 6: size per Import turn (#419)
 - **Deliverable**: `checkpoint_mb` on each `sangam_import` trace (`CheckpointSize`, an `after_agent` hook on Scout only).
