@@ -260,8 +260,8 @@ def _call_limit(limit: int | None) -> list:
     return [call_limit(limit)] if limit is not None else []
 
 
-def _unsaved(spec: dict, backend: CompositeBackend, settings: Settings) -> dict:
-    """A subagent that writes no checkpoints: its steps were most of the database (#310); a dead one restarts."""
+def _unsaved(spec: dict, backend: CompositeBackend) -> dict:
+    """A subagent that writes no checkpoints: its steps were most of the database, and a dead one restarts."""
     runnable = create_deep_agent(
         model=spec["model"],
         tools=spec["tools"],
@@ -272,7 +272,7 @@ def _unsaved(spec: dict, backend: CompositeBackend, settings: Settings) -> dict:
         response_format=spec["response_format"],
         name=spec["name"],
         checkpointer=False,
-    ).with_config({"recursion_limit": settings.recursion_limit})
+    )
     return {"name": spec["name"], "description": spec["description"], "runnable": runnable}
 
 # A person chooses where the run reads from before anything is read; rejecting means public websites only.
@@ -362,10 +362,10 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         tools=TOOLS,
         # The writer alone keeps the parent's checkpointer: its approval card is an interrupt, which resumes from one.
         subagents=[
-            _unsaved(researcher, backend, settings),
+            _unsaved(researcher, backend),
             writer,
-            _unsaved(reader, backend, settings),
-            _unsaved(vault_reader, backend, settings),
+            _unsaved(reader, backend),
+            _unsaved(vault_reader, backend),
         ],
         backend=backend,
         skills=[SKILLS_ROUTE],

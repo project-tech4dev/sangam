@@ -36,7 +36,7 @@ _PROFILE_HEADER = "as stored:"      # db_profile_column
 # Middleware hooks run as graph nodes, one set per model call. These never call a model, so they
 # are empty leaves and safe to drop; an unlisted hook stays, since dropping a parent orphans children.
 _EMPTY_HOOK = re.compile(
-    r"^(PatchToolCallsMiddleware|SkillsMiddleware|sql_retry_limiter|RunSources|DropFilesOnExit)"
+    r"^(PatchToolCallsMiddleware|SkillsMiddleware|sql_retry_limiter|RunSources|DropFilesOnExit|_ParentNotifierMiddleware)"
     r"\.(before|after)_(agent|model)$"
 )
 AUDIT_HOOK = "answer_audit.after_agent"

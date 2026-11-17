@@ -389,7 +389,7 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
 
 
 class TestOnlyTheWriterIsCheckpointed:
-    """A subagent's every step was saved in full, 97% of checkpoint bytes (#310); what it found is in its own rows."""
+    """A subagent's every step was saved in full, 97% of checkpoint bytes; what it found is in its own rows."""
 
     def test_the_researcher_and_readers_write_no_checkpoint_and_the_writer_resumes(self):
         from app.core.config import get_settings
@@ -402,11 +402,10 @@ class TestOnlyTheWriterIsCheckpointed:
         # The approval card is an interrupt inside the writer, and resuming one needs the parent's checkpointer.
         assert graphs["catalog-writer"].checkpointer is None
 
-    def test_a_built_subagent_keeps_the_runs_recursion_limit(self):
+    def test_every_subagent_keeps_the_same_step_limit(self):
         from app.core.config import get_settings
         from app.ingest.agent import build_ingest_agent
 
-        settings = get_settings()
-        graphs = _subagent_graphs(build_ingest_agent(settings, None))
-        # create_deep_agent binds 9,999 steps; a looping researcher must stop where the run does.
-        assert graphs["entity-researcher"].config["recursion_limit"] == settings.recursion_limit
+        graphs = _subagent_graphs(build_ingest_agent(get_settings(), None))
+        # The run's 200 would stop a researcher at ~66 model turns; its limits are its call and page caps.
+        assert {g.config["recursion_limit"] for g in graphs.values()} == {graphs["catalog-writer"].config["recursion_limit"]}

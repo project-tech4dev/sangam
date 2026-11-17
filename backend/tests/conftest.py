@@ -141,7 +141,7 @@ def build_import(monkeypatch):
         # The supervisor is the call with subagents; a subagent built on its own stands in for its entry.
         seen = next(c for c in calls if "subagents" in c)
         own = {c["name"]: c for c in calls if "subagents" not in c}
-        seen["subagents"] = [own.get(s["name"], s) for s in seen["subagents"]]
+        seen["subagents"] = [{**s, **own[s["name"]]} if s["name"] in own else s for s in seen["subagents"]]
         return seen
 
     return _build
