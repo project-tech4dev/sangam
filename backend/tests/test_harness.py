@@ -290,21 +290,26 @@ class TestTheSkillIsFoundAndIsProgressive:
         }
 
 
-def _subagent_tools(graph) -> dict[str, set[str]]:
-    """What each subagent's own graph runs — which is not what its spec declares."""
+def _subagent_graphs(graph) -> dict:
+    """Each subagent's own compiled graph, by name."""
     # deepagents 0.7.16 keeps compiled subagents only in the task tool's
     # closure; an upgrade that moves them must fail here, not pass silently.
     task = graph.nodes["tools"].bound.tools_by_name["task"]
-    found: dict[str, set[str]] = {}
+    found: dict = {}
     for cell in (task.func or task.coroutine).__closure__ or ():
         value = cell.cell_contents
         if not isinstance(value, dict):
             continue
         for name, sub in value.items():
             if "tools" in getattr(sub, "nodes", {}):
-                found[name] = set(sub.nodes["tools"].bound.tools_by_name)
+                found[name] = sub
     assert found, "no compiled subagent graphs found — deepagents moved them"
     return found
+
+
+def _subagent_tools(graph) -> dict[str, set[str]]:
+    """What each subagent's own graph runs — which is not what its spec declares."""
+    return {name: set(sub.nodes["tools"].bound.tools_by_name) for name, sub in _subagent_graphs(graph).items()}
 
 
 @pytest.fixture(scope="module")
@@ -381,3 +386,27 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
         # pointing at the one backend route that is real disk.
         for name, tools in subagents.items():
             assert "ls" not in tools, name
+
+
+class TestOnlyTheWriterIsCheckpointed:
+    """A subagent's every step was saved in full, 97% of checkpoint bytes (#310); what it found is in its own rows."""
+
+    def test_the_researcher_and_readers_write_no_checkpoint_and_the_writer_resumes(self):
+        from app.core.config import get_settings
+        from app.ingest.agent import build_ingest_agent
+
+        graphs = _subagent_graphs(build_ingest_agent(get_settings(), None))
+        assert {n for n, g in graphs.items() if g.checkpointer is False} == {
+            "entity-researcher", "workbook-reader", "vault-reader",
+        }
+        # The approval card is an interrupt inside the writer, and resuming one needs the parent's checkpointer.
+        assert graphs["catalog-writer"].checkpointer is None
+
+    def test_a_built_subagent_keeps_the_runs_recursion_limit(self):
+        from app.core.config import get_settings
+        from app.ingest.agent import build_ingest_agent
+
+        settings = get_settings()
+        graphs = _subagent_graphs(build_ingest_agent(settings, None))
+        # create_deep_agent binds 9,999 steps; a looping researcher must stop where the run does.
+        assert graphs["entity-researcher"].config["recursion_limit"] == settings.recursion_limit

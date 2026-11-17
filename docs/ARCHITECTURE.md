@@ -308,6 +308,11 @@ Generated detail: [deploy-and-vendors](../openwiki/operations/deploy-and-vendors
   - Boot only checks the version and refuses to start when it lags.
   - Before this, `saver.setup()` ran DDL on every cold start, 3,771 times.
   - Concurrent cold starts after a langgraph upgrade would have raced each other on its version table.
+- **Import's subagents write no checkpoints, except the catalog-writer** (`ingest/agent.py::_unsaved`, #310).
+  - A subagent's every step was saved in full: 97% of checkpoint bytes locally; on Sangam Dev, 143 of the largest
+    thread's 169 MB, when checkpoints were 98% of the database.
+  - Its findings are already rows (`entity_research`, `vault_research`), so a dead one restarts instead of resuming.
+  - The writer keeps the parent's checkpointer: its approval card is an interrupt, and resuming needs one.
 
 ## 12. Knowledge graph
 
