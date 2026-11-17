@@ -21,20 +21,25 @@ from langchain.agents.middleware import (
 from langchain.agents.middleware.types import hook_config
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, BaseMessage, SystemMessage, ToolMessage
+from langgraph.config import get_config
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from app.agentkit.middleware import AgUiState
+from app.db.checkpointer import thread_bytes
+from app.db.pool import get_pool
 from app.ingest.caller import caller_note, scope
 from app.ingest.catalog.save import write_preview
 from app.ingest.reading import run_sources
 from app.ingest.research.contract import unanswered
 from app.ingest.research.finding_types import FINDING_MODELS, Finding
 from app.ingest.research.findings import EntityResearch, Gap, VaultResearch
+from app.integrations.tracing import score_answer
 
 logger = logging.getLogger(__name__)
 
 READING_TOOLS = frozenset({"read_page", "fetch_document", "read_document_pages"})
 SAVE_TOOL = "save_research"
+CHECKPOINT_SIZE_WAIT_S = 2
 # The phrase the researcher copies into stopped_reason; the Working board matches it.
 READING_LIMIT = "reading limit"
 READING_LIMIT_MESSAGE = (
@@ -265,6 +270,21 @@ class DropFilesOnExit(AgentMiddleware):
 
     async def aafter_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
         return self._drop(state)
+
+
+class CheckpointSize(AgentMiddleware):
+    """Scores the thread's running checkpoint MB as a turn finishes; a turn paused on an approval counts in the next."""
+
+    async def aafter_agent(self, state: Any, runtime: Any) -> None:
+        try:
+            thread_id = get_config()["configurable"]["thread_id"]
+            # A dashboard number never holds up a turn behind a busy pool.
+            async with get_pool().connection(timeout=CHECKPOINT_SIZE_WAIT_S) as conn:
+                size = await thread_bytes(conn, thread_id)
+        except Exception:
+            logger.debug("could not measure checkpoint size", exc_info=True)
+            return
+        score_answer("checkpoint_mb", round(size / 1_000_000, 2))
 
 
 class CallerNote(AgentMiddleware):

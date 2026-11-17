@@ -231,3 +231,47 @@ class TestANoteGoesAfterTheSystemMessage:
         out = mw.append_to_system_message(SystemMessage("rules"), "note")
         assert [b["text"] for b in out.content_blocks] == ["rules", "\n\nnote"]
         assert mw.append_to_system_message(None, "note").content_blocks[0]["text"] == "note"
+
+
+class TestTheCheckpointSizeIsScored:
+    @pytest.fixture
+    def scored(self, monkeypatch):
+        from contextlib import asynccontextmanager
+
+        sent, asked, waits = [], [], []
+
+        class Pool:
+            @asynccontextmanager
+            async def connection(self, timeout=None):
+                waits.append(timeout)
+                yield object()
+
+        async def size(conn, thread_id):
+            asked.append(thread_id)
+            return 3_204_000
+
+        monkeypatch.setattr(mw, "get_config", lambda: {"configurable": {"thread_id": "import-1"}})
+        monkeypatch.setattr(mw, "get_pool", Pool)
+        monkeypatch.setattr(mw, "thread_bytes", size)
+        monkeypatch.setattr(mw, "score_answer", lambda name, value: sent.append((name, value)))
+        return SimpleNamespace(sent=sent, asked=asked, waits=waits)
+
+    async def test_a_turn_sends_its_thread_size_once(self, scored):
+        assert await mw.CheckpointSize().aafter_agent({"messages": []}, None) is None
+        assert scored.asked == ["import-1"] and scored.sent == [("checkpoint_mb", 3.2)]
+        # A short, bounded wait: the turn is not held for the pool's own timeout.
+        assert scored.waits == [mw.CHECKPOINT_SIZE_WAIT_S]
+
+    async def test_a_failed_query_sends_nothing_and_never_raises(self, scored, monkeypatch):
+        async def broken(conn, thread_id):
+            raise RuntimeError("pool closed")
+
+        monkeypatch.setattr(mw, "thread_bytes", broken)
+        await mw.CheckpointSize().aafter_agent({"messages": []}, None)
+        assert scored.sent == []
+
+    def test_only_scout_carries_it_and_only_with_langfuse(self, build_import):
+        on = build_import(**TIERS, langfuse_public_key="pk", langfuse_secret_key="sk")
+        off = build_import(**TIERS, langfuse_public_key="", langfuse_secret_key="")
+        assert of(on["middleware"], mw.CheckpointSize) and not of(off["middleware"], mw.CheckpointSize)
+        assert all(not of(s["middleware"], mw.CheckpointSize) for s in on["subagents"])

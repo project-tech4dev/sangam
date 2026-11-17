@@ -184,3 +184,16 @@ def test_the_pool_is_sized_by_the_setting_not_a_constant():
         Settings.model_fields["max_parallel_research"].default
         <= Settings.model_fields["db_pool_max_size"].default
     )
+
+
+async def test_thread_bytes_counts_one_thread_in_every_namespace(db):
+    from app.db.checkpointer import thread_bytes
+
+    for ns in ("", "tools:1"):
+        await db.execute(
+            "INSERT INTO checkpoint_blobs (thread_id, checkpoint_ns, channel, version, type, blob) "
+            "VALUES ('size-test', %s, 'messages', '1', 'bytes', %s)",
+            (ns, b"x" * 1000),
+        )
+    assert await thread_bytes(db, "size-test") == 2000
+    assert await thread_bytes(db, "no-such-thread") == 0

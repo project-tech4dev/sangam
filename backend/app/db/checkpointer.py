@@ -43,6 +43,16 @@ def make_pool(database_url: str, max_size: int | None = None) -> AsyncConnection
 CHECKPOINT_VERSION = len(AsyncPostgresSaver.MIGRATIONS) - 1
 
 
+async def thread_bytes(conn, thread_id: str) -> int:
+    """A thread's blob and write bytes, every namespace, as `make checkpoint-sizes` totals a thread; no detoasting."""
+    cur = await conn.execute(
+        "SELECT (SELECT coalesce(sum(octet_length(blob)), 0) FROM checkpoint_blobs WHERE thread_id = %(t)s)"
+        " + (SELECT coalesce(sum(octet_length(blob)), 0) FROM checkpoint_writes WHERE thread_id = %(t)s) AS n",
+        {"t": thread_id},
+    )
+    return int((await cur.fetchone())["n"])
+
+
 async def checkpoint_version(conn) -> int | None:
     """The checkpointer migration the database is at, or None when it was never migrated."""
     exists = await (await conn.execute("SELECT to_regclass('checkpoint_migrations') AS t")).fetchone()

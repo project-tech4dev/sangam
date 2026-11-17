@@ -19,6 +19,7 @@ from app.agentkit.models import resolve_model
 from app.core.config import Settings, get_settings
 from app.ingest.middleware import (
     CallerNote,
+    CheckpointSize,
     ChosenSources,
     DropFilesOnExit,
     EscalateAfterFailedSave,
@@ -386,6 +387,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             ChosenSources(),
             TickedSources(),
             run_plan(),
+            # Only a Langfuse score, so without Langfuse the query would buy nothing.
+            *([CheckpointSize()] if settings.langfuse_enabled else []),
         ],
         system_prompt=_render(_INSTRUCTIONS_MD, settings),
         # deepagents turns this into LangChain's HumanInTheLoopMiddleware: the run pauses on the

@@ -99,12 +99,12 @@ Summary: one PR per milestone, each stacked on the last, with a review stop betw
 | M | issue | ships | priority |
 |---|---|---|---|
 | M1 | #310 fix 1 | researchers and readers write no checkpoints | PR #421 |
-| M2 | #415 | every subagent drops its files on exit | PR, stacked on #421 |
-| M3 | #416 | `make checkpoint-sizes` | PR, stacked on M2 |
-| M4 | #417 | before/after numbers; decides M7 | high |
+| M2 | #415 | every subagent drops its files on exit | PR #422, stacked on #421 |
+| M3 | #416 | `make checkpoint-sizes` | PR #423, stacked on #422 |
+| M4 | #417 | before/after numbers; decides M7 | closed: numbers on hand, no paid run |
 | M5 | #418 | one-off cleanup of Dev's old subagent namespaces (runbook) | high |
-| M6 | #419 | `checkpoint_mb` per Import turn in Langfuse | low |
-| M7 | #420, #310 fixes 4, 5 | only what M4's rules call for | low |
+| M6 | #419 | `checkpoint_mb` per Import turn in Langfuse | PR, stacked on #423 |
+| M7 | #420, #310 fixes 4, 5 | only what M4's rules call for | none: #420 closed, fix 5 not needed, fix 4 open |
 
 #### Milestone 1: subagents write no checkpoints ✓
 - **Deliverable**: entity-researcher, vault-reader and workbook-reader built with `checkpointer=False`; writer kept.
@@ -134,6 +134,9 @@ Summary: one PR per milestone, each stacked on the last, with a review stop betw
   - Fix 5 (save at end): build if top-level bytes per one-organisation run stay over 10 MB.
   - Fix 4 (own pool): build if `/health` shows pool waits during the next real 8-organisation run with Ask in use.
 - **Acceptance**: both runs' `make checkpoint-sizes` output and wall-clock time posted on #310.
+- **Outcome**: closed without the paid runs. A local Import saved before M1 and M2, a worst case, held 480 kB at the
+  top level and no top-level `files`; Dev's largest thread was ~3 MB per organisation. Both rules come out "no"
+  (numbers on #417). The gap, a run where Scout reads a long report itself, is watched by M6 on real Imports.
 
 #### Milestone 5: one-off cleanup of Dev (#418)
 - **Deliverable**: Dev's subagent namespaces from before M1 are gone, and its disk shrinks. Runs once, after M1 is deployed.
@@ -147,12 +150,12 @@ Summary: one PR per milestone, each stacked on the last, with a review stop betw
 - **Acceptance**: steps 1–5 on the local database first, then on Dev, with the before/after numbers posted on #418.
 
 #### Milestone 6: size per Import turn (#419)
-- **Deliverable**: `checkpoint_mb` on each `sangam_import` trace.
+- **Deliverable**: `checkpoint_mb` on each `sangam_import` trace (`CheckpointSize`, an `after_agent` hook on Scout only).
 - **Touches**: backend.
 - **Acceptance**: a local Import shows the score in Langfuse; a unit test checks it is sent once per turn.
 
 #### Milestone 7: what M4 calls for
-Planned only once M4 has numbers; each becomes its own Draft.
+Nothing: #420 is closed and fix 5 is not needed. Fix 4 stays in #310, judged on a real 8-organisation run with Ask in use.
 
 ## 9. Open questions and risks
 
@@ -161,11 +164,10 @@ Planned only once M4 has numbers; each becomes its own Draft.
 - **Top-level growth.** Scout still saves every step and nothing trims it. Keeping back to the last snapshot needs
   blob deserialisation and is the risky part; fix 5 or deleting old threads is decided by M4's numbers.
 - **Running and paused threads.** A thread idle less than 6 h, or paused on an `__interrupt__`, is skipped.
-- **Two paid runs** in M4 (needs `TAVILY_API_KEY`).
 
 ## Known gaps — what this does not make true
 
 - It does not shrink Dev's disk until `pg_repack`/`VACUUM FULL` runs (M5's runbook, step 4).
 - Nothing cleans checkpoints on its own: a subagent that starts checkpointing again would grow unseen until M6.
-- It does not stop the supervisor saving every step; that is fix 5, decided in M4.
+- It does not stop the supervisor saving every step; M4's numbers say that costs ~3 MB per organisation.
 - Checkpoint writes still share the pool with REST and `db_query`; that is fix 4, decided in M4.
