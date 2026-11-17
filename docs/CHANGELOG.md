@@ -230,6 +230,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-12 · #379 · `UTILITY_MODEL` and `SQL_AUDIT_MODEL` default to Claude Haiku 5.5 at low effort, about a tenth of Haiku 4.5's price; the audit and news headlines read the reply's text, since Haiku 5.5 can start with a thinking block (#378).
 - 2026-11-17 · (unmerged) · Import's entity-researcher, vault-reader and workbook-reader are built with `checkpointer=False`, so their steps no longer go into `checkpoint_blobs` (97% of its bytes locally); a researcher killed mid-run restarts. A researcher's evicted pages still reach Scout's saved state until #415. The catalog-writer, whose approval card is an interrupt, still checkpoints (#310 step 1).
 - 2026-11-17 · (unmerged) · The entity-researcher, workbook-reader and catalog-writer drop their files as they finish, as the vault-reader did, so a page evicted from a researcher no longer joins Scout's saved state or reaches the next researcher (#415).
+- 2026-11-17 · (unmerged) · `make checkpoint-sizes [ENV=staging] [THREAD=<id>]`: one saved, read-only query for checkpoint bytes by table (uncompressed and on disk), thread (top level vs subagents) and channel, so before-and-after numbers compare (#416).
 
 ## Tracing and evals
 
