@@ -259,6 +259,22 @@ WRITER_MODEL_CALL_LIMIT = 12
 def _call_limit(limit: int | None) -> list:
     return [call_limit(limit)] if limit is not None else []
 
+
+def _unsaved(spec: dict, backend: CompositeBackend) -> dict:
+    """A subagent that writes no checkpoints: its steps were most of the database, and a dead one restarts."""
+    runnable = create_deep_agent(
+        model=spec["model"],
+        tools=spec["tools"],
+        backend=backend,
+        skills=spec.get("skills"),
+        middleware=spec["middleware"],
+        system_prompt=spec["system_prompt"],
+        response_format=spec["response_format"],
+        name=spec["name"],
+        checkpointer=False,
+    )
+    return {"name": spec["name"], "description": spec["description"], "runnable": runnable}
+
 # A person chooses where the run reads from before anything is read; rejecting means public websites only.
 # Sources ticked before sending are that choice already, so the card shows only when nothing was ticked.
 # run_import_now is the supervisor's one bulk write, so a person approves it as promote_research is approved.
@@ -344,7 +360,13 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     agent = create_deep_agent(
         model=strong,
         tools=TOOLS,
-        subagents=[researcher, writer, reader, vault_reader],
+        # The writer alone keeps the parent's checkpointer: its approval card is an interrupt, which resumes from one.
+        subagents=[
+            _unsaved(researcher, backend),
+            writer,
+            _unsaved(reader, backend),
+            _unsaved(vault_reader, backend),
+        ],
         backend=backend,
         skills=[SKILLS_ROUTE],
         middleware=[

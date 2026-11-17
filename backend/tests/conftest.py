@@ -128,16 +128,20 @@ def build_import(monkeypatch):
         return FakeListChatModel(responses=["ok"], name=spec)
 
     def _build(**overrides):
-        seen: dict = {}
+        calls: list[dict] = []
 
         def capture(**kwargs):
-            seen.update(kwargs)
-            return SimpleNamespace(with_config=lambda config: seen.setdefault("config", config))
+            calls.append(kwargs)
+            return SimpleNamespace(with_config=lambda config: kwargs.setdefault("config", config))
 
         monkeypatch.setattr(agent, "resolve_model", fake)
         monkeypatch.setattr(middleware, "resolve_model", fake)
         monkeypatch.setattr(agent, "create_deep_agent", capture)
         agent.build_ingest_agent(Settings(**overrides), None)
+        # The supervisor is the call with subagents; a subagent built on its own stands in for its entry.
+        seen = next(c for c in calls if "subagents" in c)
+        own = {c["name"]: c for c in calls if "subagents" not in c}
+        seen["subagents"] = [{**s, **own[s["name"]]} if s["name"] in own else s for s in seen["subagents"]]
         return seen
 
     return _build

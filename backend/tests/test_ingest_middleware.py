@@ -164,7 +164,9 @@ class TestTheRubricGradesTheResearcher:
                       if isinstance(c.cell_contents, dict) and "entity-researcher" in c.cell_contents)
         edges = {(e.source, e.target) for e in graphs["entity-researcher"].get_graph().edges}
         # A jump to "model" lands on the first before_model hook (deepagents 0.7.2x: skill reload), else the model.
-        targets = {t for s, t in edges if s == "ResearchRubric.after_agent"} - {"__end__"}
+        # Its way out is __end__ or the next after_agent hook (a compiled deep agent's parent notifier).
+        targets = {t for s, t in edges if s == "ResearchRubric.after_agent" and not t.endswith(".after_agent")}
+        targets -= {"__end__"}
         assert targets and all(t == "model" or t.endswith(".before_model") for t in targets)
 
     def test_a_save_reaches_the_grader_as_a_digest(self):

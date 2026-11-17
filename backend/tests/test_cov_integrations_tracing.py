@@ -61,6 +61,7 @@ def test_export_drops_empty_hooks(monkeypatch):
     monkeypatch.setitem(sys.modules, "langfuse.span_filter", sf)
     assert tracing.export_span(SimpleNamespace(name="model")) is True
     assert tracing.export_span(SimpleNamespace(name="sql_retry_limiter.before_model")) is False
+    assert tracing.export_span(SimpleNamespace(name="_ParentNotifierMiddleware.after_agent")) is False
     assert tracing.export_span(SimpleNamespace(name=None)) is True
 
 
