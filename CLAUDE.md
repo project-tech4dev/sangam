@@ -58,6 +58,7 @@ make smoke               # end-to-end check of backend + frontend + chat wire
 make migrate             # apply db/migrations/*.sql   (make migrate-status to inspect)
 make psql                # interactive shell against whichever DB ENV selects
 make checkpoint-sizes    # checkpoint bytes by table, thread and channel (THREAD=<id> for one)
+make prune-checkpoints   # delete old subagent checkpoints; dry run unless APPLY=1
 make wiki-update         # refresh openwiki/ pages whose source changed (no model call when none did)
 make wiki-fix MSG="..."  # have OpenWiki correct a wrong page; never hand-edit openwiki/
 make wiki                # regenerate openwiki/ from scratch (~20 min, COSTS MONEY)

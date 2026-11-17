@@ -1,5 +1,5 @@
 .PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
-        db-init-remote db-push-remote migrate migrate-status psql db-url checkpoint-sizes \
+        db-init-remote db-push-remote migrate migrate-status psql db-url checkpoint-sizes prune-checkpoints \
         dev-backend dev-frontend frontend-reinstall evals
 
 SHELL := /bin/bash
@@ -285,6 +285,12 @@ psql:  ## Interactive shell against whichever database ENV selects
 checkpoint-sizes:  ## Checkpoint bytes by table, thread and channel; THREAD=<id> for one
 	$(COMPOSE) run --rm --no-deps -T -v $(CURDIR)/scripts/sql:/sql:ro --entrypoint psql postgres "$(DB_URL)" \
 	  -v ON_ERROR_STOP=1 -v thread="$(THREAD)" -f /sql/checkpoint_sizes.sql
+
+# Whole subagent namespaces of threads idle 6 h and not paused; a dry run unless APPLY=1.
+prune-checkpoints:  ## Delete old subagent checkpoints (dry run unless APPLY=1); THREAD=<id> for one
+	$(COMPOSE) run --rm --no-deps -T -v $(CURDIR)/scripts/sql:/sql:ro --entrypoint psql postgres "$(DB_URL)" \
+	  -v ON_ERROR_STOP=1 -v thread="$(THREAD)" -v apply=$(if $(APPLY),1,0) -v idle_hours=6 \
+	  -f /sql/prune_subagent_checkpoints.sql
 
 ##@ Local-only maintenance
 # Empty every table but keep the schema and the applied-migration ledger, so a

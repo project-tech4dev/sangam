@@ -318,7 +318,9 @@ Generated detail: [deploy-and-vendors](../openwiki/operations/deploy-and-vendors
   - Nothing prunes checkpoints on a schedule; with Langfuse on, each Import turn that finishes sends the thread's
     running size as the `checkpoint_mb` score (`CheckpointSize`), so regrowth shows on a chart, not as a full database.
     A thread left paused on an approval is not scored until a later turn finishes. Scout's own
-    steps were 480 kB for a three-organisation Import, so saving at the end and pages in Storage were not built (#417).
+    steps were 480 kB for a three-organisation Import (398 kB of it one saved file), so saving at the end and pages
+    in Storage were not built (#417). Old subagent namespaces are cleared by hand: `make prune-checkpoints`, a dry
+    run unless `APPLY=1`, which deletes whole namespaces only and skips a paused thread.
 
 ## 12. Knowledge graph
 
