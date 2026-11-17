@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 READING_TOOLS = frozenset({"read_page", "fetch_document", "read_document_pages"})
 SAVE_TOOL = "save_research"
+CHECKPOINT_SIZE_WAIT_S = 2
 # The phrase the researcher copies into stopped_reason; the Working board matches it.
 READING_LIMIT = "reading limit"
 READING_LIMIT_MESSAGE = (
@@ -272,12 +273,13 @@ class DropFilesOnExit(AgentMiddleware):
 
 
 class CheckpointSize(AgentMiddleware):
-    """Scores the thread's checkpoint MB on the Import trace as a turn ends, so regrowth shows without SQL."""
+    """Scores the thread's running checkpoint MB as a turn finishes; a turn paused on an approval counts in the next."""
 
     async def aafter_agent(self, state: Any, runtime: Any) -> None:
         try:
             thread_id = get_config()["configurable"]["thread_id"]
-            async with get_pool().connection() as conn:
+            # A dashboard number never holds up a turn behind a busy pool.
+            async with get_pool().connection(timeout=CHECKPOINT_SIZE_WAIT_S) as conn:
                 size = await thread_bytes(conn, thread_id)
         except Exception:
             logger.debug("could not measure checkpoint size", exc_info=True)

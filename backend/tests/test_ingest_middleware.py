@@ -235,22 +235,32 @@ class TestANoteGoesAfterTheSystemMessage:
 
 class TestTheCheckpointSizeIsScored:
     @pytest.fixture
-    def scored(self, monkeypatch, recording_pool):
-        sent, asked = [], []
+    def scored(self, monkeypatch):
+        from contextlib import asynccontextmanager
+
+        sent, asked, waits = [], [], []
+
+        class Pool:
+            @asynccontextmanager
+            async def connection(self, timeout=None):
+                waits.append(timeout)
+                yield object()
 
         async def size(conn, thread_id):
             asked.append(thread_id)
             return 3_204_000
 
         monkeypatch.setattr(mw, "get_config", lambda: {"configurable": {"thread_id": "import-1"}})
-        monkeypatch.setattr(mw, "get_pool", lambda: recording_pool())
+        monkeypatch.setattr(mw, "get_pool", Pool)
         monkeypatch.setattr(mw, "thread_bytes", size)
         monkeypatch.setattr(mw, "score_answer", lambda name, value: sent.append((name, value)))
-        return SimpleNamespace(sent=sent, asked=asked)
+        return SimpleNamespace(sent=sent, asked=asked, waits=waits)
 
     async def test_a_turn_sends_its_thread_size_once(self, scored):
         assert await mw.CheckpointSize().aafter_agent({"messages": []}, None) is None
         assert scored.asked == ["import-1"] and scored.sent == [("checkpoint_mb", 3.2)]
+        # A short, bounded wait: the turn is not held for the pool's own timeout.
+        assert scored.waits == [mw.CHECKPOINT_SIZE_WAIT_S]
 
     async def test_a_failed_query_sends_nothing_and_never_raises(self, scored, monkeypatch):
         async def broken(conn, thread_id):

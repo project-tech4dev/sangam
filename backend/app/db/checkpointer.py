@@ -44,7 +44,7 @@ CHECKPOINT_VERSION = len(AsyncPostgresSaver.MIGRATIONS) - 1
 
 
 async def thread_bytes(conn, thread_id: str) -> int:
-    """Checkpoint bytes one thread holds, every namespace; octet_length reads the size without detoasting."""
+    """A thread's blob and write bytes, every namespace, as `make checkpoint-sizes` totals a thread; no detoasting."""
     cur = await conn.execute(
         "SELECT (SELECT coalesce(sum(octet_length(blob)), 0) FROM checkpoint_blobs WHERE thread_id = %(t)s)"
         " + (SELECT coalesce(sum(octet_length(blob)), 0) FROM checkpoint_writes WHERE thread_id = %(t)s) AS n",

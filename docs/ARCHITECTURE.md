@@ -315,8 +315,9 @@ Generated detail: [deploy-and-vendors](../openwiki/operations/deploy-and-vendors
   - The writer keeps the parent's checkpointer: its approval card is an interrupt, and resuming needs one.
   - All four drop their files as they finish (`DropFilesOnExit`). Otherwise an evicted page merges into Scout's
     state, is saved at each later step and reaches the next researcher. Scout's own files are untouched.
-  - Nothing prunes checkpoints on a schedule; with Langfuse on, each Import turn sends the thread's size as the
-    `checkpoint_mb` score (`CheckpointSize`), so regrowth shows on a chart, not as a full database. Scout's own
+  - Nothing prunes checkpoints on a schedule; with Langfuse on, each Import turn that finishes sends the thread's
+    running size as the `checkpoint_mb` score (`CheckpointSize`), so regrowth shows on a chart, not as a full database.
+    A thread left paused on an approval is not scored until a later turn finishes. Scout's own
     steps were 480 kB for a three-organisation Import, so saving at the end and pages in Storage were not built (#417).
 
 ## 12. Knowledge graph
