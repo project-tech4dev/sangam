@@ -36,7 +36,7 @@ WITH c AS (
   SELECT thread_id, checkpoint_ns, channel, octet_length(blob) FROM checkpoint_writes
 )
 SELECT CASE WHEN checkpoint_ns = '' THEN 'top level' ELSE 'subagent' END AS level, channel,
-       count(*) AS versions, pg_size_pretty(sum(n)) AS bytes, pg_size_pretty(max(n)::bigint) AS largest
+       count(*) AS rows, pg_size_pretty(sum(n)) AS bytes, pg_size_pretty(max(n)::bigint) AS largest
   FROM c WHERE :'thread' = '' OR thread_id = :'thread'
  GROUP BY 1, 2 ORDER BY sum(n) DESC LIMIT 15;
 

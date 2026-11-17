@@ -151,7 +151,9 @@ Summary: one PR per milestone, each stacked on the last, with a review stop betw
 - **Acceptance**: steps 1–5 on the local database first, then on Dev, with the before/after numbers posted on #418.
 - **Local, done**: `make prune-checkpoints APPLY=1` took the old Import thread from 20 MB to 480 kB, and it reopens with
   the same 15 messages and files. `tests/test_prune_checkpoints.py` holds the same on real LangGraph checkpoints, and a
-  paused thread keeps its namespace and resumes (it fails without the `__interrupt__` guard).
+  paused thread keeps its namespace and resumes, for a subagent as a node and inside a tool call (it fails without
+  the guard). A thread with any write on its latest checkpoint (a pause, or a run that died mid-step) is skipped, and so
+  is one that moved on between the dry-run list and the delete.
 
 #### Milestone 6: size per Import turn (#419)
 - **Deliverable**: `checkpoint_mb` on each `sangam_import` trace (`CheckpointSize`, an `after_agent` hook on Scout only).
