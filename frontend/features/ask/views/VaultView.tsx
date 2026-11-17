@@ -10,8 +10,11 @@ import { type Doc, VAULT_ACCEPT, deleteFromVault, uploadToVault } from "../lib/v
 
 type Problem = { title: string; body: string };
 
-export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug: string; name: string }[]; isStaff?: boolean }) {
-  const [orgSlug, setOrgSlug] = useState(orgs[0]?.slug ?? "");
+type VaultProps = { orgs: { id: number; slug: string; name: string }[]; isStaff?: boolean; memberOf?: string[] };
+
+export function VaultView({ orgs, isStaff = false, memberOf = [] }: VaultProps) {
+  const [orgSlug, setOrgSlug] = useState(orgs.find((o) => memberOf.includes(o.slug))?.slug ?? orgs[0]?.slug ?? "");
+  const canUpload = !!orgSlug && (isStaff || memberOf.includes(orgSlug));
   const [docs, setDocs] = useState<Doc[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
@@ -33,7 +36,7 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
   async function onPick(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";  // so the same file can be retried after a failure
-    if (!file || !orgSlug) return;
+    if (!file || !canUpload) return;
     setBusy(true);
     setProblem(null);
     setNotice(null);
@@ -70,10 +73,12 @@ export function VaultView({ orgs, isStaff = false }: { orgs: { id: number; slug:
           <div className="eyebrow">Doc vault</div>
           <h2 className="view-title">Documents in the base, per organisation</h2>
         </div>
-        <label className="pill vault-upload" data-busy={busy} data-off={!orgSlug}>
-          {busy ? "Uploading…" : "Upload a document"}
-          <input type="file" accept={VAULT_ACCEPT} onChange={onPick} disabled={busy || !orgSlug} hidden />
-        </label>
+        {canUpload ? (
+          <label className="pill vault-upload" data-busy={busy}>
+            {busy ? "Uploading…" : "Upload a document"}
+            <input type="file" accept={VAULT_ACCEPT} onChange={onPick} disabled={busy} hidden />
+          </label>
+        ) : null}
       </div>
       {problem ? (
         <div className="card" role="alert">
