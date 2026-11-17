@@ -35,7 +35,7 @@ from app.ingest.catalog.rows import (
     normalise_cin,
 )
 from app.ingest.catalog.writer import SOURCE_PRECEDENCE, Conflict, Owner, write_tags
-from app.ingest.research.finding_types import FINDING_MODELS, MAX_THEMES, SCHEMA_VERSION, to_inr
+from app.ingest.research.finding_types import FINDING_MODELS, MAX_THEMES, SCHEMA_VERSION, STORED, to_inr
 from app.ingest.taxonomy import TAG_KINDS
 
 logger = logging.getLogger(__name__)
@@ -142,7 +142,7 @@ def validated(
         if f.get("concept") != concept:
             continue
         try:
-            model = FINDING_MODELS[concept].model_validate(f)
+            model = FINDING_MODELS[concept].model_validate(f, context=STORED)
         except ValidationError as exc:
             err = exc.errors()[0]
             where = ".".join(str(p) for p in err.get("loc", ())) or "finding"

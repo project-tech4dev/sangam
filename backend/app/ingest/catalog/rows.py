@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -153,6 +153,51 @@ def fiscal_year_of(d: date) -> str:
     """The Indian fiscal year (April to March) a date falls in, by 0034's rule: 2019-03-31 is 'FY2018-19'."""
     y = d.year if d.month >= 4 else d.year - 1
     return f"FY{y}-{(y + 1) % 100:02d}"
+
+
+PERIOD_SHAPES = "'FY2024-25', 'CY2025', 'cumulative to 2025-03-31' or 'as of 2025-03-31'"
+_PERIOD_FY = re.compile(r"^fy ?(\d{4})-(\d{2}|\d{4})$")
+_PERIOD_CY = re.compile(r"^(?:cy|calendar year) ?(\d{4})(?: \((.*)\))?$")
+_PERIOD_TO = re.compile(r"^(cumulative to|as of|as on) (.+)$")
+
+
+def _period_fy(text: str) -> str | None:
+    if not (m := _PERIOD_FY.match(text)):
+        return None
+    start, end = int(m[1]), int(m[2])
+    if end != (start + 1 if end >= 1000 else (start + 1) % 100):
+        return None
+    return f"FY{start}-{(start + 1) % 100:02d}"
+
+
+def _period_date(text: str) -> date | None:
+    """2025-03-31, 31 March 2025, or March 2025 as its last day; FY2022-23 ends on 2023-03-31."""
+    if fy := _period_fy(text):
+        return date(int(fy[2:6]) + 1, 3, 31)
+    for fmt in ("%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%B %Y", "%b %Y"):
+        try:
+            d = datetime.strptime(text, fmt).replace(tzinfo=UTC).date()
+        except ValueError:
+            continue
+        if "%d" in fmt:
+            return d
+        return date(d.year + d.month // 12, d.month % 12 + 1, 1) - timedelta(days=1)
+    return None
+
+
+def shape_period(value: str) -> str | None:
+    """A metric period in one of PERIOD_SHAPES, or None when the text cannot be rewritten exactly."""
+    text = " ".join(value.split()).lower()
+    if fy := _period_fy(text):
+        return fy
+    if m := _PERIOD_CY.match(text):
+        # "calendar year 2025 (Geschäftsjahr 2025)": the aside may only repeat the year.
+        if m[2] is not None and set(re.findall(r"\d+", m[2])) - {m[1]}:
+            return None
+        return f"CY{m[1]}"
+    if (m := _PERIOD_TO.match(text)) and (d := _period_date(m[2])):
+        return f"{'as of' if m[1] == 'as on' else m[1]} {d.isoformat()}"
+    return None
 
 
 class Tags(BaseModel):

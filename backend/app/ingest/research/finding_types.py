@@ -18,10 +18,11 @@ import re
 from datetime import date
 from typing import Annotated, Any, Literal, get_args
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from app.ingest.catalog.rows import (
     CIN_FORMAT,
+    PERIOD_SHAPES,
     ClassifiedBy,
     EvidenceTier,
     FindingSourceType,
@@ -32,6 +33,7 @@ from app.ingest.catalog.rows import (
     fiscal_year_of,
     http_url,
     normalise_cin,
+    shape_period,
 )
 from app.ingest.research.expectations import CONCEPTS as _REGISTRY
 from app.ingest.research.expectations import RESERVED_DOC_TYPES
@@ -88,6 +90,14 @@ def drop_null_extras(cls: type[BaseModel], data: Any, also: frozenset[str] = fro
     if not isinstance(data, dict):
         return data
     return {k: v for k, v in data.items() if k in cls.model_fields or (v is not None and k not in also)}
+
+
+STORED = {"stored": True}
+
+
+def stored(info: ValidationInfo) -> bool:
+    """A finding read back from entity_research: rules newer than its save rewrite it but never refuse it."""
+    return bool((info.context or {}).get("stored"))
 
 
 def _code(v: Any) -> Any:
@@ -493,9 +503,28 @@ class ProgramFinding(FindingBase, OptionallySourced, Tagged):
     )
     description: str | None = None
     status: str | None = None
-    start_date: date | None = None
+    start_date: date | None = Field(
+        default=None,
+        description="a programme the source places only in a fiscal year starts on its 1 April, with basis "
+                    "'derived' and the year quoted in evidence",
+    )
     end_date: date | None = None
     is_enabler: bool | None = None
+
+    @model_validator(mode="after")
+    def _derived_start(self, info: ValidationInfo) -> ProgramFinding:
+        if self.basis != "derived" or not self.start_date or stored(info):
+            return self
+        d = self.start_date
+        year = f"{d.year}-{(d.year + 1) % 100:02d}"
+        names_fy = year in self.evidence or f"{d.year}-{d.year + 1}" in self.evidence
+        if not ((d.month, d.day) == (4, 1) and names_fy
+                or (d.month, d.day) == (1, 1) and str(d.year) in self.evidence):
+            raise ValueError(
+                f"programme {self.name!r}: a derived start_date is the first day of a year the evidence "
+                f"names: 1 April for FY{year}, 1 January for {d.year}; got {d}"
+            )
+        return self
 
 
 class MetricFinding(FindingBase, OptionallySourced):
@@ -504,7 +533,10 @@ class MetricFinding(FindingBase, OptionallySourced):
     value: float | None = None
     target: float | None = None
     unit: str | None = None
-    period: str | None = Field(default=None, description="'FY2023-24', or 'cumulative to 2026'")
+    period: str | None = Field(
+        default=None,
+        description=f"one of {PERIOD_SHAPES}; null when the source dates nothing, any other wording in notes",
+    )
     stage: (
         Literal["input", "output", "adoption", "outcome",
                 "sustained_outcome", "impact", "sroi"] | None
@@ -524,6 +556,18 @@ class MetricFinding(FindingBase, OptionallySourced):
     state: str | None = None
     district: str | None = None
     notes: str | None = None
+
+    @field_validator("period")
+    @classmethod
+    def _period(cls, v: str | None, info: ValidationInfo) -> str | None:
+        if v is None:
+            return None
+        if shaped := shape_period(v):
+            return shaped
+        if stored(info):
+            return v
+        raise ValueError(f"period must be {PERIOD_SHAPES}, got {v!r}. Put other wording in notes; "
+                         f"leave period null when the source dates nothing")
 
     @model_validator(mode="after")
     def _a_metric_needs_a_number(self) -> MetricFinding:

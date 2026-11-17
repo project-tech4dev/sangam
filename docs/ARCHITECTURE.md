@@ -104,6 +104,10 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
 - **A save is repaired only where nothing is lost, and refused once.** A URL split at its colon, the summary's
   counts and a year on a gap that is not by year are fixed in place; a refusal for the schema also lists what the
   contract would refuse next (#171).
+- **A metric's period has four shapes**, because it is part of the metric's key: `FY2024-25`, `CY2025`,
+  `cumulative to <date>`, `as of <date>` (`rows.shape_period`). A save rewrites an exact match and refuses the rest;
+  research read back for promotion (`STORED` context) is rewritten the same way but never refused, so a rule added
+  later never strands what was saved before it (#200).
 - **A subagent inherits no filesystem limits.** Each one carries its own `filesystem(...)` middleware, or it gets all
   eight tools, including writes to real disk. A test walks the compiled subagent graphs.
 - **Geography is a closed list.** The matcher never creates a place; a weak near-match is held, not guessed.

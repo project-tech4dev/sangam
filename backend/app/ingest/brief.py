@@ -10,6 +10,7 @@ import json
 import re
 from typing import Any
 
+from app.ingest.catalog.rows import shape_period
 from app.ingest.research.expectations import CONCEPT_TITLES
 from app.ingest.research.finding_types import TYPED_SINCE, to_inr
 from app.ingest.research.source_guards import is_private_source
@@ -207,6 +208,9 @@ def fact_key(f: dict[str, Any]) -> tuple:
     fields = _SAME_FACT.get(concept)
     if fields is None:
         return concept, _norm(headline(f)), _norm(f.get("fiscal_year"))
+    if concept == "metric" and f.get("period"):
+        # A period saved before it had a shape still names the same figure as its shaped spelling.
+        f = {**f, "period": shape_period(str(f["period"])) or f["period"]}
     return (concept, *(_norm(f.get(k)) for k in fields))
 
 
