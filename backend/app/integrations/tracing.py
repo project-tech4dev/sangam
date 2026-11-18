@@ -100,8 +100,10 @@ def model_call_name(metadata: dict | None, root: str) -> str | None:
     if not ns:
         return None
     agent = metadata.get("lc_agent_name")
-    node = ns.rsplit("|", 1)[-1].split(":", 1)[0]
-    return f"{agent if agent and agent != 'None' else root}/{node}"
+    # The steps inside this agent: after its task call, so a grader's graph in a hook keeps the hook's name.
+    steps = [part.split(":", 1)[0] for part in ns.split("|")]
+    inner = steps[len(steps) - steps[::-1].index("tools"):] if "tools" in steps else steps
+    return f"{agent if agent and agent != 'None' else root}/{'/'.join(inner or steps[-1:])}"
 
 
 def _usage_message(message: Any) -> Any:
