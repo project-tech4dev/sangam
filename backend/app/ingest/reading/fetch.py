@@ -143,10 +143,7 @@ async def read_page_text(url: str) -> str:
     if not text.strip():
         return f"No readable text could be extracted from {url}."
     # Kept as read, so a fact outlives a page that changes; silent like fetch_document's archive.
-    data = text.encode()
-    key = await storage.upload(storage.SOURCE_ARCHIVE, storage.archive_key(url, data, page_name(url)), data,
-                               "text/markdown; charset=utf-8")
-    await remember(url, "page", text_hash(text), key)
+    await remember(url, "page", text_hash(text), await archive_page(url, text))
     # Uncut: a long page is evicted to a file the researcher pages back with read_file.
     return source_banner(page.final_url or url) + text
 
@@ -158,6 +155,19 @@ def document_kind(content_type: str, url: str) -> str | None:
     if WORD in content_type or path.endswith(".docx"):
         return "Word file"
     return None
+
+
+async def archive_page(url: str, text: str) -> str | None:
+    """A page's cleaned text in the source archive; its key, or None when Storage is off or the upload failed."""
+    data = text.encode()
+    return await storage.upload(storage.SOURCE_ARCHIVE, storage.archive_key(url, data, page_name(url)), data,
+                                "text/markdown; charset=utf-8")
+
+
+async def archive_document(url: str, path: Path, content_type: str | None) -> str | None:
+    data = path.read_bytes()
+    return await storage.upload(storage.SOURCE_ARCHIVE, storage.archive_key(url, data, path.name), data,
+                                content_type or "application/octet-stream")
 
 
 def page_name(url: str) -> str:
@@ -221,10 +231,7 @@ async def fetch_document_file(url: str, filename: str | None) -> str:
     # read_document_pages looks. A file too large for the bucket is still read
     # here - refusing to read a 55 MB annual report because it cannot be
     # archived would break the job to protect the record of it.
-    data = destination.read_bytes()
-    key = await storage.upload(
-        storage.SOURCE_ARCHIVE, storage.archive_key(url, data, name), data, got.content_type
-    )
+    key = await archive_document(url, destination, got.content_type)
     if key:
         # The key names the bytes, so an unchanged re-fetch reuses the hash rather than parsing the PDF again.
         fingerprint = await known_fingerprint(key) or await asyncio.to_thread(document_hash, destination)

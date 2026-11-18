@@ -50,11 +50,11 @@ async def fetch_today(source: Source, scratch: Path) -> Today:
     return replace(today, fingerprint=text_hash(today.text)) if today.status == OK else today
 
 
-async def fetch_all(sources: list[Baseline], scratch: Path) -> list[Today]:
+async def fetch_all(sources: list[Source], scratch: Path) -> list[Today]:
     """In the baselines' order; each source gets its own folder, so two annual-report.pdf never collide."""
     gate = asyncio.Semaphore(FETCH_AT_ONCE)
 
-    async def one(index: int, source: Baseline) -> Today:
+    async def one(index: int, source: Source) -> Today:
         folder = scratch / str(index)
         folder.mkdir()
         async with gate:

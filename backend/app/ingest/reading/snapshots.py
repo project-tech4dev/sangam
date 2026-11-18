@@ -13,6 +13,16 @@ from app.ingest.reading.access import canonical_url
 
 logger = logging.getLogger(__name__)
 
+# One row per version: re-reading an unchanged source bumps last_seen_at, and keeps the first archived copy.
+RECORD_SQL = """
+    INSERT INTO source_snapshots (url, kind, text_hash, archive_key)
+    VALUES (%s, %s, %s, %s)
+    ON CONFLICT (url, text_hash) DO UPDATE SET
+        last_seen_at = now(),
+        archive_key = COALESCE(source_snapshots.archive_key, EXCLUDED.archive_key)
+    RETURNING id
+"""
+
 # The snapshot ids one researcher read; ChosenSources gives each launched subagent its own list.
 COLLECTED: ContextVar[list[int] | None] = ContextVar("import_snapshot_ids", default=None)
 
@@ -56,17 +66,7 @@ async def record_snapshot(url: str, kind: str, fingerprint: str, archive_key: st
     try:
         async with get_pool().connection() as conn:
             row = await (
-                await conn.execute(
-                    """
-                    INSERT INTO source_snapshots (url, kind, text_hash, archive_key)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (url, text_hash) DO UPDATE SET
-                        last_seen_at = now(),
-                        archive_key = COALESCE(source_snapshots.archive_key, EXCLUDED.archive_key)
-                    RETURNING id
-                    """,
-                    (url, kind, fingerprint, archive_key),
-                )
+                await conn.execute(RECORD_SQL, (url, kind, fingerprint, archive_key))
             ).fetchone()
         return row["id"] if row else None
     except Exception:
