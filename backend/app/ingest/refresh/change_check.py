@@ -7,13 +7,15 @@ import asyncio
 import tempfile
 from pathlib import Path
 
+import httpx
+
 from app.agentkit.models import resolve_model
 from app.core.config import get_settings
 from app.db.checkpointer import make_pool
-from app.ingest.refresh import baseline, compare, diff, evidence, fetch_status, judge
+from app.ingest.refresh import baseline, compare, diff, discover, evidence, fetch_status, judge
 
 # The stages in the order they run; each new stage of the check is added here as it lands.
-STAGES = ("baseline", "fetch", "hash", "diff", "evidence", "judge")
+STAGES = ("baseline", "fetch", "hash", "diff", "evidence", "judge", "discover")
 
 
 def parse(argv: list[str] | None = None) -> argparse.Namespace:
@@ -34,6 +36,7 @@ async def main(slug: str, until: str) -> None:
             baselines, unrecorded = await baseline.load(conn, slug)
             findings = await evidence.load_findings(conn, slug)
             context = await judge.load_context(conn, slug)
+            subject = await discover.load_subject(conn, slug)
     finally:
         await pool.close()
     print(baseline.describe(slug, baselines, unrecorded))
@@ -56,8 +59,19 @@ async def main(slug: str, until: str) -> None:
     print(evidence.describe(slug, checks))
     if until == "evidence":
         return
-    model = resolve_model(settings.source_check_judge_model).with_structured_output(judge.Judgement)
-    print(judge.describe(slug, await judge.run(checks, findings, context, model)))
+    model = resolve_model(settings.source_check_judge_model)
+    checks = await judge.run(checks, findings, context, model.with_structured_output(judge.Judgement))
+    print(judge.describe(slug, checks))
+    if until == "judge":
+        return
+    known_urls = {b.url for b in baselines}
+    known_hashes = {b.text_hash for b in baselines} | {t.fingerprint for t in today if t.fingerprint}
+    with tempfile.TemporaryDirectory(prefix="source-check-") as scratch:
+        async with httpx.AsyncClient() as client:
+            found = await discover.run(subject, known_urls, known_hashes, context,
+                                       model.with_structured_output(discover.Picks), settings.tavily_api_key,
+                                       client, Path(scratch))
+    print(discover.describe(slug, found))
 
 
 if __name__ == "__main__":
