@@ -26,6 +26,7 @@ from app.ingest.caller import scope, staff_only
 from app.ingest.catalog.promote import org_match
 from app.ingest.catalog.promote_records import MERGEABLE
 from app.ingest.catalog.writer import slugify
+from app.ingest.reading import snapshots
 from app.ingest.reading.access import check_url
 from app.ingest.reading.fetch import downloads_dir, fetch_document_file, read_page_text
 from app.ingest.reading.staff_sources import is_staff_source_url
@@ -211,6 +212,9 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
             f"{{concept, field, fiscal_year, reason, detail}}: not_stated or blocked naming the source, or "
             f"not_reached naming what was left unread when the run stopped. Then save again."
         )
+    # What the tools fetched in this researcher's run, not what the model says it read; None outside a run.
+    collected = snapshots.COLLECTED.get()
+    snapshot_ids = list(collected) if collected is not None else None
     try:
         slug = slugify(findings.canonical_name or findings.entity_name)
         pool = get_pool()
@@ -243,9 +247,9 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                     INSERT INTO entity_research (
                         entity_name, canonical_name, entity_kind, slug, website, status,
                         stopped_reason, summary, findings, not_found, sources_read, fact_count,
-                        goals, schema_version, gaps, years, researched_by)
+                        goals, schema_version, gaps, years, snapshot_ids, researched_by)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s,
-                            %s::jsonb, %s, %s::jsonb, %s, %s)
+                            %s::jsonb, %s, %s::jsonb, %s, %s, %s)
                     ON CONFLICT (slug, researched_on) DO UPDATE SET
                         entity_name = EXCLUDED.entity_name,
                         canonical_name = EXCLUDED.canonical_name,
@@ -262,6 +266,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         schema_version = EXCLUDED.schema_version,
                         gaps = EXCLUDED.gaps,
                         years = EXCLUDED.years,
+                        snapshot_ids = EXCLUDED.snapshot_ids,
                         researched_by = EXCLUDED.researched_by,
                         researched_at = now()
                     RETURNING *
@@ -274,11 +279,13 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         findings.not_found, findings.sources_read, len(findings.findings),
                         json.dumps(findings.goals), SCHEMA_VERSION,
                         json.dumps([g.model_dump(mode="json") for g in findings.gaps]), findings.years,
-                        caller.user_id,
+                        snapshot_ids, caller.user_id,
                     ),
                 )
             ).fetchone()
             history = await rows_for(conn, slug)
+        if snapshot_ids is not None:
+            await snapshots.log_unfetched(slug, snapshot_ids, [f.source_url for f in findings.findings])
         # Publish the brief with the same call that saves it: waiting for a
         # person to run `make client-docs` left the funder page's link dead in
         # between. Silent on failure, like archiving — the model cannot act on

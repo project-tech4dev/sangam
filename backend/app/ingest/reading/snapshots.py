@@ -9,6 +9,7 @@ from contextvars import ContextVar
 
 from app.db.pool import get_pool
 from app.ingest.reading import staff_sources, vault
+from app.ingest.reading.access import canonical_url
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,33 @@ async def record_snapshot(url: str, kind: str, fingerprint: str, archive_key: st
                 )
             ).fetchone()
         return row["id"] if row else None
-    except Exception:  # noqa: BLE001 - logged, never raised
+    except Exception:
         logger.warning("record_snapshot failed for %s", url, exc_info=True)
         return None
+
+
+async def moved(old_key: str, new_key: str) -> None:
+    """Follow an archived file to its new key, or the change check could not load the old text."""
+    try:
+        async with get_pool().connection() as conn:
+            await conn.execute("UPDATE source_snapshots SET archive_key = %s WHERE archive_key = %s",
+                               (new_key, old_key))
+    except Exception:
+        logger.warning("snapshot key not moved from %s", old_key, exc_info=True)
+
+
+async def log_unfetched(slug: str, snapshot_ids: list[int], cited: list[str]) -> None:
+    """Log a cited public URL no tool fetched in this run: a finding with no version behind it."""
+    public = {canonical_url(u) for u in cited
+              if u and not staff_sources.is_staff_source_url(u) and not vault.is_vault_url(u)}
+    if not public:
+        return
+    try:
+        async with get_pool().connection() as conn:
+            rows = await (await conn.execute(
+                "SELECT url FROM source_snapshots WHERE id = ANY(%s)", (snapshot_ids,))).fetchall()
+    except Exception:
+        logger.warning("snapshots for %s not checked", slug, exc_info=True)
+        return
+    for url in sorted(public - {r["url"] for r in rows}):
+        logger.info("%s cites %s, which no tool fetched in this run", slug, url)

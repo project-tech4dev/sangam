@@ -9,11 +9,15 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
+from app.ingest.catalog import promote_documents
 from app.ingest.middleware import ChosenSources
 from app.ingest.reading import fetch, snapshots, staff_sources
 from app.ingest.reading.fingerprint import bytes_hash, text_hash
 from app.ingest.research.source_guards import PRIVATE_SOURCE_DOMAIN
-from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool
+from app.ingest.tools import research_tools
+from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, running_as
+from tests.test_cov_ingest_tools_research import research
+from tests.test_import_roles import STAFF
 from tests.test_import_sources import _answered
 
 URL = "https://example.org/csr"
@@ -171,3 +175,89 @@ class TestEachSubagentGetsItsOwnList:
 
         request = SimpleNamespace(tool_call={"name": "read_page", "args": {}, "id": "r"}, state={})
         assert await ChosenSources().awrap_tool_call(request, handler) is None
+
+
+class TestTheSaveLinksWhatWasRead:
+    @pytest.fixture
+    def saving(self, monkeypatch):
+        conn = ScriptConn([("SELECT fact_count", None), ("INSERT INTO entity_research", {"id": 31})])
+        logged: list[tuple] = []
+        monkeypatch.setattr(research_tools, "get_pool", lambda: ScriptPool(conn))
+        monkeypatch.setattr(research_tools, "rows_for", lambda c, slug: _value([{"slug": slug}]))
+        monkeypatch.setattr(research_tools, "publish", lambda history, unplaced: _value(True))
+
+        async def log_unfetched(slug, ids, cited):
+            logged.append((slug, ids, cited))
+        monkeypatch.setattr(snapshots, "log_unfetched", log_unfetched)
+        return SimpleNamespace(conn=conn, logged=logged)
+
+    async def save(self):
+        with running_as(STAFF):
+            return await research_tools.save_research.ainvoke({"findings": research()})
+
+    async def test_a_researchers_ids_are_saved_with_its_findings(self, saving):
+        with snapshots.collecting() as ids:
+            ids.extend([3, 4])
+            assert (await self.save()).startswith("Saved as entity_research #31")
+        [(sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        assert params[-2] == [3, 4] and "snapshot_ids = EXCLUDED.snapshot_ids" in sql
+        assert saving.logged == [("example-foundation", [3, 4], [URL])]
+
+    async def test_outside_a_researcher_nothing_is_claimed(self, saving):
+        await self.save()
+        [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        assert params[-2] is None and saving.logged == []
+
+
+class TestLogUnfetched:
+    async def test_a_cited_url_no_tool_fetched_is_logged(self, monkeypatch, caplog):
+        conn = ScriptConn([("FROM source_snapshots", [{"id": 3, "url": URL}])])
+        monkeypatch.setattr(snapshots, "get_pool", lambda: ScriptPool(conn))
+        with caplog.at_level(logging.INFO):
+            await snapshots.log_unfetched("x", [3], [URL, "https://example.org/other"])
+        assert "cites https://example.org/other" in caplog.text and f"cites {URL}," not in caplog.text
+
+    async def test_a_private_source_is_never_looked_up(self, monkeypatch):
+        monkeypatch.setattr(snapshots, "get_pool", lambda: pytest.fail("queried"))
+        await snapshots.log_unfetched("x", [], [staff_sources.source_url("grants.xlsx")])
+
+    async def test_a_database_error_does_not_raise(self, monkeypatch, caplog):
+        monkeypatch.setattr(snapshots, "get_pool", lambda: BrokenPool())
+        with caplog.at_level(logging.WARNING):
+            await snapshots.log_unfetched("x", [3], [URL])
+        assert "snapshots for x not checked" in caplog.text
+
+
+class TestAMovedFileKeepsItsSnapshot:
+    KEY = f"{'a' * 8}/{'a' * 64}-report.pdf"
+
+    @pytest.fixture
+    def shelf(self, monkeypatch):
+        state = SimpleNamespace(move_ok=True, moved=[])
+        monkeypatch.setattr(promote_documents.storage, "stat", lambda bucket, key: _value(None))
+        monkeypatch.setattr(promote_documents.storage, "move", lambda bucket, src, dst: _value(state.move_ok))
+
+        async def moved(old, new):
+            state.moved.append((old, new))
+        monkeypatch.setattr(snapshots, "moved", moved)
+        return state
+
+    async def test_the_key_follows_the_file(self, shelf):
+        destination = await promote_documents._shelve(self.KEY, "zz-ltd", "FY2023-24", "a" * 64)
+        assert destination != self.KEY and shelf.moved == [(self.KEY, destination)]
+
+    async def test_a_failed_move_changes_nothing(self, shelf):
+        shelf.move_ok = False
+        assert await promote_documents._shelve(self.KEY, "zz-ltd", "FY2023-24", "a" * 64) == self.KEY
+        assert shelf.moved == []
+
+    async def test_moved_updates_the_row(self, monkeypatch):
+        conn = ScriptConn()
+        monkeypatch.setattr(snapshots, "get_pool", lambda: ScriptPool(conn))
+        await snapshots.moved("old/key.pdf", "funders/x/key.pdf")
+        [(_sql, params)] = conn.sql("UPDATE source_snapshots")
+        assert params == ("funders/x/key.pdf", "old/key.pdf")
+
+    async def test_a_failed_update_does_not_raise(self, monkeypatch):
+        monkeypatch.setattr(snapshots, "get_pool", lambda: BrokenPool())
+        await snapshots.moved("old/key.pdf", "funders/x/key.pdf")
