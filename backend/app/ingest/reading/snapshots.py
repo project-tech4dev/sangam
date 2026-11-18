@@ -3,10 +3,38 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from app.db.pool import get_pool
+from app.ingest.reading import staff_sources, vault
 
 logger = logging.getLogger(__name__)
+
+# The snapshot ids one researcher read; ChosenSources gives each launched subagent its own list.
+COLLECTED: ContextVar[list[int] | None] = ContextVar("import_snapshot_ids", default=None)
+
+
+@contextmanager
+def collecting() -> Iterator[list[int]]:
+    ids: list[int] = []
+    token = COLLECTED.set(ids)
+    try:
+        yield ids
+    finally:
+        COLLECTED.reset(token)
+
+
+async def remember(url: str, kind: str, fingerprint: str, archive_key: str | None) -> None:
+    """Record what a tool just archived and add it to this researcher's list.
+    Nothing without an archived copy (file first, then row), and nothing private."""
+    if not archive_key or staff_sources.is_staff_source_url(url) or vault.is_vault_url(url):
+        return
+    snapshot_id = await record_snapshot(url, kind, fingerprint, archive_key)
+    ids = COLLECTED.get()
+    if snapshot_id is not None and ids is not None and snapshot_id not in ids:
+        ids.append(snapshot_id)
 
 
 async def record_snapshot(url: str, kind: str, fingerprint: str, archive_key: str | None) -> int | None:
