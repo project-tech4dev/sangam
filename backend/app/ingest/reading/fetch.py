@@ -8,11 +8,14 @@ from typing import Any
 
 import httpx
 import trafilatura
+from pypdf.errors import PyPdfError
 
 from app.core.config import get_settings
 from app.core.egress import TRUST
+from app.core.extract import extract_pdf_text
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.reading.access import canonical_url, check_url, source_banner
+from app.ingest.reading.fingerprint import bytes_hash, text_hash
 from app.ingest.reading.registry import rule_for_url
 from app.integrations import storage
 from app.integrations.storage import safe_name
@@ -169,3 +172,15 @@ async def fetch_document_file(url: str, filename: str | None) -> str:
         storage.SOURCE_ARCHIVE, storage.archive_key(url, data, name), data, content_type
     )
     return f"Saved {name} ({size:,} bytes). Read it with read_document_pages('{name}')."
+
+
+def document_hash(path: Path) -> str:
+    """A PDF by its text, so a re-export with new dates is not a change; a scan or any other file by its bytes."""
+    if path.suffix.lower() == ".pdf":
+        try:
+            text, _ = extract_pdf_text(path)
+        except PyPdfError:
+            text = ""
+        if text.strip():
+            return text_hash(text)
+    return bytes_hash(path.read_bytes())
