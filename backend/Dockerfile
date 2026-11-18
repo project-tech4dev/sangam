@@ -5,7 +5,7 @@ WORKDIR /srv
 
 # Install dependencies first for layer caching, at the versions uv.lock pins, as CI and Vercel do.
 COPY pyproject.toml uv.lock ./
-RUN uv export --frozen --no-dev --no-emit-project --no-hashes -o /tmp/requirements.txt \
+RUN uv export --locked--no-dev --no-emit-project --no-hashes -o /tmp/requirements.txt \
     && uv pip install --system --no-cache -r /tmp/requirements.txt
 
 COPY app/ app/

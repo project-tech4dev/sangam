@@ -272,16 +272,28 @@ def test_a_model_call_reaches_langfuse_with_its_name(handler):
 def test_cached_tokens_reach_langfuse_under_one_name(handler):
     from langchain_core.outputs import ChatGeneration, LLMResult
 
-    raw = {"input_tokens": 2, "cache_read_input_tokens": 17101, "output_tokens": 360}
+    raw = {"input_tokens": 2, "cache_read_input_tokens": 17101, "cache_creation_input_tokens": 705}
+    # langchain-anthropic's shape when the TTL split is reported: cache_creation zeroed, the writes in ephemeral_*.
     message = AIMessage("hi", response_metadata={"usage": raw, "model_name": "claude"}, usage_metadata={
-        "input_tokens": 17103, "output_tokens": 360, "total_tokens": 17463,
-        "input_token_details": {"cache_read": 17101, "ephemeral_5m_input_tokens": 0}})
+        "input_tokens": 17808, "output_tokens": 360, "total_tokens": 18168,
+        "input_token_details": {"cache_read": 17101, "cache_creation": 0,
+                                "ephemeral_5m_input_tokens": 705, "ephemeral_1h_input_tokens": 0}})
     handler.on_llm_end(LLMResult(generations=[[ChatGeneration(message=message)]]), run_id="m1")
 
     sent = handler.calls[-1][1][0].generations[0][0].message
     assert "usage" not in sent.response_metadata and sent.response_metadata["model_name"] == "claude"
-    assert sent.usage_metadata["input_token_details"] == {"cache_read": 17101}
+    assert sent.usage_metadata["input_token_details"] == {"cache_read": 17101, "cache_creation": 705}
     assert message.response_metadata["usage"] == raw  # the agent's own message is untouched
+
+
+def test_a_streamed_call_without_the_ttl_split_keeps_its_cache_write(handler):
+    from langchain_core.outputs import ChatGeneration, LLMResult
+
+    message = AIMessage("hi", usage_metadata={"input_tokens": 9, "output_tokens": 1, "total_tokens": 10,
+                                              "input_token_details": {"cache_read": 4, "cache_creation": 3}})
+    handler.on_llm_end(LLMResult(generations=[[ChatGeneration(message=message)]]), run_id="m1")
+    sent = handler.calls[-1][1][0].generations[0][0].message
+    assert sent.usage_metadata["input_token_details"] == {"cache_read": 4, "cache_creation": 3}
 
 
 def test_a_call_without_usage_metadata_keeps_the_raw_usage(handler):
