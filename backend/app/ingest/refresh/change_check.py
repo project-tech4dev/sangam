@@ -7,12 +7,13 @@ import asyncio
 import tempfile
 from pathlib import Path
 
+from app.agentkit.models import resolve_model
 from app.core.config import get_settings
 from app.db.checkpointer import make_pool
-from app.ingest.refresh import baseline, compare, diff, evidence, fetch_status
+from app.ingest.refresh import baseline, compare, diff, evidence, fetch_status, judge
 
 # The stages in the order they run; each new stage of the check is added here as it lands.
-STAGES = ("baseline", "fetch", "hash", "diff", "evidence")
+STAGES = ("baseline", "fetch", "hash", "diff", "evidence", "judge")
 
 
 def parse(argv: list[str] | None = None) -> argparse.Namespace:
@@ -25,12 +26,14 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
 
 async def main(slug: str, until: str) -> None:
     """Each stage prints what it found; the check stops after `until`, or when nothing is left to check."""
-    pool = make_pool(get_settings().database_url, max_size=1)
+    settings = get_settings()
+    pool = make_pool(settings.database_url, max_size=1)
     await pool.open()
     try:
         async with pool.connection() as conn:
             baselines, unrecorded = await baseline.load(conn, slug)
             findings = await evidence.load_findings(conn, slug)
+            context = await judge.load_context(conn, slug)
     finally:
         await pool.close()
     print(baseline.describe(slug, baselines, unrecorded))
@@ -49,7 +52,12 @@ async def main(slug: str, until: str) -> None:
     print(diff.describe(slug, checks))
     if until == "diff":
         return
-    print(evidence.describe(slug, evidence.run(checks, findings)))
+    checks = evidence.run(checks, findings)
+    print(evidence.describe(slug, checks))
+    if until == "evidence":
+        return
+    model = resolve_model(settings.source_check_judge_model).with_structured_output(judge.Judgement)
+    print(judge.describe(slug, await judge.run(checks, findings, context, model)))
 
 
 if __name__ == "__main__":
