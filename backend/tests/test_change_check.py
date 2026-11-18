@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from datetime import date
+from types import SimpleNamespace
 
 import pytest
 
-from app.ingest.refresh import baseline, change_check, diff, fetch_status
+from app.ingest.refresh import baseline, change_check, diff, fetch_status, judge
 from tests.cov_ingest_fakes import ScriptConn, ScriptPool
 
 SLUG = "azim-premji-foundation"
@@ -85,10 +86,33 @@ class TestStages:
         await change_check.main(SLUG, "evidence")
         assert "no facts cite this page" in capsys.readouterr().out
 
+    async def test_until_evidence_builds_no_model(self, run, monkeypatch):
+        monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
+        monkeypatch.setattr(change_check, "resolve_model", lambda spec: pytest.fail("built a model"))
+        await change_check.main(SLUG, "evidence")
+
+    async def test_until_judge_asks_the_model_once_per_page_that_differs(self, run, monkeypatch, capsys):
+        asked: list = []
+
+        async def ainvoke(messages):
+            asked.append(messages)
+            return judge.Judgement(meaningful=False, confidence="high", reason="only the wording")
+        model = SimpleNamespace(ainvoke=ainvoke)
+        monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
+        monkeypatch.setattr(change_check, "resolve_model",
+                            lambda spec: SimpleNamespace(with_structured_output=lambda schema: model))
+        await change_check.main(SLUG, "judge")
+        out = capsys.readouterr().out
+        assert len(asked) == 1 and "1 minor" in out and "(judge: not meaningful, high)" in out
+
     async def test_nothing_to_check_stops_before_fetching(self, run, monkeypatch, capsys):
         monkeypatch.setattr(baseline, "load", lambda conn, slug: _empty())
         await change_check.main(SLUG, "fetch")
         assert run == [] and "nothing to check" in capsys.readouterr().out
+
+
+async def _value(v):
+    return v
 
 
 async def _empty():
