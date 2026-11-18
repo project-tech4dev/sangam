@@ -3,9 +3,10 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /srv
 
-# Install dependencies first for layer caching.
-COPY pyproject.toml ./
-RUN uv pip install --system --no-cache -r pyproject.toml
+# Install dependencies first for layer caching, at the versions uv.lock pins, as CI does.
+COPY pyproject.toml uv.lock ./
+RUN uv export --locked--no-dev --no-emit-project --no-hashes -o /tmp/requirements.txt \
+    && uv pip install --system --no-cache -r /tmp/requirements.txt
 
 COPY app/ app/
 
