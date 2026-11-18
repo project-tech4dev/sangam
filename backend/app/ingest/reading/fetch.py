@@ -111,7 +111,7 @@ async def fetch_page(url: str) -> Fetched:
                    size=len(response.content))
     if not response.is_success:
         return seen
-    if kind := _document_kind(content_type, url):
+    if kind := document_kind(content_type, url):
         return replace(seen, document=kind)
     # trafilatura finds nothing in JSON (GuideStar's search, GitHub listings) or raw markdown (a dossier).
     if "json" in content_type:
@@ -149,7 +149,7 @@ async def read_page_text(url: str) -> str:
     return source_banner(page.final_url or url) + text
 
 
-def _document_kind(content_type: str, url: str) -> str | None:
+def document_kind(content_type: str, url: str) -> str | None:
     path = url.lower().split("?")[0]
     if "pdf" in content_type or path.endswith(".pdf"):
         return "PDF"

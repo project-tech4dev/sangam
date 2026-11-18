@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.ingest.refresh import baseline, change_check, diff, fetch_status, judge
+from app.ingest.refresh import baseline, change_check, diff, discover, fetch_status, judge
 from tests.cov_ingest_fakes import ScriptConn, ScriptPool
 
 SLUG = "azim-premji-foundation"
@@ -104,6 +104,25 @@ class TestStages:
         await change_check.main(SLUG, "judge")
         out = capsys.readouterr().out
         assert len(asked) == 1 and "1 minor" in out and "(judge: not meaningful, high)" in out
+
+    async def test_until_discover_searches_with_what_was_read(self, run, monkeypatch, capsys):
+        seen: dict = {}
+
+        async def ainvoke(messages):
+            return judge.Judgement(meaningful=False, confidence="high", reason="only the wording")
+
+        async def search(subject, known_urls, known_hashes, context, model, api_key, client, scratch):
+            seen.update(urls=known_urls, hashes=known_hashes)
+            return discover.Discovery(searched=3)
+        monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
+        monkeypatch.setattr(change_check, "resolve_model", lambda spec: SimpleNamespace(
+            with_structured_output=lambda schema: SimpleNamespace(ainvoke=ainvoke)))
+        monkeypatch.setattr(discover, "run", search)
+        await change_check.main(SLUG, "judge")
+        assert seen == {}
+        await change_check.main(SLUG, "discover")
+        assert seen["urls"] == {"https://a.org/about"} and row("x")["text_hash"] in seen["hashes"]
+        assert f"{SLUG}: 3 searches" in capsys.readouterr().out
 
     async def test_nothing_to_check_stops_before_fetching(self, run, monkeypatch, capsys):
         monkeypatch.setattr(baseline, "load", lambda conn, slug: _empty())
