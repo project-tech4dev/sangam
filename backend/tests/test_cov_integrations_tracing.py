@@ -81,8 +81,10 @@ def test_export_drops_the_anthropic_sdks_copy_of_each_call(monkeypatch):
     ({"langgraph_checkpoint_ns": "model:6e1e", "lc_agent_name": "None"}, "sangam_import/model"),
     ({"langgraph_checkpoint_ns": "tools:0101|model:f580", "lc_agent_name": "entity-researcher"},
      "entity-researcher/model"),
-    ({"langgraph_checkpoint_ns": "tools:0101|ResearchRubric.after_agent:9a", "lc_agent_name": "entity-researcher"},
-     "entity-researcher/ResearchRubric.after_agent"),
+    ({"langgraph_checkpoint_ns": "tools:0101|ResearchRubric.after_agent:9a|model:33", "lc_agent_name": "entity-researcher"},
+     "entity-researcher/ResearchRubric.after_agent/model"),
+    ({"langgraph_checkpoint_ns": "answer_audit.after_agent:1", "lc_agent_name": None}, "sangam_import/answer_audit.after_agent"),
+    ({"langgraph_checkpoint_ns": "tools:1|tools:2|model:3", "lc_agent_name": "workbook-reader"}, "workbook-reader/model"),
     ({}, None),
     (None, None),
 ])
