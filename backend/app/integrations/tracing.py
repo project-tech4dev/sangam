@@ -42,7 +42,7 @@ _EMPTY_HOOK = re.compile(
 AUDIT_HOOK = "answer_audit.after_agent"
 
 # anthropic>=2 traces its own calls over OTel; LangChain's handler already records each one, with its parent.
-_SDK_SCOPES = {"com.anthropic.sdk.python"}
+_SDK_SCOPE = "com.anthropic.sdk"
 
 
 def masking_enabled() -> bool:
@@ -90,8 +90,8 @@ def export_span(span: Any) -> bool:
     """v4's default filter (drops FastAPI's HTTP spans), minus hooks that record nothing and SDK duplicates."""
     from langfuse.span_filter import is_default_export_span
 
-    scope = getattr(getattr(span, "instrumentation_scope", None), "name", None)
-    return is_default_export_span(span) and not _EMPTY_HOOK.match(span.name or "") and scope not in _SDK_SCOPES
+    scope = getattr(getattr(span, "instrumentation_scope", None), "name", None) or ""
+    return is_default_export_span(span) and not _EMPTY_HOOK.match(span.name or "") and not scope.startswith(_SDK_SCOPE)
 
 
 def model_call_name(metadata: dict | None, root: str) -> str | None:
@@ -106,22 +106,23 @@ def model_call_name(metadata: dict | None, root: str) -> str | None:
 
 def _usage_message(message: Any) -> Any:
     usage = dict(message.usage_metadata)
-    # The ephemeral_* details split cache_creation again, and Langfuse would subtract them from input twice.
-    details = {k: v for k, v in (usage.get("input_token_details") or {}).items() if not k.startswith("ephemeral_")}
+    details = dict(usage.get("input_token_details") or {})
+    # With a TTL split, langchain-anthropic zeroes cache_creation and reports it only as ephemeral_*; fold it back.
+    split = sum(details.pop(k, None) or 0 for k in ("ephemeral_5m_input_tokens", "ephemeral_1h_input_tokens"))
+    details["cache_creation"] = (details.get("cache_creation") or 0) or split
     usage["input_token_details"] = details
-    metadata = {k: v for k, v in message.response_metadata.items() if k != "usage"}
+    metadata = {k: v for k, v in (message.response_metadata or {}).items() if k != "usage"}
     return message.model_copy(update={"response_metadata": metadata, "usage_metadata": usage})
 
 
 def one_usage_shape(response: Any) -> Any:
-    """Drop Anthropic's raw `usage` where LangChain's usage_metadata exists: Langfuse prefers the raw one,
-    so an invoked call's cached tokens were `cache_read_input_tokens` and a streamed one's `input_cache_read`."""
+    """One shape for every call's tokens: Langfuse prefers Anthropic's raw `usage` when present, so an invoked
+    call's cached tokens were `cache_read_input_tokens` and a streamed one's `input_cache_read`."""
     try:
         generations = [
             [
                 g.model_copy(update={"message": _usage_message(g.message)})
                 if getattr(getattr(g, "message", None), "usage_metadata", None)
-                and "usage" in (g.message.response_metadata or {})
                 else g
                 for g in batch
             ]
