@@ -9,10 +9,10 @@ from pathlib import Path
 
 from app.core.config import get_settings
 from app.db.checkpointer import make_pool
-from app.ingest.refresh import baseline, fetch_status
+from app.ingest.refresh import baseline, compare, diff, evidence, fetch_status
 
 # The stages in the order they run; each new stage of the check is added here as it lands.
-STAGES = ("baseline", "fetch")
+STAGES = ("baseline", "fetch", "hash", "diff", "evidence")
 
 
 def parse(argv: list[str] | None = None) -> argparse.Namespace:
@@ -30,6 +30,7 @@ async def main(slug: str, until: str) -> None:
     try:
         async with pool.connection() as conn:
             baselines, unrecorded = await baseline.load(conn, slug)
+            findings = await evidence.load_findings(conn, slug)
     finally:
         await pool.close()
     print(baseline.describe(slug, baselines, unrecorded))
@@ -39,6 +40,18 @@ async def main(slug: str, until: str) -> None:
     with tempfile.TemporaryDirectory(prefix="source-check-") as scratch:
         today = [await fetch_status.fetch_today(b, Path(scratch)) for b in baselines]
     print(fetch_status.describe(slug, today))
+    if until == "fetch":
+        return
+    checks = compare.compare(baselines, today)
+    print(compare.describe(slug, checks))
+    if until == "hash":
+        return
+    checks = await diff.run(checks)
+    print(diff.describe(slug, checks))
+    if until == "diff":
+        return
+    print(evidence.describe(slug, evidence.run(checks, findings)))
+
 
 if __name__ == "__main__":
     args = parse()

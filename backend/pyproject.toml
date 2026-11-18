@@ -28,6 +28,7 @@ dependencies = [
     "python-docx>=1.1",
     "sqlglot>=25,<28",
     "pyjwt[crypto]>=2.9",
+    "rapidfuzz>=3.9",
 ]
 
 [dependency-groups]

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from app.ingest.reading.fetch import Fetched, document_text, download, fetch_page
+from app.ingest.reading.fingerprint import bytes_hash, text_hash
 from app.ingest.refresh.baseline import Baseline
 
 OK, UNVERIFIED, DEAD = "ok", "unverified", "dead"
@@ -20,7 +21,8 @@ class Today:
     status: str
     reason: str
     text: str = ""  # a page's cleaned text, or a PDF's extracted text
-    path: Path | None = None  # a downloaded document, for its fingerprint
+    path: Path | None = None  # a downloaded document; gone once the check's scratch folder is
+    fingerprint: str | None = None  # hashed the way the tools hash it, so it compares with the baseline
 
 
 async def fetch_today(source: Baseline, scratch: Path) -> Today:
@@ -28,9 +30,13 @@ async def fetch_today(source: Baseline, scratch: Path) -> Today:
     if source.kind == "document":
         got = await download(source.url, None, scratch)
         text = await asyncio.to_thread(document_text, got.path) if got.path else ""
-        return classify(got, text)
+        today = classify(got, text)
+        if today.status != OK or today.path is None:
+            return today
+        return replace(today, fingerprint=text_hash(text) if text else bytes_hash(today.path.read_bytes()))
     got = await fetch_page(source.url)
-    return classify(got, got.text)
+    today = classify(got, got.text)
+    return replace(today, fingerprint=text_hash(today.text)) if today.status == OK else today
 
 
 def classify(got: Fetched, text: str) -> Today:
