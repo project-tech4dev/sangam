@@ -62,7 +62,7 @@ BRIEF_URL_TTL_SECONDS = 3600
 _warned = False
 
 
-def _safe_name(name: str) -> str:
+def safe_name(name: str) -> str:
     # Strip any directory components and shell-unfriendly characters so the
     # agent can never write outside the downloads folder.
     name = Path(name).name
@@ -163,7 +163,7 @@ def archive_key(source_url: str, data: bytes, filename: str | None = None) -> st
     other content_hash in the catalog is a full sha256 (see `_provenance`). A
     long key is a fair price for a column that means the same thing everywhere.
     """
-    name = _safe_name(filename or source_url.split("?")[0].rstrip("/").rsplit("/", 1)[-1])
+    name = safe_name(filename or source_url.split("?")[0].rstrip("/").rsplit("/", 1)[-1])
     return f"{url_prefix(source_url)}/{content_hash(data)}-{name}"
 
 
@@ -215,12 +215,12 @@ def catalog_key(
     `suffix` disambiguates the rare collision — same funder, same year, same
     published filename, different bytes.
     """
-    stem, dot, ext = _safe_name(filename).rpartition(".")
+    stem, dot, ext = safe_name(filename).rpartition(".")
     base = f"{stem}{'-' + suffix if suffix else ''}{dot}{ext}" if dot else (
-        f"{_safe_name(filename)}{'-' + suffix if suffix else ''}"
+        f"{safe_name(filename)}{'-' + suffix if suffix else ''}"
     )
     year = _year(as_of)
-    return f"{prefix}/{_safe_name(entity_slug)}/{year + '-' if year else ''}{base}"
+    return f"{prefix}/{safe_name(entity_slug)}/{year + '-' if year else ''}{base}"
 
 
 def brief_key(slug: str) -> str:
@@ -234,7 +234,7 @@ def brief_key(slug: str) -> str:
     same key every time the brief is regenerated, which is why `render_docs`
     uploads it with `replace=True`.
     """
-    return f"entities/{_safe_name(slug)}.md"
+    return f"entities/{safe_name(slug)}.md"
 
 
 class BriefUnreachable(Exception):
@@ -509,7 +509,7 @@ def vault_key(org_id: int, filename: str) -> str:
     `<org_id>` first because that is what the RLS policy reads as
     `(storage.foldername(name))[1]::bigint`.
     """
-    return f"{org_id}/{uuid.uuid4().hex}-{_safe_name(filename)}"
+    return f"{org_id}/{uuid.uuid4().hex}-{safe_name(filename)}"
 
 
 async def signed_upload_url(bucket: str, key: str) -> str | None:
