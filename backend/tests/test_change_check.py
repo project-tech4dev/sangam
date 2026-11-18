@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from app.ingest.refresh import baseline, change_check, fetch_status
+from app.ingest.refresh import baseline, change_check, diff, fetch_status
 from tests.cov_ingest_fakes import ScriptConn, ScriptPool
 
 SLUG = "azim-premji-foundation"
@@ -68,7 +68,22 @@ class TestStages:
 
     async def test_until_fetch_fetches_each_source(self, run, capsys):
         await change_check.main(SLUG, "fetch")
-        assert run == ["https://a.org/about"] and "fetched 1 · 1 ok" in capsys.readouterr().out
+        out = capsys.readouterr().out
+        assert run == ["https://a.org/about"] and "fetched 1 · 1 ok" in out and "unchanged" not in out
+
+    async def test_until_hash_compares_each_source(self, run, capsys):
+        await change_check.main(SLUG, "hash")
+        assert f"{SLUG}: 1 sources · 1 differs" in capsys.readouterr().out
+
+    async def test_until_diff_and_evidence(self, run, monkeypatch, capsys):
+        async def old_text(source):
+            return "We fund 400 schools."
+        monkeypatch.setattr(diff, "old_text", old_text)
+        await change_check.main(SLUG, "diff")
+        out = capsys.readouterr().out
+        assert "- We fund 400 schools." in out and "broken" not in out
+        await change_check.main(SLUG, "evidence")
+        assert "no facts cite this page" in capsys.readouterr().out
 
     async def test_nothing_to_check_stops_before_fetching(self, run, monkeypatch, capsys):
         monkeypatch.setattr(baseline, "load", lambda conn, slug: _empty())
