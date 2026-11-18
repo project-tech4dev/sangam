@@ -310,7 +310,8 @@ Generated detail: [deploy-and-vendors](../openwiki/operations/deploy-and-vendors
 - Tracing settings that look optional are load-bearing (CLAUDE.md, "Tracing config").
 - **One generation per model call, named `<agent>/<node>`** (`integrations/tracing.py`, #325).
   - anthropic>=2 traces its own calls over OTel; `export_span` drops that scope, or every call is counted twice.
-    The local image ran 2.10 while `uv.lock` pinned 1.7, because the Dockerfile ignored the lock; it installs from it now.
+    The local image ran 2.10 while `uv.lock` pinned 1.7, because the Dockerfile ignored the lock; it installs from
+    it now, as CI does. Production traces never had the copy.
   - A call is named from its LangGraph metadata (`entity-researcher/model`, `sangam_import/model`), not `ChatAnthropic`.
   - An invoked call's cached tokens are sent under the same names as a streamed one's (`input_cache_read`).
 - **The pool's limits are written down** (`db/checkpointer.py::make_pool`, settings in `core/config.py`):
