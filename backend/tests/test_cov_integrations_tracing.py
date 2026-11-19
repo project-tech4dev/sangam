@@ -65,6 +65,16 @@ def test_export_drops_empty_hooks(monkeypatch):
     assert tracing.export_span(SimpleNamespace(name=None)) is True
 
 
+def test_export_drops_the_anthropic_sdks_copy_of_each_call(monkeypatch):
+    sf = types.ModuleType("langfuse.span_filter")
+    sf.is_default_export_span = lambda span: True
+    monkeypatch.setitem(sys.modules, "langfuse.span_filter", sf)
+    sdk = SimpleNamespace(name="com.anthropic.sdk.python")
+    assert tracing.export_span(SimpleNamespace(name="anthropic.messages.create", instrumentation_scope=sdk)) is False
+    ours = SimpleNamespace(name="langfuse-sdk")
+    assert tracing.export_span(SimpleNamespace(name="ChatAnthropic", instrumentation_scope=ours)) is True
+
+
 def test_flush_calls_the_client_and_swallows_errors(monkeypatch):
     flushed = []
     _install(monkeypatch, get_client=lambda: SimpleNamespace(flush=lambda: flushed.append(1)))
