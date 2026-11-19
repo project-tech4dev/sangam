@@ -223,3 +223,26 @@ class TestStorage:
                         return [{"slug": "acme"}]
                 return C()
         assert await brief.rows_for(Conn(), "acme") == [{"slug": "acme"}]
+
+
+class TestSupersedes:
+    OLD = {"concept": "contact", "name": "Old office", "email": "old@x.org"}
+    KEY = list(brief.fact_key(OLD))
+
+    def test_a_fact_a_newer_row_supersedes_is_gone(self):
+        rows = [{"findings": [self.OLD]}, {"findings": [], "supersedes": [self.KEY]}]
+        assert brief.merge_findings(rows) == []
+
+    def test_the_briefs_own_copy_is_gone_too(self):
+        assert brief.merge_findings([{"findings": [], "supersedes": json.dumps([self.KEY])}], [self.OLD]) == []
+
+    def test_a_later_row_may_find_it_again(self):
+        rows = [{"findings": [self.OLD]}, {"findings": [], "supersedes": [self.KEY]}, {"findings": [self.OLD]}]
+        assert brief.merge_findings(rows) == [self.OLD]
+
+    def test_it_reaches_back_only(self):
+        rows = [{"findings": [], "supersedes": [self.KEY]}, {"findings": [self.OLD]}]
+        assert brief.merge_findings(rows) == [self.OLD]
+
+    def test_a_row_without_the_column_supersedes_nothing(self):
+        assert brief.merge_findings([{"findings": [self.OLD]}, {"findings": []}]) == [self.OLD]

@@ -82,6 +82,7 @@ class Discovery:
     dropped: list[tuple[Lead, str]] = field(default_factory=list)  # picked, then found to be a source already read
     failed: list[str] = field(default_factory=list)  # searches that did not answer
     skipped: str = ""
+    fetched: dict[str, fetch_status.Today] = field(default_factory=dict)  # each new source as read, by URL
 
 
 async def load_subject(conn: Any, slug: str) -> Subject | None:
@@ -154,6 +155,7 @@ async def run(subject: Subject | None, known_urls: set[str], known_hashes: set[s
             found.dropped.append((lead, "the same text as a source already read"))
         elif today.status == fetch_status.OK:
             found.new.append((lead, why))
+            found.fetched[lead.url] = today
         else:
             found.new.append((lead, f"{why} ({today.status}: {today.reason})"))
     return found

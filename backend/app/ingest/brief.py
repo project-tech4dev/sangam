@@ -234,11 +234,15 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
     """Every fact any run found, once: a later run's replaces an earlier one unless the earlier source is stronger.
 
     `prior` is the brief's own facts, laid down before the rows (oldest first); a wrong_entity row is another
-    organisation and adds nothing.
+    organisation and adds nothing, and a row's `supersedes` (fact keys) removes those facts from everything before it.
     """
     by_key: dict[tuple, list[dict[str, Any]]] = {}
-    runs = [list(prior), *(_findings(r) for r in rows if r.get("status") != "wrong_entity")]
-    for findings in runs:
+    runs = [(list(prior), []), *((_findings(r), _json_list(r.get("supersedes"))) for r in rows
+                                 if r.get("status") != "wrong_entity")]
+    for findings, superseded in runs:
+        # A refresh that removed a fact names it, so neither an older row nor the brief brings it back.
+        for key in superseded:
+            by_key.pop(tuple(key), None)
         mine: dict[tuple, list[dict[str, Any]]] = {}
         for f in findings:
             mine.setdefault(fact_key(f), []).append(f)
