@@ -66,11 +66,11 @@ browser ── Ask composer ──► /api/copilotkit ──► POST /agent
 
 ## Milestones
 
-**M1: Backend (PR 1).** Migration, `claim_thread` bump, the check in `ask_access`, the setting, `/api/me`. Tests: metered vs staff vs member; 10th passes, 11th refused; two parallel requests at 9;
+**M1: Backend.** Migration, `claim_thread` bump, the check in `ask_access`, the setting, `/api/me`. Tests: metered vs staff vs member; 10th passes, 11th refused; two parallel requests at 9;
 `/api/me` counts; limit lifts after joining an organisation.
 Exit: tests green; on the local database the 11th POST to `/agent` is 429 with no model call.
 
-**M2: Ask screen (PR 2, stacked on PR 1).** The usage line, the limit state, the 429 fallback, Vitest
+**M2: Ask screen.** Both milestones ship as one PR. The usage line, the limit state, the 429 fallback, Vitest
 tests, design system sync.
 Exit: checked in Chrome as staff, member, and metered at 9 and at 10, and at phone width.
 
