@@ -282,19 +282,33 @@ def _thread_title(run: RunAgentInput) -> str | None:
     return None
 
 
-async def _own_thread(request: Request, pool: OwnerPoolDep, principal: CurrentUser) -> None:
+def free_question_limit(scope: CallerScope) -> int | None:
+    """FREE_QUESTIONS for someone outside every organisation; None for staff, members, or when it is 0."""
+    limit = get_settings().free_questions
+    return limit if limit > 0 and not scope.is_staff and not scope.org_roles else None
+
+
+def free_questions_spent(limit: int) -> str:
+    return f"You've used your {limit} free questions. You can't ask new questions."
+
+
+async def _own_thread(request: Request, pool: OwnerPoolDep, principal: CurrentUser, *, metered: bool = False) -> None:
     try:
         run = RunAgentInput.model_validate(await request.json())
     except (ValueError, ValidationError):
         return  # the endpoint's own body validation answers 422
+    scope = await caller_scope(pool, principal)
+    limit = free_question_limit(scope) if metered else None
     owner = await threads.claim_thread(
-        pool, thread_id=run.thread_id, user_id=principal.id, title=_thread_title(run)
+        pool, thread_id=run.thread_id, user_id=principal.id, title=_thread_title(run), limit=limit
     )
+    if owner is None:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, free_questions_spent(limit))
     # Staff too: a turn checkpoints rows read as this caller, which the owner's next turn would replay.
     if owner != principal.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Thread not found")
     chat_user_id.set(principal.id)
-    chat_scope.set(await caller_scope(pool, principal))
+    chat_scope.set(scope)
 
 
 async def request_scope(
@@ -321,8 +335,8 @@ async def chat_access(
 async def ask_access(
     request: Request, pool: OwnerPoolDep, principal: Annotated[CurrentUser, Depends(require_principal)]
 ) -> None:
-    """chat_access, and Ask Sangam's SQL runs as this caller. Import keeps the owner: it writes the catalog."""
-    await _own_thread(request, pool, principal)
+    """chat_access, metered, and Ask Sangam's SQL runs as this caller. Import keeps the owner: it writes the catalog."""
+    await _own_thread(request, pool, principal, metered=True)
     agent_caller.set(_db_identity(principal))
     caveats_given.set(set())
 
