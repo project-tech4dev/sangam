@@ -50,7 +50,8 @@ browser ── Ask composer ──► /api/copilotkit ──► POST /agent
 - **Migration:** `ALTER TABLE threads ADD COLUMN questions int NOT NULL DEFAULT 0`. Existing chats start
   at 0, so nobody is cut off on day one.
 - **Counting:** `claim_thread` inserts with `questions = 1` and adds 1 on conflict, for Ask threads.
-  Usage is `SUM(questions)` over the person's `use_case = 'ask'` threads. No route deletes a thread, so
+  Usage is `SUM(questions)` over all the person's threads: the thread id is the browser's to choose, so
+  no id may be left out, and a metered person can use only Ask anyway. No route deletes a thread, so
   the count cannot be wiped.
 - **Enforcing:** in `ask_access`, before `claim_thread`, for a metered caller: lock their `users` row
   (`FOR UPDATE`) in the same transaction as the sum and the bump, so two tabs at question 9 cannot both
@@ -83,7 +84,7 @@ M1 (backend):
 2. `config.py`: `free_questions: int = 10`, in the blank-means-default list; `.env.example` line.
 3. `repositories/threads.py`: `claim_thread(..., limit: int | None = None) -> UUID | None` bumps
    `questions` on every claim; with `limit`, locks the user row and returns None when `asked >= limit`.
-   `asked(conn_or_pool, user_id) -> int` sums Ask chats (`use_case = 'ask'`, not `import-%`).
+   `asked(conn_or_pool, user_id) -> int` sums all their threads.
 4. `core/security.py`: `_own_thread` computes the scope first; for an Ask turn by a metered caller
    (`not is_staff and not org_roles`, `free_questions > 0`) it passes `limit`, and None becomes 429
    with `FREE_QUESTIONS_SPENT`. Import and Pitch pass no limit.

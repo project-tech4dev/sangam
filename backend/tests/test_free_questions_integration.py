@@ -1,4 +1,4 @@
-"""claim_thread's question count against the compose Postgres: the limit, the race, and what is counted."""
+"""claim_thread's question count against the compose Postgres: the limit, the race, and whose turns count."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ async def test_two_tabs_at_the_last_question_get_one_between_them(visitor):
     assert await asked(pool, user_id=user) == 2
 
 
-async def test_import_chats_and_someone_elses_thread_are_not_counted(visitor):
+async def test_any_thread_id_counts_but_someone_elses_thread_does_not(visitor):
     pool, user = visitor
     await claim_thread(pool, thread_id=f"import-{user}", user_id=user)
     async with pool.connection() as conn:
@@ -67,7 +67,7 @@ async def test_import_chats_and_someone_elses_thread_are_not_counted(visitor):
     try:
         await claim_thread(pool, thread_id=f"t-{other}", user_id=other)
         assert await claim_thread(pool, thread_id=f"t-{other}", user_id=user) == other
-        assert await asked(pool, user_id=user) == 0
+        assert await asked(pool, user_id=user) == 1  # an import- id posted to /agent is still a question
         assert await asked(pool, user_id=other) == 1
     finally:
         async with pool.connection() as conn:

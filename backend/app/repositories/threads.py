@@ -7,11 +7,8 @@ from psycopg_pool import AsyncConnectionPool
 
 from app.db.pool import CallerPool
 
-# A person's Ask questions, summed over their chats; Import chats are use_case 'ask' too (see list_threads).
-ASKED_SQL = """
-SELECT COALESCE(SUM(questions), 0)::int AS asked FROM threads
-WHERE user_id = %s AND use_case = 'ask' AND thread_id NOT LIKE 'import-%%'
-"""
+# Every chat counts, whatever its id: the id is the browser's to choose, and a metered person has only Ask.
+ASKED_SQL = "SELECT COALESCE(SUM(questions), 0)::int AS asked FROM threads WHERE user_id = %s"
 
 
 async def claim_thread(pool: AsyncConnectionPool, *, thread_id: str, user_id: UUID, title: str | None = None,
@@ -47,7 +44,7 @@ async def claim_thread(pool: AsyncConnectionPool, *, thread_id: str, user_id: UU
 
 
 async def asked(pool: AsyncConnectionPool | CallerPool, *, user_id: UUID) -> int:
-    """How many Ask questions the person has asked, in all their chats."""
+    """How many questions the person has asked, in all their chats."""
     async with pool.connection() as conn:
         return (await (await conn.execute(ASKED_SQL, (user_id,))).fetchone())["asked"]
 
