@@ -202,6 +202,32 @@ describe("ChatPane", () => {
     expect(p.onFirstSend).toHaveBeenCalledOnce();
   });
 
+  it("shows someone outside every organisation how many free questions they have used", async () => {
+    const onRunEnd = vi.fn();
+    render(<ChatPane {...props()} freeQuestions={{ used: 7, limit: 10 }} onRunEnd={onRunEnd} />);
+    expect(screen.getByText("7 of 10 free questions used")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "What grants has KABIL received?" }));
+    expect(onRunEnd).toHaveBeenCalledOnce();
+  });
+
+  it("replaces the question box once the free questions are used, keeping past turns", () => {
+    chat.state.turns = [{ id: "x", question: "Who works in Assam?", steps: [], answer: "KABIL.", streaming: false }];
+    render(<ChatPane {...props()} resume freeQuestions={{ used: 10, limit: 10 }} />);
+    expect(screen.getByRole("status")).toHaveTextContent("You've used your 10 free questions. You can't ask new questions.");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByText("Who works in Assam?")).toBeInTheDocument();
+  });
+
+  it("hides the suggestions of a new chat once the free questions are used", () => {
+    render(<ChatPane {...props()} freeQuestions={{ used: 10, limit: 10 }} />);
+    expect(screen.queryByRole("button", { name: "What grants has KABIL received?" })).not.toBeInTheDocument();
+  });
+
+  it("shows no count to staff or members", () => {
+    render(<ChatPane {...props()} />);
+    expect(screen.queryByText(/free questions/)).not.toBeInTheDocument();
+  });
+
   it("prefills a seed without sending it", async () => {
     render(<ChatPane {...props()} seed="Help me decide" />);
     expect(screen.getByRole("textbox")).toHaveValue("Help me decide");
