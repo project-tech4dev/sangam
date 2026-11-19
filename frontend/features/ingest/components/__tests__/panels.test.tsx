@@ -88,6 +88,22 @@ describe("WaitingForYou", () => {
 });
 
 describe("ResearchedRecently", () => {
+  it("staff can open the change check only where sources are tracked", () => {
+    render(
+      <ResearchedRecently
+        items={[record({ tracked_sources: 4 }), record({ id: 2, slug: "x", tracked_sources: 0 })]}
+        staff
+      />,
+    );
+    const links = screen.getAllByRole("link", { name: "Check for changes" });
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["/import/check/kabil"]);
+  });
+
+  it("only staff see the change check", () => {
+    render(<ResearchedRecently items={[record({ tracked_sources: 4 })]} />);
+    expect(screen.queryByRole("link", { name: "Check for changes" })).toBeNull();
+  });
+
   it("renders nothing with no research", () => {
     const { container } = render(<ResearchedRecently items={[]} />);
     expect(container).toBeEmptyDOMElement();
