@@ -7,7 +7,8 @@ import { navigation } from "@/tests/setup";
 import { registryRow } from "./fixtures";
 
 const fetchPage = vi.hoisted(() => vi.fn());
-vi.mock("@/features/registry/api", () => ({ fetchRegistryPage: fetchPage }));
+const fetchTracked = vi.hoisted(() => vi.fn(async () => [] as unknown[]));
+vi.mock("@/features/registry/api", () => ({ fetchRegistryPage: fetchPage, fetchTracked }));
 
 // setUrlParams writes jsdom's history, which the shared setup does not reset.
 afterEach(() => window.history.replaceState(null, "", "/"));
@@ -50,6 +51,14 @@ const names = () => screen.queryAllByRole("link").map((a) => a.querySelector(".r
 const asked = () => Object.fromEntries(new URLSearchParams(fetchPage.mock.lastCall?.[0]));
 
 describe("RegistryClient", () => {
+  it("staff see a change check beside each tracked row, and only there", async () => {
+    fetchTracked.mockResolvedValueOnce([{ slug: "kabil", kind: "org", sources: 4, last_checked: "2026-11-19T09:28:00Z" }]);
+    render(<RegistryClient first={page(rows)} />);
+    const link = await screen.findByRole("link", { name: /Check for changes · 4 sources tracked · last checked 19 Nov/ });
+    expect(link).toHaveAttribute("href", "/import/check/kabil");
+    expect(screen.getAllByRole("link", { name: /Check for changes/ })).toHaveLength(1);
+  });
+
   it("lists everyone with counts per bucket and links to each profile", () => {
     render(<RegistryClient first={page(rows)} />);
     expect(screen.getByRole("button", { name: /3\s*All/ })).toHaveAttribute("aria-pressed", "true");

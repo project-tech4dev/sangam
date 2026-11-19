@@ -84,6 +84,11 @@ export function ResearchedRecently({
                       Review &amp; save
                     </button>
                   )}
+                  {staff && (r.tracked_sources ?? 0) > 0 && (
+                    <Link href={`/import/check/${encodeURIComponent(r.slug)}`} className="import-link">
+                      Check for changes
+                    </Link>
+                  )}
                   {staff && (
                     <button type="button" className="import-link" disabled={busy === r.id} onClick={() => act(r, name)}>
                       {busy === r.id ? "Working…" : r.promotion_id != null ? "Undo save" : "Delete"}
