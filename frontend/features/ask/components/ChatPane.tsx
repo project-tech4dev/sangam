@@ -67,6 +67,8 @@ export function ChatPane({
     }
     try {
       await send(question);
+    } catch {
+      // A refused run (the free questions spent in another tab): the refreshed count below says why.
     } finally {
       onRunEnd?.();
     }

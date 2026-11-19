@@ -49,7 +49,8 @@ browser ── Ask composer ──► /api/copilotkit ──► POST /agent
 
 - **Migration:** `ALTER TABLE threads ADD COLUMN questions int NOT NULL DEFAULT 0`. Existing chats start
   at 0, so nobody is cut off on day one.
-- **Counting:** `claim_thread` inserts with `questions = 1` and adds 1 on conflict, for Ask threads.
+- **Counting:** `claim_thread` adds 1 per turn only for a metered caller (so a removed member starts at 0);
+  a `CHECK (questions >= 0)` stops a self-inserted negative row cancelling the limit.
   Usage is `SUM(questions)` over all the person's threads: the thread id is the browser's to choose, so
   no id may be left out, and a metered person can use only Ask anyway. No route deletes a thread, so
   the count cannot be wiped.

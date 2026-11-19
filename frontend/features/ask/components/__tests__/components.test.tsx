@@ -223,6 +223,14 @@ describe("ChatPane", () => {
     expect(screen.queryByRole("button", { name: "What grants has KABIL received?" })).not.toBeInTheDocument();
   });
 
+  it("refreshes the count when a run is refused, without throwing", async () => {
+    chat.send.mockRejectedValueOnce(new Error("HTTP 429"));
+    const onRunEnd = vi.fn();
+    render(<ChatPane {...props()} freeQuestions={{ used: 9, limit: 10 }} onRunEnd={onRunEnd} />);
+    await userEvent.click(screen.getByRole("button", { name: "What grants has KABIL received?" }));
+    expect(onRunEnd).toHaveBeenCalledOnce();
+  });
+
   it("shows no count to staff or members", () => {
     render(<ChatPane {...props()} />);
     expect(screen.queryByText(/free questions/)).not.toBeInTheDocument();

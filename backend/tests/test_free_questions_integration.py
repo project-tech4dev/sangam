@@ -59,14 +59,14 @@ async def test_two_tabs_at_the_last_question_get_one_between_them(visitor):
 
 async def test_any_thread_id_counts_but_someone_elses_thread_does_not(visitor):
     pool, user = visitor
-    await claim_thread(pool, thread_id=f"import-{user}", user_id=user)
+    await claim_thread(pool, thread_id=f"import-{user}", user_id=user, limit=10)
     async with pool.connection() as conn:
         other = (await (await conn.execute(
             "INSERT INTO users (email) VALUES (%s) RETURNING id", (f"other-{uuid.uuid4()}@test.local",)
         )).fetchone())["id"]
     try:
-        await claim_thread(pool, thread_id=f"t-{other}", user_id=other)
-        assert await claim_thread(pool, thread_id=f"t-{other}", user_id=user) == other
+        await claim_thread(pool, thread_id=f"t-{other}", user_id=other, limit=10)
+        assert await claim_thread(pool, thread_id=f"t-{other}", user_id=user, limit=10) == other
         assert await asked(pool, user_id=user) == 1  # an import- id posted to /agent is still a question
         assert await asked(pool, user_id=other) == 1
     finally:
@@ -82,3 +82,10 @@ async def test_a_signed_in_person_cannot_insert_a_negative_count_to_cancel_the_l
             await conn.execute(
                 "INSERT INTO threads (thread_id, user_id, questions) VALUES (%s, %s, -1000)", (f"neg-{user}", user)
             )
+
+
+async def test_turns_taken_while_in_an_organisation_are_not_counted(visitor):
+    pool, user = visitor
+    for _ in range(3):
+        await claim_thread(pool, thread_id=f"t-{user}-member", user_id=user)
+    assert await asked(pool, user_id=user) == 0  # removed from their org later, they start at 0 of 10
