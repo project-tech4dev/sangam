@@ -9,7 +9,7 @@ from importlib.resources import files
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from app.ingest import brief
 from app.ingest.reading.access import canonical_url
@@ -23,7 +23,11 @@ from app.ingest.research.source_guards import is_private_source
 
 logger = logging.getLogger(__name__)
 
-PROMPT = (files("app.ingest") / "prompts" / "research_delta.md").read_text(encoding="utf-8")
+FINDING: TypeAdapter[Any] = TypeAdapter(Finding)
+# The shape goes in the prompt, not the output schema: as a strict grammar it is too large for the API.
+PROMPT = ((files("app.ingest") / "prompts" / "research_delta.md").read_text(encoding="utf-8") +
+          "\n\nEach finding, as JSON Schema (`concept` picks the kind):\n" +
+          json.dumps(FINDING.json_schema(), separators=(",", ":")))
 RUBRIC = (files("app.ingest") / "prompts" / "delta_rubric.md").read_text(encoding="utf-8")
 NEW_TEXT = 30_000  # a new source's text shown in full up to here; the evidence check still reads all of it
 
@@ -44,9 +48,12 @@ INSERT_SQL = """
 """
 
 
+FINDING_JSON = "the whole finding as one JSON object, in the shape the prompt gives"
+
+
 class Update(BaseModel):
     id: str
-    finding: Finding
+    finding: str = Field(description=FINDING_JSON)
 
 
 class Removal(BaseModel):
@@ -58,7 +65,7 @@ class Delta(BaseModel):
     keep: list[str] = Field(default_factory=list)
     update: list[Update] = Field(default_factory=list)
     remove: list[Removal] = Field(default_factory=list)
-    add: list[Finding] = Field(default_factory=list)
+    add: list[str] = Field(default_factory=list, description=f"each one {FINDING_JSON}")
     gaps_closed: list[str] = Field(default_factory=list)
     summary: str = Field(min_length=20, description="two or three sentences on what changed")
 
@@ -182,6 +189,13 @@ def apply(delta: Delta, srcs: list[Source], context: Context) -> Applied:
         seen.add(fact_id)
         return facts[fact_id]
 
+    def parsed(raw: str, verb: str) -> dict[str, Any] | None:
+        try:
+            return FINDING.dump_python(FINDING.validate_python(json.loads(raw)), mode="json")
+        except (ValueError, ValidationError) as exc:
+            out.refused.append(f"{verb}: not a valid finding ({str(exc).splitlines()[0][:160]})")
+            return None
+
     def quoted(finding: dict[str, Any], verb: str) -> bool:
         url = canonical_url(finding["source_url"])
         if url in texts and on_page(finding["evidence"], texts[url]):
@@ -192,7 +206,8 @@ def apply(delta: Delta, srcs: list[Source], context: Context) -> Applied:
     for fact_id in delta.keep:
         out.kept += known(fact_id, "keep") is not None
     for u in delta.update:
-        if (old := known(u.id, "update")) and quoted(new := u.finding.model_dump(mode="json"), f"update {u.id} →"):
+        if ((old := known(u.id, "update")) and (new := parsed(u.finding, f"update {u.id}"))
+                and quoted(new, f"update {u.id} →")):
             out.supersedes.append(list(brief.fact_key(old.finding)))
             out.findings.append(new)
             out.updated += 1
@@ -201,7 +216,7 @@ def apply(delta: Delta, srcs: list[Source], context: Context) -> Applied:
             out.supersedes.append(list(brief.fact_key(old.finding)))
             out.removed += 1
     for a in delta.add:
-        if quoted(new := a.model_dump(mode="json"), "add"):
+        if (new := parsed(a, "add")) and quoted(new, "add"):
             out.findings.append(new)
             out.added += 1
     return out
