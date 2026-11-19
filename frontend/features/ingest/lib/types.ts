@@ -56,6 +56,8 @@ export type ResearchRecord = {
   stopped_reason: string | null;
   summary: string;
   fact_count: number;
+  /** Sources whose read version is kept, so a change check can run; 0 for older research. */
+  tracked_sources?: number;
   sources_read: string[];
   not_found: string[];
   researched_at: string;
