@@ -103,6 +103,8 @@ class Settings(BaseSettings):
     # Model calls one Ask question may make before it stops and says so. Trace 5bfdbc85 made 21; the target
     # is under 8. A cap, not a target: it ends a runaway turn long before recursion_limit does.
     ask_model_call_limit: int = 25
+    # Ask questions a signed-in person outside every organisation may ask in all (#314); 0 lifts the limit.
+    free_questions: int = 10
 
     # How many organisations Sangam Import researches at once. It is not a ceiling on how many you can
     # ASK for: above this the agent works in waves until the list is done. Raise it and raise
@@ -134,6 +136,7 @@ class Settings(BaseSettings):
         "utility_model",
         "sql_audit_model",
         "max_parallel_research", "research_page_limit", "research_model_call_limit", "ask_model_call_limit",
+        "free_questions",
         "db_pool_max_size", "db_pool_timeout_s", "db_connect_timeout_s", "db_statement_timeout_ms",
         mode="before",
     )

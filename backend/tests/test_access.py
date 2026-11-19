@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from uuid import UUID
 
 import httpx
@@ -197,3 +198,65 @@ async def test_chat_signed_out_is_401(owners):
     assert response.status_code == 401
     assert "new" not in owners
 
+
+
+@pytest.fixture
+def ledger(monkeypatch):
+    """claim_thread as a question count: the limit each call was given, and None once it is reached."""
+    calls: list[int | None] = []
+
+    async def claim(pool, *, thread_id, user_id, limit=None, **_):
+        calls.append(limit)
+        return None if limit is not None and len(calls) > limit else user_id
+
+    monkeypatch.setattr(security.threads, "claim_thread", claim)
+    monkeypatch.setattr(security, "get_settings", lambda: SimpleNamespace(free_questions=2))
+    return calls
+
+
+@pytest.mark.parametrize(("roles", "principal", "limit"), [
+    ((), MEMBER, 2), (("member",), MEMBER, None), ((), DEV_USER, None),
+], ids=["no org", "in an org", "staff"])
+async def test_only_someone_outside_every_org_is_metered(ledger, monkeypatch, roles, principal, limit):
+    memberships(monkeypatch, *roles)
+    assert (await run(chat_app(principal, ask_access), "new")).status_code == 200
+    assert ledger == [limit]
+
+
+async def test_the_question_after_the_limit_is_refused_before_the_agent_runs(ledger, monkeypatch):
+    memberships(monkeypatch)
+    app = chat_app(MEMBER, ask_access)
+    statuses = [(await run(app, "new")).status_code for _ in range(3)]
+    assert statuses == [200, 200, 429]
+    refused = await run(app, "new")
+    assert refused.json()["detail"] == "You've used your 2 free questions. You can't ask new questions."
+
+
+async def test_import_chats_are_not_metered(ledger, monkeypatch):
+    memberships(monkeypatch)
+    await run(chat_app(MEMBER, chat_access), "import-1")
+    assert ledger == [None]
+
+
+def test_zero_free_questions_lifts_the_limit(monkeypatch):
+    monkeypatch.setattr(security, "get_settings", lambda: SimpleNamespace(free_questions=0))
+    assert security.free_question_limit(security.CallerScope(MEMBER.id, False)) is None
+
+
+@pytest.mark.parametrize(("roles", "expected"), [((), {"used": 7, "limit": 2}), (("member",), None)])
+async def test_me_reports_free_questions_only_to_someone_outside_every_org(monkeypatch, roles, expected):
+    from app.api.routes import me
+
+    rows = [{"org_id": 1, "org_slug": "one", "org_name": "One", "role": r} for r in roles]
+
+    async def list_memberships(pool, user_id):
+        return rows
+
+    async def asked(pool, *, user_id):
+        return 7
+
+    monkeypatch.setattr(me.repo, "list_memberships", list_memberships)
+    monkeypatch.setattr(me.threads, "asked", asked)
+    monkeypatch.setattr(security, "get_settings", lambda: SimpleNamespace(free_questions=2))
+    async with client(as_caller(make_app(me.router), MEMBER)) as c:
+        assert (await c.get("/api/me")).json()["free_questions"] == expected

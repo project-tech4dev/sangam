@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Mic, Paperclip } from "lucide-react";
+import type { FreeQuestions } from "@/lib/api";
 import type { RegistryIndex } from "../lib/citations";
 import { saveThread, titleFrom } from "../lib/threads";
 import { useSangamChat } from "../lib/useSangamChat";
 import { AnswerCard } from "./AnswerCard";
 import { ComposerNotice } from "./ComposerNotice";
+import { FreeQuestionsLine, FreeQuestionsSpent } from "./FreeQuestions";
 import { TraceCard } from "./TraceCard";
 
 const SUGGESTIONS = [
@@ -23,6 +25,8 @@ export function ChatPane({
   onFirstSend,
   index,
   onLatestTurn,
+  freeQuestions = null,
+  onRunEnd,
 }: {
   threadId: string;
   resume: boolean;
@@ -30,6 +34,9 @@ export function ChatPane({
   onFirstSend: () => void;
   index: RegistryIndex | null;
   onLatestTurn: (turn: ReturnType<typeof useSangamChat>["turns"][number] | null) => void;
+  /** Set only for someone outside every organisation; at the limit the box gives way to a notice. */
+  freeQuestions?: FreeQuestions | null;
+  onRunEnd?: () => void;
 }) {
   const { turns, send, isRunning, isReady: agentReady, isLoadingHistory } = useSangamChat(threadId, resume);
   // Not ready while a past chat loads, so a question typed meanwhile is not replaced by its history.
@@ -58,10 +65,20 @@ export function ChatPane({
       sentTitle.current = true;
       onFirstSend();
     }
-    await send(question);
+    try {
+      await send(question);
+    } catch {
+      // A refused run (the free questions spent in another tab): the refreshed count below says why.
+    } finally {
+      onRunEnd?.();
+    }
   }
 
-  const composer = (
+  const spent = freeQuestions !== null && freeQuestions.used >= freeQuestions.limit;
+
+  const composer = spent ? (
+    <FreeQuestionsSpent limit={freeQuestions.limit} />
+  ) : (
     <div className="card elev-sm composer">
       <textarea
         ref={inputRef}
@@ -88,6 +105,7 @@ export function ChatPane({
           </button>
         </div>
       </div>
+      {freeQuestions && <FreeQuestionsLine {...freeQuestions} />}
       <ComposerNotice />
     </div>
   );
@@ -121,7 +139,7 @@ export function ChatPane({
         </div>
       )}
       {composer}
-      {empty && (
+      {empty && !spent && (
         <div className="chat-suggestions">
           {SUGGESTIONS.map((s) => (
             <button key={s} className="pill" onClick={() => submit(s)} disabled={!isReady}>

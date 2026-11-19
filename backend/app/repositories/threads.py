@@ -7,18 +7,23 @@ from psycopg_pool import AsyncConnectionPool
 
 from app.db.pool import CallerPool
 
+# Every chat counts, whatever its id: the id is the browser's to choose. Only metered turns are ever counted.
+ASKED_SQL = "SELECT COALESCE(SUM(questions), 0)::int AS asked FROM threads WHERE user_id = %s"
+
 
 async def claim_thread(pool: AsyncConnectionPool, *, thread_id: str, user_id: UUID, title: str | None = None,
-                       use_case: str = "ask", org_id: int | None = None) -> UUID:
-    """The thread's owner, making it `user_id` when the thread is new. An owner's turn bumps updated_at."""
+                       use_case: str = "ask", org_id: int | None = None,
+                       limit: int | None = None) -> UUID | None:
+    """The thread's owner, making it `user_id` when new; with `limit`, also one more question, or None at it."""
     sql = """
     WITH claimed AS (
-      INSERT INTO threads (thread_id, user_id, title, updated_by, use_case, org_id)
-      VALUES (%(thread_id)s, %(user_id)s, %(title)s, %(user_id)s, %(use_case)s, %(org_id)s)
+      INSERT INTO threads (thread_id, user_id, title, updated_by, use_case, org_id, questions)
+      VALUES (%(thread_id)s, %(user_id)s, %(title)s, %(user_id)s, %(use_case)s, %(org_id)s, %(counted)s)
       ON CONFLICT (thread_id) DO UPDATE SET
         updated_at = now(),
         updated_by = EXCLUDED.user_id,
-        title = COALESCE(threads.title, EXCLUDED.title)
+        title = COALESCE(threads.title, EXCLUDED.title),
+        questions = threads.questions + EXCLUDED.questions
       WHERE threads.user_id = EXCLUDED.user_id
       RETURNING user_id
     )
@@ -27,10 +32,22 @@ async def claim_thread(pool: AsyncConnectionPool, *, thread_id: str, user_id: UU
     SELECT user_id FROM threads WHERE thread_id = %(thread_id)s
     LIMIT 1
     """
-    params = {"thread_id": thread_id, "user_id": user_id, "title": title, "use_case": use_case, "org_id": org_id}
-    async with pool.connection() as conn:
+    params = {"thread_id": thread_id, "user_id": user_id, "title": title, "use_case": use_case, "org_id": org_id,
+              "counted": int(limit is not None)}
+    async with pool.connection() as conn, conn.transaction():
+        if limit is not None:
+            # Held to commit, so two tabs at limit - 1 cannot both get the last question.
+            await conn.execute("SELECT 1 FROM users WHERE id = %s FOR UPDATE", (user_id,))
+            if (await (await conn.execute(ASKED_SQL, (user_id,))).fetchone())["asked"] >= limit:
+                return None
         row = await (await conn.execute(sql, params)).fetchone()
     return row["user_id"]
+
+
+async def asked(pool: AsyncConnectionPool | CallerPool, *, user_id: UUID) -> int:
+    """How many questions the person has asked, in all their chats."""
+    async with pool.connection() as conn:
+        return (await (await conn.execute(ASKED_SQL, (user_id,))).fetchone())["asked"]
 
 
 # The only text ever put into list_threads' SQL; an unknown kind fails instead of matching Ask chats.

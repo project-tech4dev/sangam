@@ -77,6 +77,11 @@ Generated detail (tools, skills, middleware order, prompt rules): [ask-sangam](.
   the person sees nothing. 18 of 39 production answers got a ⚠️, and only 2–3 were real (#322). It returns to the answer
   only once its scores agree with hand labels. It judges an answer against everything the answer could draw on: every
   query result and `compare_fit` output in the turn, and today's date; a turn where nothing returned data, or a refusal, is not audited.
+- **Someone outside every organisation gets `FREE_QUESTIONS` (10) Ask questions in all, no reset** (#314). `threads.questions`
+  counts their turns in `claim_thread`; `ask_access` sums every chat they have, under a lock on their `users` row, and
+  answers 429 before the agent runs. Every chat counts whatever its id, since the browser picks the id, and the count can't
+  go negative, since `authenticated` may insert its own `threads` rows. Staff and members' turns are never counted, so a
+  removed member starts at 0. A question counts when it starts, even if the run fails. No new table, by decision: hence no reset.
 
 ## 4. Sangam Import / Scout
 

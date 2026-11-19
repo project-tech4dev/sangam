@@ -35,11 +35,16 @@ _PROFILE_HEADER = "as stored:"      # db_profile_column
 
 # Middleware hooks run as graph nodes, one set per model call. These never call a model, so they
 # are empty leaves and safe to drop; an unlisted hook stays, since dropping a parent orphans children.
+# ModelCallCap acts only at the cap, and then its stop message is the turn's answer anyway.
 _EMPTY_HOOK = re.compile(
-    r"^(PatchToolCallsMiddleware|SkillsMiddleware|sql_retry_limiter|RunSources|DropFilesOnExit|_ParentNotifierMiddleware)"
+    r"^(PatchToolCallsMiddleware|SkillsMiddleware|sql_retry_limiter|RunSources|DropFilesOnExit|_ParentNotifierMiddleware"
+    r"|ModelCallCap)"
     r"\.(before|after)_(agent|model)$"
 )
 AUDIT_HOOK = "answer_audit.after_agent"
+# The Anthropic SDK traces each call itself; LangChain already records it, so its copy doubled the cost
+# and, having no parent, showed up as a trace of its own.
+_DUPLICATE_SCOPES = ("com.anthropic.",)
 
 
 def masking_enabled() -> bool:
@@ -84,10 +89,15 @@ def mask_payload(*, data: Any, **_: Any) -> Any:
 
 
 def export_span(span: Any) -> bool:
-    """v4's default filter (drops FastAPI's HTTP spans), minus hooks that record nothing."""
+    """v4's default filter (drops FastAPI's HTTP spans), minus hooks that record nothing and SDK copies."""
     from langfuse.span_filter import is_default_export_span
 
-    return is_default_export_span(span) and not _EMPTY_HOOK.match(span.name or "")
+    scope = getattr(getattr(span, "instrumentation_scope", None), "name", None) or ""
+    return (
+        is_default_export_span(span)
+        and not _EMPTY_HOOK.match(span.name or "")
+        and not scope.startswith(_DUPLICATE_SCOPES)
+    )
 
 
 def flush_traces() -> None:

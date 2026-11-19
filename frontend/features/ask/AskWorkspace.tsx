@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { MeOut } from "@/lib/api";
+import type { FreeQuestions, MeOut } from "@/lib/api";
+import { getMe } from "@/lib/api/rest";
 import { idParam, setUrlParams } from "@/lib/url";
 import { useUrlThread } from "@/lib/useUrlThread";
 import type { RegistryIndex } from "./lib/citations";
@@ -57,6 +58,12 @@ export function AskWorkspace({
   const [latest, setLatest] = useState<{ thread: string; turn: Turn | null }>({ thread: "", turn: null });
   const [seed, setSeed] = useState<{ thread: string; text: string } | null>(null);
   const proposalCount = useProposals().length;
+  const [freeQuestions, setFreeQuestions] = useState<FreeQuestions | null>(payload.me?.free_questions ?? null);
+  // After every run, refused ones too: the server's count is what decides whether the box stays.
+  const refreshFreeQuestions = useCallback(() => {
+    if (!freeQuestions) return;
+    getMe().then((me) => setFreeQuestions(me.free_questions ?? null), () => {});
+  }, [freeQuestions]);
 
   useEffect(() => {
     setThreads(loadThreads());
@@ -151,6 +158,8 @@ export function AskWorkspace({
               }}
               index={index}
               onLatestTurn={onLatestTurn}
+              freeQuestions={freeQuestions}
+              onRunEnd={refreshFreeQuestions}
             />
             <div className="evidence-rail-slot">
               <EvidenceRail latest={latest.thread === threadId ? latest.turn : null} stats={payload.stats} index={index} />

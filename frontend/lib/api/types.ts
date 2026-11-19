@@ -100,7 +100,11 @@ export type StoryPage = {
 export type MeOut = {
   id: string | null; email: string | null; is_staff: boolean; is_anonymous: boolean;
   memberships: { org_id: number; org_slug: string; org_name: string; role: string }[];
+  /** Only for someone outside every organisation: Ask questions used of the free ones. */
+  free_questions?: FreeQuestions | null;
 };
+
+export type FreeQuestions = { used: number; limit: number };
 
 export type MatchTier = "strong" | "medium" | "weak" | "not_scored";
 
