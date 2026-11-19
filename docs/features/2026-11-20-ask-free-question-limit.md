@@ -84,7 +84,7 @@ M1 (backend):
 1. `db/migrations/0061_thread_questions.sql`: the column. (0058–0060 are taken on open branches.)
 2. `config.py`: `free_questions: int = 10`, in the blank-means-default list; `.env.example` line.
 3. `repositories/threads.py`: `claim_thread(..., limit: int | None = None) -> UUID | None` bumps
-   `questions` on every claim; with `limit`, locks the user row and returns None when `asked >= limit`.
+   `questions` only when given `limit`; then it locks the user row and returns None when `asked >= limit`.
    `asked(conn_or_pool, user_id) -> int` sums all their threads.
 4. `core/security.py`: `_own_thread` computes the scope first; for an Ask turn by a metered caller
    (`not is_staff and not org_roles`, `free_questions > 0`) it passes `limit`, and None becomes 429
