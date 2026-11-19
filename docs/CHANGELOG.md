@@ -67,6 +67,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-12 · #402 · The answer audit no longer adds a ⚠️ caveat under Ask's answer: 18 of 39 production answers had one and only 2–3 were real. Its verdict still reaches Langfuse as `answer_audit` (#322 step 1).
 - 2026-11-12 · #403 · The answer audit reads every query result in the turn with its SQL, `compare_fit`'s output and today's date, and skips refusal turns; it used to see only the last query and flagged facts from the others (#322 step 2).
 - 2026-11-20 · (unmerged) · Ten free Ask questions, in all, for a signed-in person outside every organisation: `threads.questions`, a 429 at `FREE_QUESTIONS`, the count on `/api/me`, and a notice in place of the question box (#314).
+- 2026-11-20 · #451, #452 · The answer audit reads the whole chat's results, each marked with the question that found it, and keeps the rows an answer cites when a long chat passes the cap; it answers in a fixed shape (`verdict`, `check`, `reason`) with 4,096 tokens, and the failed check goes to Langfuse as the score's `metadata.check`. On the 19 Nov chat its 5 wrong flags passed and its 2 missing verdicts came back.
 
 ## Knowledge graph
 

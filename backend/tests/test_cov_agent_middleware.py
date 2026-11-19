@@ -132,7 +132,7 @@ def test_tool_errors_builds_the_middleware():
 @pytest.fixture
 def scores(monkeypatch):
     seen = []
-    monkeypatch.setattr(mw, "score_answer", lambda name, value, comment=None: seen.append((name, value, comment)))
+    monkeypatch.setattr(mw, "score_answer", lambda name, value, comment=None, metadata=None: seen.append((name, value, comment, metadata)))
     return seen
 
 
@@ -147,12 +147,18 @@ def test_no_verdict_scores_nothing(monkeypatch, scores):
 
 def test_an_ok_verdict_scores_one_and_adds_nothing(monkeypatch, scores):
     assert _audit_with(monkeypatch, Audit("ok")) is None
-    assert scores == [("answer_audit", 1.0, None)]
+    assert scores == [("answer_audit", 1.0, None, None)]
 
 
 def test_a_warning_is_scored_and_never_shown(monkeypatch, scores):
     assert _audit_with(monkeypatch, Audit("warn", "counts orgs twice")) is None
-    assert scores == [("answer_audit", 0.0, "counts orgs twice")]
+    assert scores == [("answer_audit", 0.0, "counts orgs twice", None)]
+
+
+def test_a_warning_carries_the_check_that_failed(monkeypatch, scores):
+    """So Langfuse can split the flags by kind: grain, filters, false zero, numbers, unsupported."""
+    _audit_with(monkeypatch, Audit("warn", "counts grants, not orgs", "grain"))
+    assert scores == [("answer_audit", 0.0, "counts grants, not orgs", {"check": "grain"})]
 
 
 @pytest.mark.parametrize("canned", [mw._GIVE_UP, mw._CAPPED])
