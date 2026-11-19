@@ -62,6 +62,8 @@ def test_export_drops_empty_hooks(monkeypatch):
     assert tracing.export_span(SimpleNamespace(name="model")) is True
     assert tracing.export_span(SimpleNamespace(name="sql_retry_limiter.before_model")) is False
     assert tracing.export_span(SimpleNamespace(name="_ParentNotifierMiddleware.after_agent")) is False
+    assert tracing.export_span(SimpleNamespace(name="ModelCallCap.before_model")) is False
+    assert tracing.export_span(SimpleNamespace(name="answer_audit.after_agent")) is True
     assert tracing.export_span(SimpleNamespace(name=None)) is True
 
 
