@@ -84,6 +84,7 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
       // The partner organisation when Sangam holds it, else the funder whose line it is.
       href: l.partner_org_slug ? `/registry/${l.partner_org_slug}` : `/registry/funders/${l.funder_slug}`,
       title: `${l.funder_name} → ${l.partner_name}${l.project_name ? `: ${l.project_name}` : ""}`,
+      short: `${l.funder_name} → ${l.partner_name}`,
       sourceUrl: l.source_url,
       sourceName: l.source_name,
       fetchedAt: l.fetched_at,

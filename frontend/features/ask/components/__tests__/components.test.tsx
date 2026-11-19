@@ -42,10 +42,12 @@ const step = (id: string, tool: string, args: unknown = {}, result: string | nul
 
 describe("AnswerCard", () => {
   it("renders markdown with citation chips linked into the Registry", () => {
-    render(<AnswerCard answer={"KABIL [org:1] fits Axis [funder:2]. See [score:9], [news:4] and [docs](https://x.example)\n\n| a |\n|---|\n| 1 |"} index={index} />);
-    expect(screen.getByRole("link", { name: "org:1" })).toHaveAttribute("href", "/registry/kabil");
-    expect(screen.getByRole("link", { name: "funder:2" })).toHaveAttribute("href", "/registry/funders/axis-bank-foundation");
-    expect(screen.getByText("score:9")).toHaveAttribute("title", "score #9 — score evidence in the base");
+    render(<AnswerCard answer={"KABIL [org:1] fits [funder:2]. See [score:9], [news:4] and [docs](https://x.example)\n\n| a |\n|---|\n| 1 |"} index={index} />);
+    expect(screen.getByRole("link", { name: "source" })).toHaveAttribute("href", "/registry/kabil");
+    expect(screen.getByRole("link", { name: "Axis Bank Foundation" })).toHaveAttribute("href", "/registry/funders/axis-bank-foundation");
+    expect(screen.queryByText(/org:1|funder:2|score:9|news:4/)).toBeNull();
+    expect(screen.getByText("Funder Match")).toHaveAttribute("title", "score #9 — score evidence in the base");
+    expect(screen.getByText("News")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "docs" })).toHaveAttribute("target", "_blank");
     expect(screen.getByRole("table")).toBeInTheDocument();
   });

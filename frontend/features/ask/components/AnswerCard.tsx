@@ -3,17 +3,17 @@
 import Link from "next/link";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { citationTarget, linkifyCitations, type CitationKind, type RegistryIndex } from "../lib/citations";
+import { chipText, citationTarget, linkifyCitations, type CitationKind, type RegistryIndex } from "../lib/citations";
 
 /** A source in words instead of its marker, for screens that show no codes (Sangam Pitch). */
 export type SourceWords = Partial<Record<CitationKind, string>>;
 
 export function CitationChip({ href: raw, index, words }: { href: string; index: RegistryIndex | null; words?: SourceWords }) {
-  const [, kind, id] = raw.match(/^sangam:\/\/([a-z]+)\/(.+)$/) ?? [];
+  const [, kind, id, named] = raw.match(/^sangam:\/\/([a-z]+)\/([^?]+)(\?named)?$/) ?? [];
   if (!kind || !id) return null;
   const { href, label } = citationTarget(kind as CitationKind, id, index);
-  // The marker the agent emitted is what the chip shows: the model has just written the entity's name beside it.
-  const text = words?.[kind as CitationKind] ?? `${kind}:${id}`;
+  // A name, never the marker: "funder:3" meant nothing to the people reading it (#460).
+  const text = words?.[kind as CitationKind] ?? (named ? "source" : chipText(kind as CitationKind, id, index));
   if (!href) {
     return (
       <span className="cite-chip" title={`${label} — ${kind} evidence in the base`}>
@@ -56,7 +56,7 @@ export function AnswerCard({ answer, index, words }: { answer: string; index: Re
             ),
           }}
         >
-          {linkifyCitations(answer)}
+          {linkifyCitations(answer, index)}
         </ReactMarkdown>
       </div>
     </div>
