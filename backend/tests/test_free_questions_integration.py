@@ -73,3 +73,12 @@ async def test_any_thread_id_counts_but_someone_elses_thread_does_not(visitor):
         async with pool.connection() as conn:
             await conn.execute("DELETE FROM threads WHERE user_id = %s", (other,))
             await conn.execute("DELETE FROM users WHERE id = %s", (other,))
+
+
+async def test_a_signed_in_person_cannot_insert_a_negative_count_to_cancel_the_limit(visitor):
+    pool, user = visitor
+    async with pool.connection() as conn:
+        with pytest.raises(psycopg.errors.CheckViolation):
+            await conn.execute(
+                "INSERT INTO threads (thread_id, user_id, questions) VALUES (%s, %s, -1000)", (f"neg-{user}", user)
+            )
