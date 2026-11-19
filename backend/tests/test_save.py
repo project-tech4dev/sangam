@@ -100,7 +100,9 @@ class TestWrite:
         first, second = self.rows(conn)
         assert first[:9] == (RUN, SLUG, URL, 7, 55, CHANGED, 1, 1, 1)
         assert isinstance(first[9], Jsonb) and first[9].obj == {"meaningful": True}
-        assert second == (RUN, SLUG, OTHER, 8, None, UNCHANGED, 0, 0, 0, None, "HTTP 200")
+        assert second == (RUN, SLUG, OTHER, 8, None, UNCHANGED, 0, 0, 0, None, "HTTP 200", [], [], None)
+        assert first[13].obj == [{"verdict": INTACT, "sentence": "a"}, {"verdict": BROKEN, "sentence": "b"},
+                                 {"verdict": UNANCHORED, "sentence": "c"}]
 
     async def test_a_failed_archive_records_no_snapshot_and_says_so(self):
         conn = ScriptConn()
@@ -132,7 +134,7 @@ class TestWrite:
         saved = await save.write(conn, RUN, SLUG, [], found, {})
         [row] = self.rows(conn)
         assert saved.rows == 1 and row == (RUN, SLUG, Lead.of(RESULTS[2]).url, None, None, "new", 0, 0, 0, None,
-                                           "programme: a fellowship")
+                                           "programme: a fellowship", [], [], None)
 
 
 def test_describe():
