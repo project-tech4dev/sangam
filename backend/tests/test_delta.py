@@ -126,9 +126,9 @@ class TestPropose:
 
 class TestApply:
     def test_keep_update_remove_and_add(self):
-        proposed = answer(keep=["f2"], update=[Update(id="f1", finding={**OLD, "email": "grants@funder.example",
-                                                                        "evidence": NEW_SENTENCE})],
-                          remove=[Removal(id="f3", why="the office closed")], add=[CALL])
+        new = json.dumps({**OLD, "email": "grants@funder.example", "evidence": NEW_SENTENCE})
+        proposed = answer(keep=["f2"], update=[Update(id="f1", finding=new)],
+                          remove=[Removal(id="f3", why="the office closed")], add=[json.dumps(CALL)])
         out = delta.apply(proposed, srcs(), CONTEXT)
         assert (out.kept, out.updated, out.removed, out.added, out.refused) == (1, 1, 1, 1, [])
         assert [f["evidence"] for f in out.findings] == [NEW_SENTENCE, CALL_SENTENCE]
@@ -136,20 +136,32 @@ class TestApply:
 
     def test_a_sentence_not_on_its_source_is_refused(self):
         made_up = {**OLD, "email": "x@funder.example", "evidence": "Write to x@funder.example for every query now."}
-        out = delta.apply(answer(update=[Update(id="f1", finding=made_up)]), srcs(), CONTEXT)
+        out = delta.apply(answer(update=[Update(id="f1", finding=json.dumps(made_up))]), srcs(), CONTEXT)
         assert out.updated == 0 and out.supersedes == [] and "its sentence is not on" in out.refused[0]
 
     def test_a_changed_number_is_refused(self):
         wrong = {**CALL, "evidence": CALL_SENTENCE.replace("2027", "2028"), "title": "Teacher Fellowship 2028"}
-        assert delta.apply(answer(add=[wrong]), srcs(), CONTEXT).added == 0
+        assert delta.apply(answer(add=[json.dumps(wrong)]), srcs(), CONTEXT).added == 0
 
     def test_nothing_may_cite_a_dead_page(self):
-        out = delta.apply(answer(add=[{**OFFICE}]), srcs(), CONTEXT)
+        out = delta.apply(answer(add=[json.dumps(OFFICE)]), srcs(), CONTEXT)
         assert out.added == 0 and GONE in out.refused[0]
 
     def test_an_unknown_or_repeated_id_is_refused(self):
         out = delta.apply(answer(keep=["f9", "f2"], remove=[Removal(id="f2", why="gone now")]), srcs(), CONTEXT)
         assert out.kept == 1 and out.removed == 0 and len(out.refused) == 2
+
+    @pytest.mark.parametrize("raw", ["{not json", json.dumps({**CALL, "concept": "horoscope"}), "[]"])
+    def test_a_finding_that_is_not_one_is_refused(self, raw):
+        out = delta.apply(answer(update=[Update(id="f1", finding=raw)], add=[raw]), srcs(), CONTEXT)
+        assert (out.updated, out.added, out.supersedes) == (0, 0, [])
+        assert [r.split(":")[0] for r in out.refused] == ["update f1", "add"]
+        assert all("not a valid finding" in r for r in out.refused)
+
+
+def test_the_answer_schema_leaves_the_finding_shape_to_the_prompt():
+    """The API compiles a strict schema to a grammar, and with every finding kind in it that grammar is too large."""
+    assert "ContactFinding" not in json.dumps(Delta.model_json_schema()) and "ContactFinding" in delta.PROMPT
 
 
 class TestSaveRow:
