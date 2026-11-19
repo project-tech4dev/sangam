@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { citationTarget, extractCitations, linkifyCitations, type RegistryIndex } from "@/features/ask/lib/citations";
+import { chipText, citationTarget, extractCitations, linkifyCitations, type RegistryIndex } from "@/features/ask/lib/citations";
 
 const index: RegistryIndex = {
   orgs: new Map([[1, { slug: "kabil", name: "KABIL" }]]),
   funders: new Map([[2, { slug: "axis-bank-foundation", name: "Axis Bank Foundation" }]]),
   scores: new Map([[3, { funderSlug: "axis-bank-foundation", orgName: "KABIL", funderName: "Axis Bank Foundation" }]]),
-  activities: new Map([[4, { href: "/registry/funders/axis-bank-foundation#partners", title: "KABIL partnership" }]]),
+  activities: new Map([
+    [4, { href: "/registry/funders/axis-bank-foundation#partners", title: "KABIL partnership" }],
+    [5, { href: "/registry/kabil", title: "Axis Bank Foundation → KABIL: Water", short: "Axis Bank Foundation → KABIL" }],
+  ]),
 };
 
 describe("linkifyCitations", () => {
@@ -22,6 +25,37 @@ describe("linkifyCitations", () => {
 
   it("ignores unknown kinds", () => {
     expect(linkifyCitations("[user:1]")).toBe("[user:1]");
+  });
+
+  it("flags a marker whose name was just written, on the same line or cell only", () => {
+    expect(linkifyCitations("**Kabil** [org:1] fits [funder:2].", index)).toBe(
+      "**Kabil** [org:1](sangam://org/1?named) fits [funder:2](sangam://funder/2).",
+    );
+    expect(linkifyCitations("Axis Bank Foundation\nfunds it [funder:2]", index)).toBe(
+      "Axis Bank Foundation\nfunds it [funder:2](sangam://funder/2)",
+    );
+    expect(linkifyCitations("| KABIL | Assam [org:1] |", index)).toBe("| KABIL | Assam [org:1](sangam://org/1) |");
+    expect(linkifyCitations("KABIL [org:9]", index)).toBe("KABIL [org:9](sangam://org/9)");
+  });
+});
+
+describe("chipText", () => {
+  it("names the row the page holds", () => {
+    expect(chipText("org", "1", index)).toBe("KABIL");
+    expect(chipText("funder", "2", index)).toBe("Axis Bank Foundation");
+    expect(chipText("score", "3", index)).toBe("KABIL × Axis Bank Foundation");
+    expect(chipText("activity", "5", index)).toBe("Axis Bank Foundation → KABIL");
+    expect(chipText("activity", "4", index)).toBe("KABIL partnership");
+  });
+
+  it("says it in words, never a code, when the page has no row", () => {
+    expect(chipText("org", "9", null)).toBe("Organisation's record");
+    expect(chipText("funder", "9", index)).toBe("Funder's record");
+    expect(chipText("score", "9", index)).toBe("Funder Match");
+    expect(chipText("activity", "9", index)).toBe("Funding record");
+    expect(chipText("grant", "1", index)).toBe("Past grant");
+    expect(chipText("news", "1", index)).toBe("News");
+    expect(chipText("graph", "abcdef12", index)).toBe("Sangam's links");
   });
 });
 

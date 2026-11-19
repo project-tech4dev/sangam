@@ -32,7 +32,7 @@ export type IndexPayload = {
   orgs: ({ id: number; slug: string; name: string } & Sourced)[];
   funders: ({ id: number; slug: string; name: string } & Sourced)[];
   scores: { id: number; funderSlug: string; orgName: string; funderName: string; rubricVersion: string | null }[];
-  activities: ({ id: number; href: string; title: string } & Sourced)[];
+  activities: ({ id: number; href: string; title: string; short: string } & Sourced)[];
   stats: Record<string, number>;
   /** Staff or a steward: the sidebar offers Sangam Scout. */
   canScout: boolean;

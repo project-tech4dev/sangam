@@ -36,7 +36,7 @@ describe("AskPreview", () => {
   it("shows a sample answer with its citations and criteria", () => {
     render(<AskPreview />);
     expect(screen.getByRole("heading", { name: "What an answer looks like" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "org:1" })[0]).toHaveAttribute("href", "/registry/kabil");
+    expect(screen.getAllByRole("link", { name: "KABIL" })[0]).toHaveAttribute("href", "/registry/kabil");
     expect(screen.getByText("Why this match — 7 criteria")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ask Sangam" })).toBeDisabled();
     expect(screen.queryByRole("dialog")).toBeNull();
