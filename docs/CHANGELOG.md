@@ -245,6 +245,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-22 · (unmerged) · Chat traces name the caller: Langfuse's user is their email, and tags carry `org:<name>` and `role:<role>` for each organisation they belong to (`role:staff` for staff); Pitch traces add `proposal_id`.
 - 2026-10-22 · (unmerged) · Every span of a chat run, not just its root, carries the caller, session, tags and trace name (`propagate_attributes`), Pitch's file readers included, so Langfuse v4 dashboards can sum cost per user and per organisation; the caller's organisations also go in the trace `version` (`FFRH + SeSTA`, `Sangam staff`), the one field Langfuse can group a chart by.
 - 2026-10-19 · Import evals count every tool call, subagents' under their own name (`entity-researcher.save_research`), and the two canaries fail on `max_calls`: one sources card, no bulk import, at most two `task`s and three saves (#250).
+- 2026-11-20 · (unmerged) · `make audit-review`: `CMD=setup` creates the `answer_correct` score config and the "Ask answer review" annotation queue in Langfuse; `CMD=rerun` re-audits past local turns from their checkpoints as `answer_audit_v2` and queues them, so Score Analytics can compare the audit with a person's labels (#451).
 
 ## Docs
 
