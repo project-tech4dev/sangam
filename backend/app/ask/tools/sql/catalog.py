@@ -1039,6 +1039,8 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         "resolution_queue",
         # What each make source-check WRITE=1 run found, per source.
         "source_checks",
+        # One row per change check run: its depth, decision and who ran it.
+        "source_check_runs",
         # The page and report versions Scout read, for its change check.
         "source_snapshots",
         # One organisation's Doc Vault findings, quoting its private files.

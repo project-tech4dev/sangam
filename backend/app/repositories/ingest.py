@@ -90,7 +90,11 @@ async def list_research(
                 SELECT e.*,
                        EXISTS (SELECT 1 FROM entity_research x, jsonb_array_elements(x.findings) f
                                WHERE x.id = e.id AND f->>'source_url' LIKE %(like)s) AS has_private,
-                       p.id AS promotion_id, coalesce(u.display_name, u.email) AS saved_by
+                       p.id AS promotion_id, coalesce(u.display_name, u.email) AS saved_by,
+                       (SELECT count(DISTINCT s.url) FROM entity_research r
+                               CROSS JOIN LATERAL unnest(r.snapshot_ids) AS sid
+                               JOIN source_snapshots s ON s.id = sid
+                         WHERE r.slug = e.slug AND r.status <> 'wrong_entity') AS tracked_sources
                 FROM (SELECT * FROM (
                         SELECT DISTINCT ON (e.slug)
                                e.id, e.entity_name, e.canonical_name, e.entity_kind, e.slug, e.status,
