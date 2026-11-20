@@ -14,6 +14,7 @@ import httpx
 import pytest
 
 from app.ingest.catalog.matcher import Match
+from app.ingest.reading import fetch
 from app.ingest.research.expectations import concepts_for
 from app.ingest.tools import research_tools
 from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, running_as
@@ -22,7 +23,7 @@ from tests.test_import_roles import ARPAN_STEWARD, KABIL_STEWARD, MEMBER, STAFF
 URL = "https://example.org/csr"
 DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 SUMMARY = "Example Foundation funds sports and water projects in Assam."
-REAL_CLIENT = research_tools._client
+REAL_CLIENT = fetch._client
 
 
 def host(url: str) -> str | None:
@@ -41,13 +42,14 @@ def offline(monkeypatch):
 
     offline.uploads = []
     monkeypatch.setattr(research_tools, "check_url", allowed)
-    monkeypatch.setattr(research_tools.storage, "upload", upload)
+    monkeypatch.setattr(fetch, "check_url", allowed)
+    monkeypatch.setattr(fetch.storage, "upload", upload)
     return offline
 
 
 def web(monkeypatch, handler):
     """The tools' own client, guard and all, over a fake transport."""
-    monkeypatch.setattr(research_tools, "_client",
+    monkeypatch.setattr(fetch, "_client",
                         lambda original, **kw: REAL_CLIENT(original, transport=httpx.MockTransport(handler), **kw))
 
 
@@ -55,11 +57,11 @@ class TestCompactJson:
     def test_a_github_listing_is_one_line_per_entry(self):
         listing = json.dumps([{"name": "a.md", "type": "file", "download_url": "https://raw/a.md"},
                               {"name": "dir", "type": "dir", "path": "docs/dir"}])
-        assert research_tools._compact_json(listing) == "a.md · file · https://raw/a.md\ndir · dir · docs/dir"
+        assert fetch._compact_json(listing) == "a.md · file · https://raw/a.md\ndir · dir · docs/dir"
 
     def test_other_json_and_non_json_pass_through(self):
-        assert research_tools._compact_json('{"a": 1}') == '{"a": 1}'
-        assert research_tools._compact_json("not json") == "not json"
+        assert fetch._compact_json('{"a": 1}') == '{"a": 1}'
+        assert fetch._compact_json("not json") == "not json"
 
 
 class TestSearch:
@@ -137,7 +139,7 @@ class TestReadPage:
     async def test_a_refused_url_is_not_fetched(self, monkeypatch):
         async def refuse(url):
             return "robots.txt disallows it"
-        monkeypatch.setattr(research_tools, "check_url", refuse)
+        monkeypatch.setattr(fetch, "check_url", refuse)
         web(monkeypatch, lambda r: pytest.fail("fetched"))
         assert await research_tools.read_page.ainvoke({"url": URL}) == "REFUSED: robots.txt disallows it"
 
@@ -185,7 +187,7 @@ class TestReadPage:
     async def test_a_redirect_to_a_held_url_is_refused(self, monkeypatch):
         async def check(url):
             return "held.org is held" if host(url) == "held.org" else None
-        monkeypatch.setattr(research_tools, "check_url", check)
+        monkeypatch.setattr(fetch, "check_url", check)
 
         def handler(r):
             if r.url.host == "example.org":
@@ -197,7 +199,7 @@ class TestReadPage:
 
     async def test_a_redirect_off_a_scoped_source_is_refused(self, monkeypatch):
         scoped = SimpleNamespace(path_scoped=True, key="give_do", name="Give.do")
-        monkeypatch.setattr(research_tools, "rule_for_url",
+        monkeypatch.setattr(fetch, "rule_for_url",
                             lambda url: (None, scoped) if "give.do/discover" in url else None)
 
         def handler(r):
@@ -209,17 +211,17 @@ class TestReadPage:
     async def test_an_unexpected_failure_is_returned(self, monkeypatch):
         async def boom(url):
             raise RuntimeError("x")
-        monkeypatch.setattr(research_tools, "_read_page", boom)
+        monkeypatch.setattr(research_tools, "read_page_text", boom)
         assert await research_tools.read_page.ainvoke({"url": URL}) == "read_page failed: RuntimeError: x"
 
     def test_page_name(self):
-        assert research_tools.page_name("https://www.axis.org/what-we-do.html?x=1#y") == "axis.org-what-we-do.md"
+        assert fetch.page_name("https://www.axis.org/what-we-do.html?x=1#y") == "axis.org-what-we-do.md"
 
 
 class TestFetchDocument:
     @pytest.fixture(autouse=True)
     def downloads(self, monkeypatch, tmp_path):
-        monkeypatch.setattr(research_tools, "downloads_dir", lambda: tmp_path)
+        monkeypatch.setattr(fetch, "downloads_dir", lambda: tmp_path)
         return tmp_path
 
     async def test_saves_and_archives(self, monkeypatch, downloads, offline):
@@ -239,11 +241,11 @@ class TestFetchDocument:
     async def test_a_refused_url(self, monkeypatch):
         async def refuse(url):
             return "held"
-        monkeypatch.setattr(research_tools, "check_url", refuse)
+        monkeypatch.setattr(fetch, "check_url", refuse)
         assert await research_tools.fetch_document.ainvoke({"url": URL}) == "REFUSED: held"
 
     async def test_too_large_is_dropped(self, monkeypatch, downloads):
-        monkeypatch.setattr(research_tools, "MAX_DOWNLOAD_MB", 0)
+        monkeypatch.setattr(fetch, "MAX_DOWNLOAD_MB", 0)
         web(monkeypatch, lambda r: httpx.Response(200, content=b"x" * 10))
         out = await research_tools.fetch_document.ainvoke({"url": URL, "filename": "big.pdf"})
         assert "larger than the 0 MB limit" in out and not (downloads / "big.pdf").exists()
@@ -255,14 +257,14 @@ class TestFetchDocument:
     async def test_a_redirect_refusal(self, monkeypatch):
         async def check(url):
             return "held" if host(url) == "held.org" else None
-        monkeypatch.setattr(research_tools, "check_url", check)
+        monkeypatch.setattr(fetch, "check_url", check)
         web(monkeypatch, lambda r: httpx.Response(302, headers={"location": "https://held.org/x"}))
         assert (await research_tools.fetch_document.ainvoke({"url": URL})).startswith("REFUSED:")
 
     async def test_an_unexpected_failure_is_returned(self, monkeypatch):
         async def boom(url, name):
             raise OSError("disk full")
-        monkeypatch.setattr(research_tools, "_fetch_document", boom)
+        monkeypatch.setattr(research_tools, "fetch_document_file", boom)
         assert await research_tools.fetch_document.ainvoke({"url": URL}) == "fetch_document failed: OSError: disk full"
 
 
