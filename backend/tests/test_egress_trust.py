@@ -83,6 +83,6 @@ def test_the_shared_client_uses_it():
 
 
 def test_the_research_readers_client_uses_it():
-    from app.ingest.tools.research_tools import _client
+    from app.ingest.reading.fetch import _client
 
     assert _client("https://example.gov.in/")._transport._pool._ssl_context is TRUST
