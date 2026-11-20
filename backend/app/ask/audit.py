@@ -2,24 +2,27 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
+from pydantic import BaseModel
 
 from app.agentkit.models import resolve_model
 
 logger = logging.getLogger(__name__)
 
-MAX_TOKENS = 1024  # room for a little thinking before the verdict
+MAX_TOKENS = 4096  # 1024 ran out while thinking, and the verdict never came (#452)
 RESULT_CHARS = 4000  # per query result
 COMPARE_FIT_CHARS = 16000  # a shortlist has up to ten funders in full
 FAILURE_CHARS = 300
+EARLIER_QUESTION_CHARS = 120
 EVIDENCE_CHARS = 30000  # all of them, newest kept; ~8k tokens, under a tenth of a cent on Haiku
+CITED_CHARS = 8000  # rows the answer cites from results the cap dropped
 IST = ZoneInfo("Asia/Kolkata")  # the people asking are in India
 
 # Prefix of the caveat the audit used to append. Older threads still hold one as a second AIMessage,
@@ -31,7 +34,7 @@ DATA_TOOLS = {"db_query", "db_profile_column", "search_graph", "compare_fit"}
 NO_DATA = ("The knowledge graph is not available", "No graph facts found")  # search_graph's empty replies
 LARGE_RESULTS = "/large_tool_results/"  # where FilesystemMiddleware moves a result too big to keep inline
 _EXECUTED = re.compile(r"^executed: (.+)$", re.MULTILINE)
-_JSON = re.compile(r"\{.*\}", re.DOTALL)
+_CITE = re.compile(r"\[(?:org|funder|activity|grant|score|news|graph):[a-zA-Z0-9]+\]")
 
 PROMPT = """You are auditing a data assistant's answer AFTER it was given. Report problems \
 that would make the answer WRONG. Ignore style, tone and formatting.
@@ -40,7 +43,8 @@ Today is {today}. A date on or before today is not in the future.
 
 Question: {question}
 
-Every tool result the answer could draw on, in the order they ran:
+Every tool result the answer could draw on, in the order they ran. A result headed (earlier question: ...) \
+was found for an earlier question in the same chat; the answer may reuse it:
 {evidence}
 
 The answer given:
@@ -60,15 +64,22 @@ the data being absent?
 4. NUMBERS — do the figures stated in the answer match the results? Count items the answer \
 names before saying a count is wrong.
 
-Return ONLY JSON, no prose:
-{{"verdict": "ok"}} if the answer is sound, or
-{{"verdict": "warn", "caveat": "one short sentence a reader needs to know"}}"""
+Give verdict "ok" if the answer is sound. Otherwise give "warn", the check that failed (grain, filters, \
+false_zero, numbers, or unsupported for a fact no result above supports) and a reason: one short sentence \
+a reader needs to know."""
+
+
+class Verdict(BaseModel):
+    verdict: Literal["ok", "warn"]
+    check: Literal["grain", "filters", "false_zero", "numbers", "unsupported"] | None = None
+    reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class Audit:
     verdict: str
     caveat: str | None = None
+    check: str | None = None
 
 
 def executed_sql(message: ToolMessage) -> list[str]:
@@ -110,7 +121,15 @@ def _evidence(message: ToolMessage, turn: Turn) -> str | None:
     return f"{label}{sql}\nReturned:\n{_cut(content, COMPARE_FIT_CHARS if name == 'compare_fit' else RESULT_CHARS)}"
 
 
-def _newest(blocks: list[str]) -> str:
+def _cited_rows(block: str, cited: set[str]) -> str | None:
+    """A dropped block cut to its header and the rows the answer cites, so a long chat keeps what it reuses."""
+    lines = block.splitlines()
+    head = next((i for i, line in enumerate(lines) if line == "Returned:"), 1) + 1
+    rows = [line for line in lines[head:] if any(marker in line for marker in cited)]
+    return "\n".join(lines[:head] + rows + ["(only the rows the answer cites)"]) if rows else None
+
+
+def _newest(blocks: list[str], cited: set[str] = frozenset()) -> str:
     """Whole blocks, newest first back to the cap: the answer is built mostly from the last results."""
     kept, size = [], 0
     for block in reversed(blocks):
@@ -118,16 +137,24 @@ def _newest(blocks: list[str]) -> str:
             break
         kept.append(block)
         size += len(block) + 2
-    dropped = len(blocks) - len(kept)
-    return "\n\n".join(([f"({dropped} earlier results not shown)"] if dropped else []) + kept[::-1])
+    dropped = blocks[: len(blocks) - len(kept)]
+    rescued, size = [], 0
+    for block in dropped:
+        if (rows := _cited_rows(block, cited)) and size + len(rows) <= CITED_CHARS:
+            rescued.append(rows)
+            size += len(rows) + 2
+    note = [f"({len(dropped)} earlier results not shown)"] if dropped else []
+    return "\n\n".join(rescued + note + kept[::-1])
 
 
 def collect_turn(messages: list[BaseMessage]) -> Turn:
-    """The question, every result the answer could draw on, and the final answer, for this turn only."""
+    """This turn's question and answer, and every result the chat has drawn on, earlier questions' marked (#451)."""
     turn = Turn()
     for message in messages:
         if isinstance(message, HumanMessage):
-            turn = Turn(question=message.text)
+            earlier = f'(earlier question: "{turn.question[:EARLIER_QUESTION_CHARS]}")\n'
+            carried = [block if block.startswith("(earlier question") else earlier + block for block in turn.evidence]
+            turn = Turn(question=message.text, evidence=carried)
         elif isinstance(message, ToolMessage) and isinstance(message.content, str):
             if block := _evidence(message, turn):
                 turn.evidence.append(block)
@@ -153,24 +180,24 @@ def audit_turn(messages: list[BaseMessage], model_spec: str) -> Audit | None:
         return None  # no data came back, or the answer is a refusal: nothing to check it against
     try:
         model = resolve_model(model_spec)
-        reply = model.invoke(
+        model.max_tokens = MAX_TOKENS
+        judge = model.with_structured_output(Verdict, method="json_schema", include_raw=True)
+        reply = judge.invoke(
             PROMPT.format(
                 today=datetime.now(IST).date().isoformat(),
                 question=turn.question[:1000],
-                evidence=_newest(turn.evidence),
+                evidence=_newest(turn.evidence, set(_CITE.findall(turn.answer))),
                 answer=turn.answer[:3000],
             ),
-            max_tokens=MAX_TOKENS,
         )
-        text = reply.text
-        match = _JSON.search(text)
-        if not match:
-            if reply.response_metadata.get("stop_reason") == "max_tokens":
+        verdict: Verdict | None = reply["parsed"]
+        if verdict is None:
+            raw = reply.get("raw")
+            if raw is not None and raw.response_metadata.get("stop_reason") == "max_tokens":
                 logger.warning("answer audit hit max_tokens before its verdict; raise MAX_TOKENS")
             return None
-        data = json.loads(match.group(0))
-        if data.get("verdict") == "warn":  # a warning without a reason still fails the score
-            return Audit("warn", str(data["caveat"]) if data.get("caveat") else None)
+        if verdict.verdict == "warn":  # a warning without a reason still fails the score
+            return Audit("warn", verdict.reason, verdict.check)
         return Audit("ok")
     except Exception:  # a second opinion must never break a turn
         logger.warning("answer audit failed; continuing unaudited", exc_info=True)

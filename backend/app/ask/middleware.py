@@ -160,6 +160,7 @@ def answer_audit(model_spec: str):
             "answer_audit",
             1.0 if verdict.verdict == "ok" else 0.0,
             comment=verdict.caveat,
+            metadata={"check": verdict.check} if verdict.check else None,
         )
         # Not shown: most production caveats were wrong. Back in the answer only once it is shown to be right.
         if verdict.verdict == "warn":

@@ -163,11 +163,11 @@ def test_score_goes_to_the_current_run_or_the_client(monkeypatch):
     client = SimpleNamespace(score_current_trace=lambda **kw: scored.append(("client", kw)))
     _install(monkeypatch, get_client=lambda: client)
     monkeypatch.setattr(tracing, "current_observation", lambda: run)
-    tracing.score_answer("a", 1.0, "c")
+    tracing.score_answer("a", 1.0, "c", {"check": "grain"})
     monkeypatch.setattr(tracing, "current_observation", lambda: None)
     tracing.score_answer("b", 0.0)
-    assert scored == [("run", {"name": "a", "value": 1.0, "comment": "c"}),
-                      ("client", {"name": "b", "value": 0.0, "comment": None})]
+    assert scored == [("run", {"name": "a", "value": 1.0, "comment": "c", "metadata": {"check": "grain"}}),
+                      ("client", {"name": "b", "value": 0.0, "comment": None, "metadata": None})]
 
     def broken():
         raise RuntimeError

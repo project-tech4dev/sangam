@@ -33,11 +33,25 @@ def query(content, sql="SELECT 1", call_id="1"):
 
 
 class FakeModel:
-    def __init__(self, reply): self.reply = reply; self.calls = 0; self.prompt = ""
+    """Stands in for the judge: `reply` is the JSON the structured output would carry, or None for no verdict."""
+
+    def __init__(self, reply, stop_reason="end_turn"):
+        self.reply, self.stop_reason = reply, stop_reason
+        self.calls, self.prompt, self.max_tokens, self.schema = 0, "", None, None
+
+    def with_structured_output(self, schema, **kwargs):
+        self.schema = schema
+        return self
+
     def invoke(self, prompt, **kwargs):
         self.calls += 1
         self.prompt = prompt
-        return AIMessage(content=self.reply)
+        raw = AIMessage(content="", response_metadata={"stop_reason": self.stop_reason})
+        try:
+            parsed = self.schema.model_validate_json(self.reply) if self.reply else None
+        except ValueError:
+            parsed = None
+        return {"raw": raw, "parsed": parsed, "parsing_error": None}
 
 
 @pytest.fixture
@@ -58,13 +72,14 @@ class TestWhatItReads:
         assert "KABIL" in block
         assert collected.answer == "KABIL has the highest score, 93."
 
-    def test_a_new_user_message_resets_the_turn(self):
-        """Auditing the previous turn's SQL against this turn's answer would
-        manufacture caveats out of nothing."""
+    def test_a_new_user_message_starts_a_turn_and_keeps_earlier_results_as_earlier(self):
+        """The previous turn's rows stay as evidence, marked, but this turn ran no query, so it is not audited."""
         messages = turn() + [HumanMessage("And the lowest?"), AIMessage("BDF, 41.")]
         collected = collect_turn(messages)
         assert collected.question == "And the lowest?"
-        assert collected.evidence == []
+        [block] = collected.evidence
+        assert block.startswith('(earlier question: "Which org has the highest fit score?")')
+        assert not collected.has_data
         assert collected.answer == "BDF, 41."
 
     def test_every_query_in_the_turn_is_kept(self):
@@ -270,26 +285,24 @@ class TestVerdicts:
         assert audit_turn(turn(), MODEL) == Audit("ok")
 
     def test_warn_carries_the_caveat(self, fake_model):
-        fake_model('{"verdict":"warn","caveat":"The question said Assam but the SQL has no state filter."}')
+        fake_model('{"verdict":"warn","check":"filters","reason":"The question said Assam but the SQL has no state filter."}')
         result = audit_turn(turn(), MODEL)
         assert result.verdict == "warn"
         assert "no state filter" in result.caveat
 
-    def test_json_wrapped_in_prose_is_still_read(self, fake_model):
-        """Small models preface JSON with chatter however firmly you ask."""
-        fake_model('Here is my assessment:\n{"verdict":"warn","caveat":"grain mismatch"}\nHope that helps.')
-        assert audit_turn(turn(), MODEL).caveat == "grain mismatch"
+    def test_warn_names_the_check_that_failed(self, fake_model):
+        fake_model('{"verdict":"warn","check":"grain","reason":"counts grants, not orgs"}')
+        assert audit_turn(turn(), MODEL) == Audit("warn", "counts grants, not orgs", "grain")
 
-    def test_a_reply_that_starts_with_thinking_is_still_read(self, fake_model):
-        """Haiku 5.5 thinks by default, so content is a list with a thinking block first."""
-        fake_model([{"type": "thinking", "thinking": "", "signature": "s"},
-                    {"type": "text", "text": '{"verdict":"warn","caveat":"grain mismatch"}'}])
-        assert audit_turn(turn(), MODEL).caveat == "grain mismatch"
+    def test_the_judge_gets_room_and_a_fixed_shape(self, fake_model):
+        """1024 tokens ran out while thinking and no verdict came (#452)."""
+        model = fake_model('{"verdict":"ok"}')
+        audit_turn(turn(), MODEL)
+        assert model.max_tokens == audit_mod.MAX_TOKENS >= 4096
+        assert model.schema is audit_mod.Verdict
 
     def test_thinking_that_uses_up_the_cap_is_logged(self, fake_model, monkeypatch, caplog):
-        model = fake_model([{"type": "thinking", "thinking": "", "signature": "s"}])
-        monkeypatch.setattr(model, "invoke", lambda prompt, **kw: AIMessage(
-            content=model.reply, response_metadata={"stop_reason": "max_tokens"}))
+        monkeypatch.setattr(audit_mod, "resolve_model", lambda spec: FakeModel(None, stop_reason="max_tokens"))
         assert audit_turn(turn(), MODEL) is None
         assert "max_tokens" in caplog.text
 
@@ -318,8 +331,8 @@ class TestFailsOpen:
         fake_model("I could not determine that.")
         assert audit_turn(turn(), MODEL) is None
 
-    def test_malformed_json(self, fake_model):
-        fake_model('{"verdict": "warn", caveat: unquoted}')
+    def test_a_verdict_outside_the_schema(self, fake_model):
+        fake_model('{"verdict": "maybe"}')
         assert audit_turn(turn(), MODEL) is None
 
 
@@ -330,3 +343,69 @@ def test_an_appended_caveat_is_not_mistaken_for_the_answer():
 
     messages = turn() + [AIMessage(content=f"{CAVEAT_PREFIX} the SQL has no state filter")]
     assert collect_turn(messages).answer == "KABIL has the highest score, 93."
+
+
+class TestTheWholeChat:
+    """An answer may reuse what an earlier question found; the audit used to call that unsupported (#451)."""
+
+    def chat(self):
+        return [
+            HumanMessage("what does axis bank foundation do?"),
+            query("1 row(s).\n[activity:1] Sustainable livelihoods project, Udalguri", "SELECT * FROM funder_activity", "1"),
+            AIMessage("It funded KABIL's Udalguri project [activity:1]."),
+            HumanMessage("who works in udalguri?"),
+            query("2 row(s).\n[org:1] KABIL\n[org:4] Rural Volunteers", "SELECT * FROM org_locations", "2"),
+            AIMessage("KABIL [org:1], with Axis's past project [activity:1], and Rural Volunteers [org:4]."),
+        ]
+
+    def test_earlier_results_are_evidence_marked_with_their_question(self):
+        collected = collect_turn(self.chat())
+        assert collected.question == "who works in udalguri?"
+        earlier, current = collected.evidence
+        assert earlier.startswith('(earlier question: "what does axis bank foundation do?")\n')
+        assert "[activity:1]" in earlier
+        assert not current.startswith("(earlier") and "Rural Volunteers" in current
+        assert collected.answer.startswith("KABIL [org:1]")
+
+    def test_a_result_is_marked_once_with_the_question_that_found_it(self):
+        messages = self.chat() + [HumanMessage("and in assam?"), query("0 row(s).", "SELECT 3", "3"), AIMessage("None.")]
+        first, second, _ = collect_turn(messages).evidence
+        assert first.count("(earlier question") == 1 and second.startswith('(earlier question: "who works in udalguri?")')
+
+    def test_only_this_turns_data_decides_whether_to_audit(self, fake_model):
+        """A follow-up that ran no query is talk, not a data answer: earlier rows alone don't make it auditable."""
+        model = fake_model('{"verdict":"ok"}')
+        messages = self.chat() + [HumanMessage("thanks"), AIMessage("You're welcome.")]
+        assert audit_turn(messages, MODEL) is None and model.calls == 0
+
+    def test_the_prompt_carries_the_earlier_result(self, fake_model):
+        model = fake_model('{"verdict":"ok"}')
+        assert audit_turn(self.chat(), MODEL) == Audit("ok")
+        assert '(earlier question: "what does axis bank foundation do?")' in model.prompt
+        assert "Sustainable livelihoods project, Udalguri" in model.prompt
+        assert "the answer may reuse it" in model.prompt
+
+    def test_a_long_chat_keeps_the_rows_the_answer_cites_from_dropped_results(self, fake_model, monkeypatch):
+        """19 Nov, question 10: the cap had dropped question 3's [activity:1], so a correct answer was flagged."""
+        model = fake_model('{"verdict":"ok"}')
+        monkeypatch.setattr(audit_mod, "EVIDENCE_CHARS", 300)
+        messages = self.chat()[:3] + [
+            HumanMessage("top 5 funders in livelihoods"),
+            query("5 row(s).\n" + "[funder:9] Some Funder, livelihoods\n" * 8, "SELECT * FROM funders", "3"),
+            AIMessage("Axis has a past Udalguri project [activity:1]; Some Funder [funder:9] leads."),
+        ]
+        audit_turn(messages, MODEL)
+        assert "[activity:1] Sustainable livelihoods project, Udalguri" in model.prompt
+        assert "(only the rows the answer cites)" in model.prompt
+        assert "SQL: SELECT * FROM funder_activity" in model.prompt, "the header says where the row came from"
+        assert "(1 earlier results not shown)" in model.prompt
+
+    def test_a_dropped_result_the_answer_does_not_cite_stays_out(self, fake_model, monkeypatch):
+        model = fake_model('{"verdict":"ok"}')
+        monkeypatch.setattr(audit_mod, "EVIDENCE_CHARS", 300)
+        messages = self.chat()[:3] + [
+            HumanMessage("top 5"), query("5 row(s).\n" + "[funder:9] Some Funder\n" * 8, "SELECT 9", "3"),
+            AIMessage("Some Funder [funder:9] leads."),
+        ]
+        audit_turn(messages, MODEL)
+        assert "Sustainable livelihoods" not in model.prompt

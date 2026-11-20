@@ -169,16 +169,16 @@ def current_observation() -> Any:
     return None
 
 
-def score_answer(name: str, value: float, comment: str | None = None) -> None:
+def score_answer(name: str, value: float, comment: str | None = None, metadata: dict | None = None) -> None:
     """Attach a score to the trace of the turn being handled."""
     try:
         from langfuse import get_client
 
         run = current_observation()
         if run is not None:
-            run.score_trace(name=name, value=value, comment=comment)
+            run.score_trace(name=name, value=value, comment=comment, metadata=metadata)
         else:
-            get_client().score_current_trace(name=name, value=value, comment=comment)
+            get_client().score_current_trace(name=name, value=value, comment=comment, metadata=metadata)
     except Exception:
         logger.debug("could not attach score %r", name, exc_info=True)
 
