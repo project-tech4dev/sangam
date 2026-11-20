@@ -68,7 +68,8 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-12 · #403 · The answer audit reads every query result in the turn with its SQL, `compare_fit`'s output and today's date, and skips refusal turns; it used to see only the last query and flagged facts from the others (#322 step 2).
 - 2026-11-20 · (unmerged) · Ten free Ask questions, in all, for a signed-in person outside every organisation: `threads.questions`, a 429 at `FREE_QUESTIONS`, the count on `/api/me`, and a notice in place of the question box (#314).
 - 2026-11-20 · #451, #452 · The answer audit reads the whole chat's results, each marked with the question that found it, and keeps the rows an answer cites when a long chat passes the cap; it answers in a fixed shape (`verdict`, `check`, `reason`) with 4,096 tokens, and the failed check goes to Langfuse as the score's `metadata.check`. On the 19 Nov chat its 5 wrong flags passed and its 2 missing verdicts came back.
-- 2026-11-20 · (unmerged) · Every Ask citation chip says its record's name: `/api/orgs`, `/api/scores` and `/api/partner-lines` take `?ids=` (up to 100), and the workspace looks up the cited rows its page did not load (it holds 500 of 1,925 orgs); the chip no longer turns into "source" beside a written name (#466).
+- 2026-11-20 · #467 · Every Ask citation chip says its record's name: `/api/orgs`, `/api/scores` and `/api/partner-lines` take `?ids=` (up to 100), and the workspace looks up the cited rows its page did not load (it holds 500 of 1,925 orgs); the chip no longer turns into "source" beside a written name (#466).
+- 2026-11-20 · (unmerged) · #453 · Ask clears the tool results of questions already answered before each new one (answers, SQL and `compare_fit` stay); on the two 19 Nov chats the history sent with a question's first call fell by about half (30.3k → 16.4k tokens at question 10, 36.0k → 21.3k at 15).
 
 ## Knowledge graph
 

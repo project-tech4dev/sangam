@@ -104,3 +104,54 @@ class TestEveryFailedSqlAttemptCounts:
     def test_a_profile_that_worked_never_counts(self):
         messages = [HumanMessage("q"), *self._failed("db_profile_column", "orgs.legal_form — 3 most common", 1)]
         assert middleware.count_failed_sql_attempts(messages) == 0
+
+
+def _turn(question: str, *calls: tuple[str, str], answer: str) -> list:
+    out = [HumanMessage(question)]
+    for name, call_id in calls:
+        out.append(AIMessage(content="", tool_calls=[{"name": name, "args": {"sql": "SELECT 1"}, "id": call_id}]))
+        out.append(ToolMessage(f"{name} rows {RESULT}", tool_call_id=call_id, name=name))
+    return [*out, AIMessage(answer)]
+
+
+def _answered(messages: list) -> list:
+    return _sent(kit.ClearAnsweredTurnsEdit(), messages)
+
+
+def test_a_new_question_clears_the_answered_ones_results_but_keeps_their_answers_and_its_own():
+    chat = [
+        *_turn("what does axis bank foundation do?", ("db_query", "a1"), ("compare_fit", "a2"), answer="Livelihoods [activity:1]."),
+        *_turn("who works in udalguri?", ("db_query", "b1"), answer="KABIL [org:1]."),
+        HumanMessage("where does kabil work?"),
+        AIMessage(content="", tool_calls=[{"name": "db_query", "args": {}, "id": "c1"}]),
+        ToolMessage(f"db_query rows {RESULT}", tool_call_id="c1", name="db_query"),
+    ]
+    sent = dict(enumerate(_answered(chat)))
+    assert sent[2][1] == kit.ANSWERED_PLACEHOLDER and sent[8][1] == kit.ANSWERED_PLACEHOLDER
+    assert sent[4][1].startswith("compare_fit")  # never cleared: the write-up reads it
+    assert sent[5][1] == "Livelihoods [activity:1]." and sent[9][1] == "KABIL [org:1]."
+    assert sent[12][1].startswith("db_query rows")  # this question's result stays
+    assert chat[2].content.startswith("db_query rows")  # the edit works on a copy; state keeps every row
+
+
+def test_the_cleared_set_is_fixed_for_a_turn_so_its_calls_share_one_prefix():
+    chat = _turn("q1", ("db_query", "a1"), answer="a") + [HumanMessage("q2")]
+    first = _answered(chat)
+    chat += [AIMessage(content="", tool_calls=[{"name": "db_query", "args": {}, "id": "b1"}]),
+             ToolMessage("rows", tool_call_id="b1", name="db_query")]
+    assert _answered(chat)[: len(first)] == first
+
+
+def test_one_question_an_already_cleared_result_and_an_orphan_are_left_as_they_are():
+    single = _turn("q1", ("db_query", "a1"), answer="a")
+    assert _answered(single) == [(type(m).__name__, m.content) for m in single]
+    cleared = ToolMessage("[cleared]", tool_call_id="x", name="db_query",
+                          response_metadata={"context_editing": {"cleared": True, "strategy": "clear_tool_uses"}})
+    orphan = ToolMessage("no call", tool_call_id="nowhere")
+    assert [c for _, c in _answered([HumanMessage("q1"), cleared, orphan, HumanMessage("q2")])][1:3] == ["[cleared]", "no call"]
+
+
+def test_only_an_agent_that_asks_for_it_clears_answered_turns():
+    assert [type(e) for e in kit.clear_old_tool_results().edits] == [kit.SteppedClearToolUsesEdit]
+    assert [type(e) for e in kit.clear_old_tool_results(answered_turns=True).edits] == [
+        kit.ClearAnsweredTurnsEdit, kit.SteppedClearToolUsesEdit]

@@ -71,7 +71,7 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         sql_retry_limiter,
         model_call_cap(settings.ask_model_call_limit),
         CompareFitBudget(),
-        clear_old_tool_results(),
+        clear_old_tool_results(answered_turns=True),
         # Import and Pitch already have both: the next tier when a call fails, and summaries on the cheap tier.
         *fallback(settings.model, settings.research_model),
         cheap_summarizer(strong, resolve_model(settings.utility_model), backend),
