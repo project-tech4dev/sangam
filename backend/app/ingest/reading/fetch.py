@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
 
 import httpx
 import trafilatura
+from pypdf.errors import PyPdfError
 
 from app.core.config import get_settings
 from app.core.egress import TRUST
+from app.core.extract import extract_pdf_text
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.reading.access import canonical_url, check_url, source_banner
+from app.ingest.reading.fingerprint import bytes_hash, text_hash
 from app.ingest.reading.registry import rule_for_url
+from app.ingest.reading.snapshots import remember
 from app.integrations import storage
 from app.integrations.storage import _safe_name
 
@@ -103,8 +108,9 @@ async def read_page_text(url: str) -> str:
         return f"No readable text could be extracted from {url}."
     # Kept as read, so a fact outlives a page that changes; silent like fetch_document's archive.
     data = text.encode()
-    await storage.upload(storage.SOURCE_ARCHIVE, storage.archive_key(url, data, page_name(url)), data,
-                         "text/markdown; charset=utf-8")
+    key = await storage.upload(storage.SOURCE_ARCHIVE, storage.archive_key(url, data, page_name(url)), data,
+                               "text/markdown; charset=utf-8")
+    await remember(url, "page", text_hash(text), key)
     # Uncut: a long page is evicted to a file the researcher pages back with read_file.
     return source_banner(str(response.url)) + text
 
@@ -165,7 +171,21 @@ async def fetch_document_file(url: str, filename: str | None) -> str:
     # here - refusing to read a 55 MB annual report because it cannot be
     # archived would break the job to protect the record of it.
     data = destination.read_bytes()
-    await storage.upload(
+    key = await storage.upload(
         storage.SOURCE_ARCHIVE, storage.archive_key(url, data, name), data, content_type
     )
+    if key:
+        await remember(url, "document", await asyncio.to_thread(document_hash, destination), key)
     return f"Saved {name} ({size:,} bytes). Read it with read_document_pages('{name}')."
+
+
+def document_hash(path: Path) -> str:
+    """A PDF by its text, so a re-export with new dates is not a change; a scan or any other file by its bytes."""
+    if path.suffix.lower() == ".pdf":
+        try:
+            text, _ = extract_pdf_text(path)
+        except PyPdfError:
+            text = ""
+        if text.strip():
+            return text_hash(text)
+    return bytes_hash(path.read_bytes())
