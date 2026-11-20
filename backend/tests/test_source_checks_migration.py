@@ -1,4 +1,4 @@
-"""0059 and 0061: source_checks, one row per source per check, and source_check_runs, one per run; staff-only."""
+"""0059 and 0062: source_checks, one row per source per check, and source_check_runs, one per run; staff-only."""
 
 from __future__ import annotations
 

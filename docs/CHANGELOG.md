@@ -46,7 +46,7 @@ in the PR that ships a change, under its subsystem.
 - 2026-11-04 · #361 · `0055`: `org-vault` takes PowerPoint (`.pptx`) too, so earlier slide decks can be imported; its slide text is saved at upload, and Pitch and Scout read it a slide at a time, cited `[vault:<id>#slide<n>]`.
 - (unmerged) · #324 M1 · `0064`: `funders.funder_type` is one of nine types under a CHECK; `funder_group` rolls them up to Corporate / HNI / Philanthropy / Govt. / Other; `money_origin` (default `unknown`) records foreign money for FCRA. The 17 `other` funders are retyped by slug, 11 marked foreign (`docs/FUNDER_TYPES.md`).
 - 2026-11-18 · #428 · `0058`: `source_snapshots`, one row per distinct version (url and text hash) of a page or report Scout read, with its archive key; `entity_research.snapshot_ids` lists the versions a run read. Staff-only.
-- 2026-11-19 · (unmerged) · `0061`: `source_check_runs`, one row per change check (depth, decision, who, error, the update it saved); `source_checks` keeps each source's removed and added paragraphs and fact verdicts, and may be `differs` (a free check stops before the judge). Staff-only.
+- 2026-11-19 · (unmerged) · `0062`: `source_check_runs`, one row per change check (depth, decision, who, error, the update it saved); `source_checks` keeps each source's removed and added paragraphs and fact verdicts, and may be `differs` (a free check stops before the judge). Staff-only.
 
 Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · `0021` #89 · `0022` #74 ·
 `0023`–`0029` #92/#97 · `0030` #98 · `0032` #105 · `0035` #127 · `0036`–`0037` #100 · `0038` #130 ·
