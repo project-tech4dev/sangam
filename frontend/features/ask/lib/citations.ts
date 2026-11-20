@@ -13,32 +13,25 @@ export type RegistryIndex = {
 
 const CITE_RE = /\[(org|funder|activity|grant|score|news|graph):([a-zA-Z0-9]+)\]/g;
 
-// How far back, on the same line or table cell, a name counts as already written beside its marker.
-const NAMED_WINDOW = 120;
-
-function alreadyNamed(before: string, name: string | undefined): boolean {
-  if (!name) return false;
-  const lineStart = Math.max(before.lastIndexOf("\n"), before.lastIndexOf("|")) + 1;
-  const near = before.slice(Math.max(lineStart, before.length - NAMED_WINDOW)).replace(/[*_`]/g, "");
-  return near.toLowerCase().includes(name.toLowerCase());
-}
-
-/** Rewrite [kind:id] markers into private-scheme links, skipping code spans. A marker right after its
- *  entity's name gets `?named`, so the chip says "source" instead of repeating the name. */
-export function linkifyCitations(md: string, index: RegistryIndex | null = null): string {
+/** Rewrite [kind:id] markers into private-scheme links, skipping code spans. */
+export function linkifyCitations(md: string): string {
   return md
     .split(/(```[\s\S]*?```|`[^`]*`)/g)
-    .map((segment, i) =>
-      i % 2 === 1
-        ? segment
-        : segment.replace(CITE_RE, (_, kind: string, id: string, offset: number) => {
-            const name =
-              kind === "org" ? index?.orgs.get(Number(id))?.name : kind === "funder" ? index?.funders.get(Number(id))?.name : undefined;
-            const flag = alreadyNamed(segment.slice(0, offset), name) ? "?named" : "";
-            return `[${kind}:${id}](sangam://${kind}/${id}${flag})`;
-          }),
-    )
+    .map((segment, i) => (i % 2 === 1 ? segment : segment.replace(CITE_RE, "[$1:$2](sangam://$1/$2)")))
     .join("");
+}
+
+/** Cited rows the index does not hold yet, by the kinds a lookup can fill. */
+export function missingCitations(text: string, index: RegistryIndex): { org: number[]; score: number[]; activity: number[] } {
+  const missing = { org: [] as number[], score: [] as number[], activity: [] as number[] };
+  const maps = { org: index.orgs, score: index.scores, activity: index.activities };
+  for (const { kind, id } of extractCitations(text)) {
+    const n = Number(id);
+    if ((kind === "org" || kind === "score" || kind === "activity") && Number.isInteger(n) && !maps[kind].has(n)) {
+      missing[kind].push(n);
+    }
+  }
+  return missing;
 }
 
 /** What a chip says: the entity's name, or a plain word when the page does not hold the row. Never a code. */

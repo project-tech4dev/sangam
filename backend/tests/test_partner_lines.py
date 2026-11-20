@@ -6,9 +6,10 @@ from app.repositories.partner_lines import list_partner_lines
 
 async def test_list_partner_lines_pages_its_filters_through_fetch_page(recording_pool):
     pool = recording_pool([{"id": 11, "total": 42}])
-    rows, total = await list_partner_lines(pool, limit=2, offset=6, funder="axis", status="active")
+    rows, total = await list_partner_lines(pool, limit=2, offset=6, funder="axis", status="active", ids=[11])
     assert ([r["id"] for r in rows], total) == ([11], 42)
-    assert pool.params["funder"] == "axis" and pool.params["status"] == "active"
+    assert pool.params["funder"] == "axis" and pool.params["status"] == "active" and pool.params["ids"] == [11]
+    assert "a.id = ANY(%(ids)s)" in pool.sql
     assert (pool.params["limit"], pool.params["offset"]) == (2, 6)
 
 
@@ -22,7 +23,7 @@ async def test_the_list_answers_with_its_page(client_for, monkeypatch):
 
     monkeypatch.setattr("app.api.routes.partner_lines.repo.list_partner_lines", fake_list)
     async with client_for(partner_lines_api.router) as client:
-        body = (await client.get("/api/partner-lines?funder=axis&limit=2&offset=4")).json()
+        body = (await client.get("/api/partner-lines?funder=axis&ids=1&ids=5&limit=2&offset=4")).json()
     assert (body["total"], body["limit"], body["offset"]) == (9, 2, 4)
     assert body["items"][0]["partner_name"] == "KABIL"
-    assert calls[0]["funder"] == "axis" and (calls[0]["limit"], calls[0]["offset"]) == (2, 4)
+    assert calls[0]["funder"] == "axis" and calls[0]["ids"] == [1, 5] and (calls[0]["limit"], calls[0]["offset"]) == (2, 4)

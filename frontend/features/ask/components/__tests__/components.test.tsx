@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RegistryIndex } from "@/features/ask/lib/citations";
@@ -43,7 +43,7 @@ const step = (id: string, tool: string, args: unknown = {}, result: string | nul
 describe("AnswerCard", () => {
   it("renders markdown with citation chips linked into the Registry", () => {
     render(<AnswerCard answer={"KABIL [org:1] fits [funder:2]. See [score:9], [news:4] and [docs](https://x.example)\n\n| a |\n|---|\n| 1 |"} index={index} />);
-    expect(screen.getByRole("link", { name: "source" })).toHaveAttribute("href", "/registry/kabil");
+    expect(screen.getByRole("link", { name: "KABIL" })).toHaveAttribute("href", "/registry/kabil");
     expect(screen.getByRole("link", { name: "Axis Bank Foundation" })).toHaveAttribute("href", "/registry/funders/axis-bank-foundation");
     expect(screen.queryByText(/org:1|funder:2|score:9|news:4/)).toBeNull();
     expect(screen.getByText("Funder Match")).toHaveAttribute("title", "score #9 — score evidence in the base");
@@ -248,12 +248,13 @@ describe("ChatPane", () => {
   it("shows the turns of a resumed chat and reports the latest", () => {
     const turn: Turn = { id: "x", question: "Who works in Assam?", steps: [], answer: "KABIL [org:1].", streaming: false };
     chat.state.turns = [turn];
-    const p = { ...props(), resume: true };
+    const p = { ...props(), resume: true, onAnswers: vi.fn() };
     render(<ChatPane {...p} />);
     expect(chat.args).toEqual(["th-1", true]);
     expect(screen.getByText("Who works in Assam?")).toBeInTheDocument();
-    expect(within(screen.getByText("KABIL", { exact: false }).closest(".answer-md")!).getByRole("link")).toHaveAttribute("href", "/registry/kabil");
+    expect(screen.getByRole("link", { name: "KABIL" })).toHaveAttribute("href", "/registry/kabil");
     expect(p.onLatestTurn).toHaveBeenCalledWith(turn);
+    expect(p.onAnswers).toHaveBeenCalledWith("KABIL [org:1].");
   });
 
   it("says what it is waiting for", () => {

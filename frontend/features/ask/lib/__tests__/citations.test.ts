@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chipText, citationTarget, extractCitations, linkifyCitations, type RegistryIndex } from "@/features/ask/lib/citations";
+import { chipText, citationTarget, extractCitations, linkifyCitations, missingCitations, type RegistryIndex } from "@/features/ask/lib/citations";
 
 const index: RegistryIndex = {
   orgs: new Map([[1, { slug: "kabil", name: "KABIL" }]]),
@@ -27,15 +27,19 @@ describe("linkifyCitations", () => {
     expect(linkifyCitations("[user:1]")).toBe("[user:1]");
   });
 
-  it("flags a marker whose name was just written, on the same line or cell only", () => {
-    expect(linkifyCitations("**Kabil** [org:1] fits [funder:2].", index)).toBe(
-      "**Kabil** [org:1](sangam://org/1?named) fits [funder:2](sangam://funder/2).",
-    );
-    expect(linkifyCitations("Axis Bank Foundation\nfunds it [funder:2]", index)).toBe(
-      "Axis Bank Foundation\nfunds it [funder:2](sangam://funder/2)",
-    );
-    expect(linkifyCitations("| KABIL | Assam [org:1] |", index)).toBe("| KABIL | Assam [org:1](sangam://org/1) |");
-    expect(linkifyCitations("KABIL [org:9]", index)).toBe("KABIL [org:9](sangam://org/9)");
+  it("never marks a chip as named: every chip says its name (#460 follow-up)", () => {
+    expect(linkifyCitations("**Kabil** [org:1]")).toBe("**Kabil** [org:1](sangam://org/1)");
+  });
+});
+
+describe("missingCitations", () => {
+  it("lists cited orgs, scores and partner lines the index lacks, once each", () => {
+    const text = "KABIL [org:1], Udalguri NGO [org:812] [org:812] [score:3] [score:40] [activity:5] [activity:77] [funder:9] [news:2]";
+    expect(missingCitations(text, index)).toEqual({ org: [812], score: [40], activity: [77] });
+  });
+
+  it("skips ids a lookup cannot ask for", () => {
+    expect(missingCitations("[org:abc] [graph:1f2e3d4c]", index)).toEqual({ org: [], score: [], activity: [] });
   });
 });
 

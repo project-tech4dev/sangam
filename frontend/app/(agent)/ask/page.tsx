@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { apiGet } from "@/lib/api";
-import { titleCase } from "@/lib/format";
 import type {
   FunderListItem,
   MeOut,
@@ -10,6 +9,7 @@ import type {
   ScoreRow,
 } from "@/lib/api";
 import type { IndexPayload } from "@/features/ask/AskWorkspace";
+import { activityEntry, orgEntry, scoreEntry } from "@/features/ask/lib/indexRows";
 import { AskPreview } from "@/features/ask/preview/AskPreview";
 import { canUseScout } from "@/features/ingest/lib/access";
 import { WorkspaceLoader } from "@/features/ask/WorkspaceLoader";
@@ -54,16 +54,9 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
   const funderSlugById = new Map(funders.map((f) => [f.id, f.slug]));
 
   // Provenance travels with the index so the workspace can say where a cited row came from
-  // without a second round trip. A score has none: it is Sangam's own rubric judgement.
+  // without a second round trip.
   const payload: IndexPayload = {
-    orgs: orgs.map((o) => ({
-      id: o.id,
-      slug: o.slug,
-      name: titleCase(o.name),
-      sourceUrl: o.source_url,
-      sourceName: o.source_name,
-      fetchedAt: o.fetched_at,
-    })),
+    orgs: orgs.map(orgEntry),
     funders: funders.map((f) => ({
       id: f.id,
       slug: f.slug,
@@ -72,23 +65,8 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
       sourceName: f.source_name,
       fetchedAt: f.fetched_at,
     })),
-    scores: scores.map((s) => ({
-      id: s.id,
-      funderSlug: funderSlugById.get(s.funder_id) ?? String(s.funder_id),
-      orgName: s.org_name ?? `org #${s.org_id}`,
-      funderName: s.funder_name ?? `funder #${s.funder_id}`,
-      rubricVersion: s.rubric_version,
-    })),
-    activities: lines.map((l) => ({
-      id: l.id,
-      // The partner organisation when Sangam holds it, else the funder whose line it is.
-      href: l.partner_org_slug ? `/registry/${l.partner_org_slug}` : `/registry/funders/${l.funder_slug}`,
-      title: `${l.funder_name} → ${l.partner_name}${l.project_name ? `: ${l.project_name}` : ""}`,
-      short: `${l.funder_name} → ${l.partner_name}`,
-      sourceUrl: l.source_url,
-      sourceName: l.source_name,
-      fetchedAt: l.fetched_at,
-    })),
+    scores: scores.map((s) => scoreEntry(s, funderSlugById.get(s.funder_id))),
+    activities: lines.map(activityEntry),
     stats,
     canScout: me ? canUseScout(me) : false,
     me,

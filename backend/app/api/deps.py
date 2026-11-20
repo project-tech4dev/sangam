@@ -26,3 +26,7 @@ class LegacyPageParams(BaseModel):
 
     limit: Annotated[int, Query(ge=1, le=500)] = 500
     offset: Annotated[int, Query(ge=0)] = 0
+
+
+# `?ids=3&ids=7`: only these rows, so Ask can name a cited record its page did not load.
+Ids = Annotated[list[int] | None, Query(max_length=100)]

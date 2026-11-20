@@ -25,7 +25,8 @@ LEFT JOIN LATERAL (
   SELECT array_agg(tg.label ORDER BY ot.role, tg.label) AS sectors
   FROM org_tags ot JOIN tags tg ON tg.id = ot.tag_id WHERE ot.org_id = o.id
 ) t ON true
-WHERE (%(q)s::text IS NULL OR o.name ILIKE '%%' || %(q)s || '%%' OR similarity(o.name, %(q)s) > 0.3)
+WHERE (%(ids)s::bigint[] IS NULL OR o.id = ANY(%(ids)s))
+  AND (%(q)s::text IS NULL OR o.name ILIKE '%%' || %(q)s || '%%' OR similarity(o.name, %(q)s) > 0.3)
   AND (%(state)s::text IS NULL OR sl.name ILIKE %(state)s)
   AND (%(district)s::text IS NULL OR dl.name ILIKE %(district)s)
   AND (%(tag)s::text IS NULL OR EXISTS (
@@ -37,8 +38,9 @@ ORDER BY o.name, o.id
 
 async def list_orgs(pool: AsyncConnectionPool, *, limit: int, offset: int,
                     tag: str | None = None, state: str | None = None,
-                    district: str | None = None, q: str | None = None) -> tuple[list[dict], int]:
-    params = {"tag": tag, "state": state, "district": district, "q": q}
+                    district: str | None = None, q: str | None = None,
+                    ids: list[int] | None = None) -> tuple[list[dict], int]:
+    params = {"tag": tag, "state": state, "district": district, "q": q, "ids": ids}
     return await fetch_page(pool, LIST_SQL, params, limit=limit, offset=offset)
 
 

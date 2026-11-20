@@ -18,14 +18,15 @@ JOIN rubrics r ON r.id = fs.rubric_id
 
 async def list_scores(pool: AsyncConnectionPool, *, limit: int, offset: int,
                       org: str | None = None, funder: str | None = None,
-                      rubric: str | None = None) -> tuple[list[dict], int]:
+                      rubric: str | None = None, ids: list[int] | None = None) -> tuple[list[dict], int]:
     sql = BASE + """
-    WHERE (%(org)s::text IS NULL OR o.slug = %(org)s OR o.id::text = %(org)s)
+    WHERE (%(ids)s::bigint[] IS NULL OR fs.id = ANY(%(ids)s))
+      AND (%(org)s::text IS NULL OR o.slug = %(org)s OR o.id::text = %(org)s)
       AND (%(funder)s::text IS NULL OR f.slug = %(funder)s OR f.id::text = %(funder)s)
       AND (%(rubric)s::text IS NULL OR r.version = %(rubric)s)
     ORDER BY r.version, fs.total_score DESC, fs.id
     """
-    params = {"org": org, "funder": funder, "rubric": rubric}
+    params = {"org": org, "funder": funder, "rubric": rubric, "ids": ids}
     return await fetch_page(pool, sql, params, limit=limit, offset=offset)
 
 

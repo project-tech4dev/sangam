@@ -98,6 +98,7 @@ async def test_orgs_list_filters_and_the_detail_with_its_parts(db):
                                         district=district["name"].lower(), tag="population-women")
     assert total == 1 and found[0]["darpan_id"] == f"AS/{t}" and found[0]["state"] == "Assam"
     assert (await orgs.list_orgs(pool, limit=5, offset=0, q=f"Listed Org {t}", state="Bihar"))[1] == 0
+    assert [r["id"] for r in (await orgs.list_orgs(pool, limit=5, offset=0, ids=[oid, -1]))[0]] == [oid]
 
     detail = await orgs.get_org(pool, str(oid))
     assert detail["district"] == district["name"] and detail["identifiers"][0]["id_type"] == "darpan"
