@@ -5,14 +5,21 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Protocol
 from urllib.parse import urlsplit
 
 from app.ingest.reading.fetch import Fetched, document_text, download, fetch_page
 from app.ingest.reading.fingerprint import bytes_hash, text_hash
-from app.ingest.refresh.baseline import Baseline
 
 OK, UNVERIFIED, DEAD = "ok", "unverified", "dead"
 GONE = (404, 410)
+
+
+class Source(Protocol):
+    """A baseline, or a page discovery found: all a fetch needs is where it is and whether it is a document."""
+
+    url: str
+    kind: str | None
 
 
 @dataclass(frozen=True)
@@ -25,7 +32,7 @@ class Today:
     fingerprint: str | None = None  # hashed the way the tools hash it, so it compares with the baseline
 
 
-async def fetch_today(source: Baseline, scratch: Path) -> Today:
+async def fetch_today(source: Source, scratch: Path) -> Today:
     """Today's text for one source; a document is downloaded into scratch, never the researchers' folder."""
     if source.kind == "document":
         got = await download(source.url, None, scratch)

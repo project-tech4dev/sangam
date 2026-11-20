@@ -134,9 +134,9 @@ graph-seed:  ## Build the Neo4j graph from Postgres (needs OPENAI_API_KEY)
 match:  ## Save a Funder Match run for every org, or ORG=<slug>
 	$(COMPOSE) run --rm --no-deps backend python -m app.matching.run $(if $(ORG),--org $(ORG))
 
-source-check:  ## Check SLUG=<slug>'s sources for change, up to UNTIL=<stage> (read-only for now)
+source-check:  ## Check SLUG=<slug>'s sources for change, up to UNTIL=<stage>; WRITE=1 saves the results
 	$(if $(SLUG),,$(error SLUG is required: make source-check SLUG=<slug>))
-	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.refresh.change_check --slug $(SLUG) $(if $(UNTIL),--until $(UNTIL))
+	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.refresh.change_check --slug $(SLUG) $(if $(UNTIL),--until $(UNTIL)) $(if $(WRITE),--write)
 
 calls-pull:  ## Read FUNDER=<slug>'s calls page, or every funder's with CONFIRM=1, and write the open calls
 	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.calls.run $(if $(FUNDER),--funder $(FUNDER)) $(if $(CONFIRM),--yes)

@@ -62,6 +62,8 @@ services:
       TAVILY_API_KEY: ${TAVILY_API_KEY:-}
       # Post-answer audit of SQL answers; off = disabled. See docs/SQL_AGENT.md.
       SQL_AUDIT_MODEL: ${SQL_AUDIT_MODEL:-}
+      # make source-check's relevance judge, one call per changed page.
+      SOURCE_CHECK_JUDGE_MODEL: ${SOURCE_CHECK_JUDGE_MODEL:-}
       # Research fan-out and the pool it is bounded by. Raise them together.
       MAX_PARALLEL_RESEARCH: ${MAX_PARALLEL_RESEARCH:-}
       DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-}

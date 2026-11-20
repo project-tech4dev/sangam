@@ -22,6 +22,7 @@ class Check:
     added: tuple[str, ...] = ()
     removed: tuple[str, ...] = ()
     verdicts: tuple[tuple[str, str], ...] = ()  # (intact | broken | unanchored, the finding's evidence)
+    judgement: dict | None = None  # the judge's answer, kept as hints for the update
 
 
 def compare(baselines: list[Baseline], today: list[Today]) -> list[Check]:
