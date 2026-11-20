@@ -17,6 +17,7 @@ from langchain.agents.middleware import (
     ToolErrorMiddleware,
 )
 from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, ToolMessage
 
 from app.agentkit.models import resolve_model
 
@@ -46,6 +47,36 @@ class SteppedClearToolUsesEdit(ClearToolUsesEdit):
         ClearToolUsesEdit.apply(replace(self, clear_at_least=reclaim), messages, count_tokens=count_tokens)
 
 
+ANSWERED_PLACEHOLDER = (
+    "[Cleared: this result's question was answered above, and the rows the answer used are cited in it. "
+    "Run the query again if you need more of them.]"
+)
+
+
+@dataclass(slots=True)
+class ClearAnsweredTurnsEdit:
+    """Clear tool results from questions already answered; the boundary is fixed for a turn, so its calls share a cache."""
+
+    exclude_tools: tuple[str, ...] = NEVER_CLEARED
+    placeholder: str = ANSWERED_PLACEHOLDER
+
+    def apply(self, messages: list[AnyMessage], *, count_tokens) -> None:
+        last_question = next((i for i in range(len(messages) - 1, -1, -1) if isinstance(messages[i], HumanMessage)), 0)
+        calls = {c["id"]: c["name"] for m in messages[:last_question] if isinstance(m, AIMessage) for c in m.tool_calls}
+        for idx, message in enumerate(messages[:last_question]):
+            if not isinstance(message, ToolMessage) or message.response_metadata.get("context_editing", {}).get("cleared"):
+                continue
+            name = message.name or calls.get(message.tool_call_id)
+            if name is None or name in self.exclude_tools:
+                continue
+            messages[idx] = message.model_copy(update={
+                "artifact": None,
+                "content": self.placeholder,
+                "response_metadata": {**message.response_metadata,
+                                      "context_editing": {"cleared": True, "strategy": "answered_turn"}},
+            })
+
+
 def _tool_failed(exc: Exception, request) -> str:
     name = request.tool_call.get("name") or "tool"
     logger.warning("%s raised past its own try/except", name, exc_info=exc)
@@ -58,10 +89,12 @@ def tool_errors() -> ToolErrorMiddleware:
     return ToolErrorMiddleware(_tool_failed)
 
 
-def clear_old_tool_results() -> ContextEditingMiddleware:
-    """Drop bulky old tool output from the request once context grows large."""
+def clear_old_tool_results(*, answered_turns: bool = False) -> ContextEditingMiddleware:
+    """Drop bulky old tool output from the request once context grows large; `answered_turns` also clears every
+    result from a question already answered (Ask, where each question stands on its own answer)."""
     return ContextEditingMiddleware(
         edits=[
+            *([ClearAnsweredTurnsEdit()] if answered_turns else []),
             SteppedClearToolUsesEdit(
                 trigger=TOOL_RESULT_CLEAR_TRIGGER_TOKENS,
                 keep=TOOL_RESULTS_KEPT,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
+from app.agentkit import middleware as kit
 from app.ask import middleware as mw
 
 
@@ -80,6 +81,8 @@ def test_ask_falls_back_and_summarizes_on_the_cheap_tier(monkeypatch):
     (summary,) = [m for m in stack if isinstance(m, SummarizationMiddleware)]
     assert summary.model.model == settings.utility_model.split(":", 1)[1]
     assert any(isinstance(m, mw.CompareFitBudget) for m in stack)
+    (clearing,) = [m for m in stack if type(m).__name__ == "ContextEditingMiddleware"]
+    assert isinstance(clearing.edits[0], kit.ClearAnsweredTurnsEdit)
     edges = {(e.source, e.target) for e in graph.get_graph().edges}
     # "end" leaves through the after_agent hooks (the audit), so the cap reaches one of them or __end__.
     exits = {t for src, t in edges if src == "ModelCallCap.before_model"}

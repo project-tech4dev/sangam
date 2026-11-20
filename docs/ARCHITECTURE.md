@@ -77,6 +77,11 @@ Generated detail (tools, skills, middleware order, prompt rules): [ask-sangam](.
   the person sees nothing. 18 of 39 production answers got a ⚠️, and only 2–3 were real (#322). It returns to the answer
   only once its scores agree with hand labels. It judges an answer against everything the answer could draw on: every
   query result and `compare_fit` output in the turn, and today's date; a turn where nothing returned data, or a refusal, is not audited.
+- **A new question drops the tool results of the answered ones** (#453, `ClearAnsweredTurnsEdit`), Ask only. The answers stay,
+  with their citations, and so do the SQL and `compare_fit`, so a follow-up can re-run a query in one call. The cleared set
+  changes only when a question starts, so every model call within a question shares one cached prefix. Edits apply to the
+  request, never to state, so the answer audit still reads every result. Pitch and Import keep the 60k stepped clearing alone:
+  their later steps read earlier results.
 - **Someone outside every organisation gets `FREE_QUESTIONS` (10) Ask questions in all, no reset** (#314). `threads.questions`
   counts their turns in `claim_thread`; `ask_access` sums every chat they have, under a lock on their `users` row, and
   answers 429 before the agent runs. Every chat counts whatever its id, since the browser picks the id, and the count can't
