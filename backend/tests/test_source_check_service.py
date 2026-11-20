@@ -135,6 +135,18 @@ class TestRun:
         [(_sql, finish)] = conn.sql("UPDATE source_check_runs SET decision")
         assert finish == (decision.REFRESH, 91, "saved as entity_research #91", run_id)
 
+    async def test_the_run_is_one_trace_named_by_its_session(self, stubbed, monkeypatch):
+        seen = {}
+
+        async def traced_job(settings, name, work, **kw):
+            seen.update(name=name, **kw)
+            return await work()
+
+        monkeypatch.setattr(service, "traced_job", traced_job)
+        run_id = await service.run(ScriptPool(ScriptConn()), SLUG, service.FREE, False, USER)
+        assert seen == {"name": "sangam_source_check", "inputs": {"slug": SLUG, "depth": service.FREE, "refresh": False},
+                        "session_id": f"source-check-{run_id}", "tags": ("source-check", service.FREE)}
+
     async def test_no_update_unless_the_decision_is_refresh(self, stubbed, monkeypatch):
         async def stages(*a, **kw):
             return [check(compare.UNCHANGED)], discover.Discovery(), decision.NOTHING

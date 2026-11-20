@@ -702,3 +702,50 @@ def test_the_org_label_is_one_groupable_name_for_the_callers_organisations():
     assert org_label(CallerScope(user_id=DEV_USER_ID, is_staff=True)) == "Sangam staff"
     assert org_label(CallerScope(user_id=DEV_USER_ID, is_staff=False)) == "No organisation"
     assert org_label(None) is None
+
+
+class TestTracedJob:
+    """A job outside any agent is one trace: model calls inside nest under it, its return value is the output."""
+
+    async def test_without_langfuse_it_just_runs(self, monkeypatch):
+        from app.integrations import tracing
+
+        monkeypatch.setattr(tracing, "trace_config", lambda *a, **k: pytest.fail("built a handler"))
+        settings = types.SimpleNamespace(langfuse_enabled=False)
+        assert await tracing.traced_job(settings, "job", lambda: _value({"ok": 1}), inputs={},
+                                        session_id="s") == {"ok": 1}
+
+    async def test_model_calls_nest_under_one_root_with_the_session(self, monkeypatch):
+        from langchain_core.callbacks import AsyncCallbackHandler
+        from langchain_core.language_models.fake_chat_models import FakeListChatModel
+
+        from app.integrations import tracing
+
+        class Recorder(AsyncCallbackHandler):
+            def __init__(self):
+                self.events = []
+
+            async def on_chain_start(self, serialized, inputs, *, run_id, parent_run_id=None, metadata=None, **kw):
+                self.events.append(("root", parent_run_id is None, inputs, (metadata or {}).get("langfuse_session_id")))
+
+            async def on_chat_model_start(self, serialized, messages, *, run_id, parent_run_id=None, **kw):
+                self.events.append(("model", parent_run_id is not None))
+
+        recorder = Recorder()
+        monkeypatch.setattr(tracing, "trace_config", lambda settings, name, tags: {
+            "run_name": name, "callbacks": [recorder], "metadata": {"langfuse_tags": list(tags)}})
+        model = FakeListChatModel(responses=["judged", "updated"])
+
+        async def work():
+            await model.ainvoke("judge this")
+            await model.ainvoke("update this")
+            return {"decision": "refresh"}
+
+        out = await tracing.traced_job(types.SimpleNamespace(langfuse_enabled=True), "sangam_source_check", work,
+                                       inputs={"slug": "axis"}, session_id="source-check-1", tags=("source-check",))
+        assert out == {"decision": "refresh"}
+        assert recorder.events == [("root", True, {"slug": "axis"}, "source-check-1"), ("model", True), ("model", True)]
+
+
+async def _value(v):
+    return v
