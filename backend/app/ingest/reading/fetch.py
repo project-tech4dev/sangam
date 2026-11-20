@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -75,28 +76,43 @@ def _compact_json(text: str) -> str:
     return text
 
 
-async def read_page_text(url: str) -> str:
+@dataclass(frozen=True)
+class Fetched:
+    """One fetch, before anything is archived: the text or file, or why there is none."""
+
+    url: str
+    final_url: str | None = None
+    status: int | None = None
+    content_type: str = ""
+    text: str = ""
+    document: str | None = None  # "PDF" or "Word file" when a page URL served a file
+    path: Path | None = None  # where a downloaded document was saved
+    size: int = 0
+    refused: str | None = None  # the whole REFUSED message
+    error: str | None = None  # "<ExceptionType>: <message>" when no usable answer came back
+    too_large: bool = False
+
+
+async def fetch_page(url: str) -> Fetched:
+    """Fetch and clean a page with the same access checks as research, and write nothing."""
     url = canonical_url(url)
     refusal = await check_url(url)
     if refusal:
-        return f"REFUSED: {refusal}"
+        return Fetched(url, refused=f"REFUSED: {refusal}")
     try:
         async with _client(url, timeout=TIMEOUT_SECONDS, headers=PAGE_HEADERS) as client:
             response = await client.get(url)
-            response.raise_for_status()
     except _Stop as stop:
-        return stop.reply
-    except httpx.HTTPStatusError as exc:
-        return f"ERROR: {url} returned HTTP {exc.response.status_code}. Nothing was read."
+        return Fetched(url, refused=stop.reply)
     except httpx.HTTPError as exc:
-        return f"ERROR: fetching {url} failed ({type(exc).__name__}: {exc})."
-
+        return Fetched(url, error=f"{type(exc).__name__}: {exc}")
     content_type = response.headers.get("content-type", "").lower()
+    seen = Fetched(url, final_url=str(response.url), status=response.status_code, content_type=content_type,
+                   size=len(response.content))
+    if not response.is_success:
+        return seen
     if kind := _document_kind(content_type, url):
-        return (
-            f"{url} is a {kind} ({len(response.content):,} bytes). Use fetch_document to save it, "
-            f"then read_document_pages to read it."
-        )
+        return replace(seen, document=kind)
     # trafilatura finds nothing in JSON (GuideStar's search, GitHub listings) or raw markdown (a dossier).
     if "json" in content_type:
         text = _compact_json(response.text)
@@ -104,6 +120,24 @@ async def read_page_text(url: str) -> str:
         text = response.text
     else:
         text = trafilatura.extract(response.text, url=url) or ""
+    return replace(seen, text=text)
+
+
+async def read_page_text(url: str) -> str:
+    page = await fetch_page(url)
+    url = page.url
+    if page.refused:
+        return page.refused
+    if page.error:
+        return f"ERROR: fetching {url} failed ({page.error})."
+    if page.status is not None and not 200 <= page.status < 300:
+        return f"ERROR: {url} returned HTTP {page.status}. Nothing was read."
+    if page.document:
+        return (
+            f"{url} is a {page.document} ({page.size:,} bytes). Use fetch_document to save it, "
+            f"then read_document_pages to read it."
+        )
+    text = page.text
     if not text.strip():
         return f"No readable text could be extracted from {url}."
     # Kept as read, so a fact outlives a page that changes; silent like fetch_document's archive.
@@ -112,7 +146,7 @@ async def read_page_text(url: str) -> str:
                                "text/markdown; charset=utf-8")
     await remember(url, "page", text_hash(text), key)
     # Uncut: a long page is evicted to a file the researcher pages back with read_file.
-    return source_banner(str(response.url)) + text
+    return source_banner(page.final_url or url) + text
 
 
 def _document_kind(content_type: str, url: str) -> str | None:
@@ -132,18 +166,19 @@ def page_name(url: str) -> str:
     return _safe_name(stem.removesuffix(".html").removesuffix(".htm"))[:100] + ".md"
 
 
-async def fetch_document_file(url: str, filename: str | None) -> str:
+async def download(url: str, filename: str | None, directory: Path | None = None) -> Fetched:
+    """Download a document with the same access checks as research, and archive nothing."""
     url = canonical_url(url)
     refusal = await check_url(url)
     if refusal:
-        return f"REFUSED: {refusal}"
+        return Fetched(url, refused=f"REFUSED: {refusal}")
     limit = MAX_DOWNLOAD_MB * 1024 * 1024
     try:
         async with _client(url, timeout=120, headers=PAGE_HEADERS) as client, \
                 client.stream("GET", url) as response:
             response.raise_for_status()
             name = _safe_name(filename or url.split("?")[0].rstrip("/").rsplit("/", 1)[-1])
-            destination = downloads_dir() / name
+            destination = (directory or downloads_dir()) / name
             size = 0
             # Blocking write of a bounded download, behind the run gate.
             # An async file layer would cost more than it saves here.
@@ -153,18 +188,32 @@ async def fetch_document_file(url: str, filename: str | None) -> str:
                     if size > limit:
                         fh.close()
                         destination.unlink(missing_ok=True)
-                        return f"ERROR: {url} is larger than the {MAX_DOWNLOAD_MB} MB limit."
+                        return Fetched(url, status=response.status_code, too_large=True)
                     fh.write(chunk)
             content_type = response.headers.get("content-type", "application/octet-stream")
+            final_url = str(response.url)
         # A Word file served from a link without its extension is still paged by paragraph.
         if WORD in content_type.lower() and not name.lower().endswith(".docx"):
             destination = destination.rename(destination.with_name(f"{name}.docx"))
-            name = destination.name
     except _Stop as stop:
-        return stop.reply
+        return Fetched(url, refused=stop.reply)
+    except httpx.HTTPStatusError as exc:
+        return Fetched(url, status=exc.response.status_code, error=f"{type(exc).__name__}: {exc}")
     except httpx.HTTPError as exc:
-        return f"ERROR: download of {url} failed ({type(exc).__name__}: {exc})."
+        return Fetched(url, error=f"{type(exc).__name__}: {exc}")
+    return Fetched(url, final_url=final_url, status=200, content_type=content_type, path=destination, size=size)
 
+
+async def fetch_document_file(url: str, filename: str | None) -> str:
+    got = await download(url, filename)
+    url = got.url
+    if got.refused:
+        return got.refused
+    if got.too_large:
+        return f"ERROR: {url} is larger than the {MAX_DOWNLOAD_MB} MB limit."
+    if got.error or got.path is None:
+        return f"ERROR: download of {url} failed ({got.error})."
+    destination, name = got.path, got.path.name
     # Archive it, so a fact outlives its source URL. Silent either way: the
     # model cannot act on a storage failure, and downloads_dir is still where
     # read_document_pages looks. A file too large for the bucket is still read
@@ -172,20 +221,25 @@ async def fetch_document_file(url: str, filename: str | None) -> str:
     # archived would break the job to protect the record of it.
     data = destination.read_bytes()
     key = await storage.upload(
-        storage.SOURCE_ARCHIVE, storage.archive_key(url, data, name), data, content_type
+        storage.SOURCE_ARCHIVE, storage.archive_key(url, data, name), data, got.content_type
     )
     if key:
         await remember(url, "document", await asyncio.to_thread(document_hash, destination), key)
-    return f"Saved {name} ({size:,} bytes). Read it with read_document_pages('{name}')."
+    return f"Saved {name} ({got.size:,} bytes). Read it with read_document_pages('{name}')."
+
+
+def document_text(path: Path) -> str:
+    """A PDF's whole text; empty for a scan, a damaged PDF, or any other file."""
+    if path.suffix.lower() != ".pdf":
+        return ""
+    try:
+        text, _ = extract_pdf_text(path)
+    except PyPdfError:
+        return ""
+    return text if text.strip() else ""
 
 
 def document_hash(path: Path) -> str:
     """A PDF by its text, so a re-export with new dates is not a change; a scan or any other file by its bytes."""
-    if path.suffix.lower() == ".pdf":
-        try:
-            text, _ = extract_pdf_text(path)
-        except PyPdfError:
-            text = ""
-        if text.strip():
-            return text_hash(text)
-    return bytes_hash(path.read_bytes())
+    text = document_text(path)
+    return text_hash(text) if text else bytes_hash(path.read_bytes())

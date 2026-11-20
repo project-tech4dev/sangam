@@ -1,4 +1,4 @@
-.PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match source-check calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url checkpoint-sizes prune-checkpoints \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -133,6 +133,10 @@ graph-seed:  ## Build the Neo4j graph from Postgres (needs OPENAI_API_KEY)
 
 match:  ## Save a Funder Match run for every org, or ORG=<slug>
 	$(COMPOSE) run --rm --no-deps backend python -m app.matching.run $(if $(ORG),--org $(ORG))
+
+source-check:  ## Check SLUG=<slug>'s sources for change, up to UNTIL=<stage> (read-only for now)
+	$(if $(SLUG),,$(error SLUG is required: make source-check SLUG=<slug>))
+	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.refresh.change_check --slug $(SLUG) $(if $(UNTIL),--until $(UNTIL))
 
 calls-pull:  ## Read FUNDER=<slug>'s calls page, or every funder's with CONFIRM=1, and write the open calls
 	$(COMPOSE) run --rm --no-deps backend python -m app.ingest.calls.run $(if $(FUNDER),--funder $(FUNDER)) $(if $(CONFIRM),--yes)

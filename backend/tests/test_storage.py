@@ -533,6 +533,7 @@ class _FakeClient:
 class _FakeStream:
     def __init__(self, body: bytes, content_type: str):
         self._body, self.headers = body, {"content-type": content_type}
+        self.url, self.status_code = "https://funder.example/csr/report.pdf", 200
 
     async def __aenter__(self):
         return self
