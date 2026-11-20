@@ -1,5 +1,5 @@
 .PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
-        db-init-remote db-push-remote migrate migrate-status psql db-url checkpoint-sizes prune-checkpoints \
+        db-init-remote db-push-remote migrate migrate-status psql db-url checkpoint-sizes prune-checkpoints audit-review \
         dev-backend dev-frontend frontend-reinstall evals
 
 SHELL := /bin/bash
@@ -282,6 +282,11 @@ psql:  ## Interactive shell against whichever database ENV selects
 	$(COMPOSE) run --rm --no-deps --entrypoint psql postgres "$(DB_URL)"
 
 # One saved query, so before-and-after numbers compare like with like. Read-only.
+audit-review:  ## Check the answer audit against a person's labels in Langfuse: CMD=setup | CMD=rerun [SINCE=2026-11-19]
+	@test "$(ENV)" = local || { echo 'audit-review reads the local checkpoints: ENV=local only.'; exit 2; }
+	@test -n "$(CMD)" || { echo 'usage: make audit-review CMD=setup|rerun [SINCE=YYYY-MM-DD]'; exit 2; }
+	$(COMPOSE) exec -T -e PYTHONPATH=/srv backend python - $(CMD) $(if $(SINCE),--since $(SINCE)) < scripts/audit_review.py
+
 checkpoint-sizes:  ## Checkpoint bytes by table, thread and channel; THREAD=<id> for one
 	$(COMPOSE) run --rm --no-deps -T -v $(CURDIR)/scripts/sql:/sql:ro --entrypoint psql postgres "$(DB_URL)" \
 	  -v ON_ERROR_STOP=1 -v thread="$(THREAD)" -f /sql/checkpoint_sizes.sql
