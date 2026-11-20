@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import PageParams
+from app.api.deps import Ids, PageParams
 from app.core.security import get_current_user
 from app.db.pool import PoolDep
 from app.repositories import partner_lines as repo
@@ -23,9 +23,10 @@ async def list_partner_lines(
     funder: str | None = None,
     org: str | None = None,
     status: str | None = None,
+    ids: Ids = None,
 ) -> Page[PartnerLineOut]:
     rows, total = await repo.list_partner_lines(
-        pool, limit=page.limit, offset=page.offset, funder=funder, org=org, status=status,
+        pool, limit=page.limit, offset=page.offset, funder=funder, org=org, status=status, ids=ids,
     )
     return page.build_page(rows, total, PartnerLineOut)
 

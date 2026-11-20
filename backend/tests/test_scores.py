@@ -66,7 +66,8 @@ async def test_list_scores_pages_its_filters_through_fetch_page(recording_pool):
     from app.repositories.scores import list_scores
 
     pool = recording_pool([{"id": 8, "total": 12}])
-    rows, total = await list_scores(pool, limit=2, offset=6, org="kabil", rubric="match-v2")
+    rows, total = await list_scores(pool, limit=2, offset=6, org="kabil", rubric="match-v2", ids=[8])
     assert ([r["id"] for r in rows], total) == ([8], 12)
-    assert pool.params["org"] == "kabil" and pool.params["rubric"] == "match-v2"
+    assert pool.params["org"] == "kabil" and pool.params["rubric"] == "match-v2" and pool.params["ids"] == [8]
+    assert "fs.id = ANY(%(ids)s)" in pool.sql
     assert (pool.params["limit"], pool.params["offset"]) == (2, 6)

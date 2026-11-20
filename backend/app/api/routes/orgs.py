@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import LegacyPageParams
+from app.api.deps import Ids, LegacyPageParams
 from app.api.routes.funders import brief_for
 from app.core.security import get_current_user
 from app.db.pool import PoolDep
@@ -25,11 +25,12 @@ async def list_orgs(
     state: str | None = None,
     district: str | None = None,
     q: str | None = None,
+    ids: Ids = None,
     user_id: UUID = Depends(get_current_user),
 ) -> list[OrgListItem]:
     rows, _ = await repo.list_orgs(
         pool, limit=page.limit, offset=page.offset,
-        tag=tag, state=state, district=district, q=q,
+        tag=tag, state=state, district=district, q=q, ids=ids,
     )
     return [OrgListItem.model_validate(r) for r in rows]
 

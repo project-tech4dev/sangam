@@ -7,6 +7,7 @@ import { getMe } from "@/lib/api/rest";
 import { idParam, setUrlParams } from "@/lib/url";
 import { useUrlThread } from "@/lib/useUrlThread";
 import type { RegistryIndex } from "./lib/citations";
+import { useCitedIndex } from "./lib/useCitedIndex";
 import { takePendingQuestion } from "./lib/pendingQuestion";
 import { fetchThreads, loadThreads, type ThreadMeta } from "./lib/threads";
 import type { Turn } from "./lib/useSangamChat";
@@ -78,7 +79,7 @@ export function AskWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
   }, []);
 
-  const index: RegistryIndex = useMemo(
+  const pageIndex: RegistryIndex = useMemo(
     () => ({
       orgs: new Map(payload.orgs.map((o) => [o.id, o])),
       funders: new Map(payload.funders.map((f) => [f.id, f])),
@@ -87,6 +88,7 @@ export function AskWorkspace({
     }),
     [payload],
   );
+  const [index, learnCitations] = useCitedIndex(pageIndex);
 
   // The server's list once it answers; this browser's until then, or when it cannot.
   const refreshThreads = useCallback(() => {
@@ -158,6 +160,7 @@ export function AskWorkspace({
               }}
               index={index}
               onLatestTurn={onLatestTurn}
+              onAnswers={learnCitations}
               freeQuestions={freeQuestions}
               onRunEnd={refreshFreeQuestions}
             />

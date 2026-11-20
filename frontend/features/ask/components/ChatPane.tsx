@@ -25,6 +25,7 @@ export function ChatPane({
   onFirstSend,
   index,
   onLatestTurn,
+  onAnswers,
   freeQuestions = null,
   onRunEnd,
 }: {
@@ -34,6 +35,8 @@ export function ChatPane({
   onFirstSend: () => void;
   index: RegistryIndex | null;
   onLatestTurn: (turn: ReturnType<typeof useSangamChat>["turns"][number] | null) => void;
+  /** Every finished answer in the chat, so the workspace can name rows its index lacks. */
+  onAnswers?: (answers: string) => void;
   /** Set only for someone outside every organisation; at the limit the box gives way to a notice. */
   freeQuestions?: FreeQuestions | null;
   onRunEnd?: () => void;
@@ -49,6 +52,10 @@ export function ChatPane({
   useEffect(() => {
     onLatestTurn(turns.length > 0 ? turns[turns.length - 1]! : null);
   }, [turns, onLatestTurn]);
+
+  useEffect(() => {
+    if (!isRunning && onAnswers) onAnswers(turns.map((t) => t.answer ?? "").join("\n"));
+  }, [turns, isRunning, onAnswers]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

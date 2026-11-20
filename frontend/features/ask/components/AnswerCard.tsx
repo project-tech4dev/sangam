@@ -9,11 +9,11 @@ import { chipText, citationTarget, linkifyCitations, type CitationKind, type Reg
 export type SourceWords = Partial<Record<CitationKind, string>>;
 
 export function CitationChip({ href: raw, index, words }: { href: string; index: RegistryIndex | null; words?: SourceWords }) {
-  const [, kind, id, named] = raw.match(/^sangam:\/\/([a-z]+)\/([^?]+)(\?named)?$/) ?? [];
+  const [, kind, id] = raw.match(/^sangam:\/\/([a-z]+)\/(.+)$/) ?? [];
   if (!kind || !id) return null;
   const { href, label } = citationTarget(kind as CitationKind, id, index);
   // A name, never the marker: "funder:3" meant nothing to the people reading it (#460).
-  const text = words?.[kind as CitationKind] ?? (named ? "source" : chipText(kind as CitationKind, id, index));
+  const text = words?.[kind as CitationKind] ?? chipText(kind as CitationKind, id, index);
   if (!href) {
     return (
       <span className="cite-chip" title={`${label} — ${kind} evidence in the base`}>
@@ -56,7 +56,7 @@ export function AnswerCard({ answer, index, words }: { answer: string; index: Re
             ),
           }}
         >
-          {linkifyCitations(answer, index)}
+          {linkifyCitations(answer)}
         </ReactMarkdown>
       </div>
     </div>

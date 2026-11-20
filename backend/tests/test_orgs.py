@@ -62,4 +62,20 @@ async def test_list_orgs_pages_its_filters_through_fetch_page(recording_pool):
     pool = recording_pool([{"id": 4, "total": 15}])
     rows, total = await list_orgs(pool, limit=2, offset=6, state="Assam", q="kab")
     assert ([r["id"] for r in rows], total) == ([4], 15)
-    assert pool.params == {"tag": None, "state": "Assam", "district": None, "q": "kab", "limit": 2, "offset": 6}
+    assert pool.params == {"tag": None, "state": "Assam", "district": None, "q": "kab", "ids": None,
+                           "limit": 2, "offset": 6}
+
+
+async def test_ids_asks_for_just_those_orgs(client_for, monkeypatch):
+    captured = {}
+
+    async def fake_list(pool, **kwargs):
+        captured.update(kwargs)
+        return [], 0
+
+    monkeypatch.setattr("app.api.routes.orgs.repo.list_orgs", fake_list)
+    async with client_for(orgs_api.router) as client:
+        await client.get("/api/orgs?ids=812&ids=1702")
+        too_many = await client.get("/api/orgs", params={"ids": list(range(101))})
+    assert captured["ids"] == [812, 1702]
+    assert too_many.status_code == 422

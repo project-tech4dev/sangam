@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import PageParams
+from app.api.deps import Ids, PageParams
 from app.core.security import get_current_user, require_user
 from app.db.pool import PoolDep
 from app.repositories import scores as repo
@@ -21,10 +21,11 @@ async def list_scores(
     org: str | None = None,
     funder: str | None = None,
     rubric: str | None = None,
+    ids: Ids = None,
     user_id: UUID = Depends(get_current_user),
 ) -> Page[FitScoreOut]:
     rows, total = await repo.list_scores(pool, limit=page.limit, offset=page.offset,
-                                         org=org, funder=funder, rubric=rubric)
+                                         org=org, funder=funder, rubric=rubric, ids=ids)
     return page.build_page(rows, total, FitScoreOut)
 
 

@@ -25,14 +25,16 @@ WHERE a.kind = 'partner' AND a.is_public
 
 
 async def list_partner_lines(pool: Any, *, limit: int, offset: int, funder: str | None = None,
-                             org: str | None = None, status: str | None = None) -> tuple[list[dict], int]:
+                             org: str | None = None, status: str | None = None,
+                             ids: list[int] | None = None) -> tuple[list[dict], int]:
     sql = BASE + """
+      AND (%(ids)s::bigint[] IS NULL OR a.id = ANY(%(ids)s))
       AND (%(funder)s::text IS NULL OR f.slug = %(funder)s OR f.id::text = %(funder)s)
       AND (%(org)s::text IS NULL OR o.slug = %(org)s OR o.id::text = %(org)s)
       AND (%(status)s::text IS NULL OR a.relationship_status = %(status)s)
     ORDER BY a.start_date DESC NULLS LAST, a.fiscal_year DESC, a.id
     """
-    params = {"funder": funder, "org": org, "status": status}
+    params = {"funder": funder, "org": org, "status": status, "ids": ids}
     return await fetch_page(pool, sql, params, limit=limit, offset=offset)
 
 
