@@ -178,6 +178,7 @@ class ResearchOut(ReadModel):
     saved_at: datetime | None = None
     resolved_org_id: int | None = None
     resolved_funder_id: int | None = None
+    tracked_sources: int = Field(0, description="sources whose read version is kept, so a change check can run")
     # Staff only: the save that still stands, and who made it, for Undo.
     promotion_id: int | None = None
     saved_by: str | None = None
