@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+from collections.abc import Awaitable, Callable
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from textwrap import dedent
 from typing import Any
@@ -14,7 +15,7 @@ from typing import Any
 from ag_ui.core.types import RunAgentInput
 from copilotkit import LangGraphAGUIAgent
 from langchain_core.messages import ToolMessage
-from langchain_core.runnables import RunnableConfig
+from langchain_core.runnables import RunnableConfig, RunnableLambda
 
 from app.core.config import Settings
 from app.core.security import DEV_USER_ID, CallerScope, chat_proposal, chat_scope, chat_user_id
@@ -406,6 +407,20 @@ def trace_config(
             exc_info=True,
         )
         return base
+
+
+async def traced_job(settings: Settings, name: str, work: Callable[[], Awaitable[Any]], *, inputs: dict[str, Any],
+                     session_id: str, tags: tuple[str, ...] = ()) -> Any:
+    """Runs a job outside any agent as one trace: its model calls nest under it, and what it returns is the output."""
+    if not settings.langfuse_enabled:
+        return await work()
+
+    async def root(_: Any) -> Any:
+        return await work()
+
+    config = trace_config(settings, name=name, tags=tags)
+    config["metadata"] = {**config.get("metadata", {}), "langfuse_session_id": session_id}
+    return await RunnableLambda(root, name=name).ainvoke(inputs, config)
 
 
 def caller_trace(scope: CallerScope | None, user_id: Any) -> tuple[str, list[str], dict[str, Any]]:

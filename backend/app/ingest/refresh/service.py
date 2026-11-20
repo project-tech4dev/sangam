@@ -29,6 +29,7 @@ from app.ingest.refresh import (
     judge,
     save,
 )
+from app.integrations.tracing import configure_langfuse, flush_traces, traced_job
 
 logger = logging.getLogger(__name__)
 
@@ -127,31 +128,48 @@ async def run(pool: Any, slug: str, depth: str, refresh: bool, user_id: UUID | N
             if await (await conn.execute(BUSY_SQL, (slug,))).fetchone():
                 raise Busy(slug)
             await conn.execute(START_SQL, (run_id, slug, depth, user_id))
+    settings = get_settings()
+    # A check from the Scout screen can come before the first chat turn, which otherwise builds the masked client.
+    configure_langfuse(settings)
     try:
-        # One folder for the run: a document that differed is archived from it before it goes.
-        with tempfile.TemporaryDirectory(prefix="source-check-") as scratch:
-            ended = await stages(slug, depth, Path(scratch), given, say=say)
-            assert ended is not None  # no `until`, so every stage ran
-            checks, found, verdict = ended
-            keys = await save.archive_all(checks, found)
-            async with pool.connection() as conn:
-                saved = await save.write(conn, run_id, slug, checks, found, keys)
-            say(save.describe(slug, run_id, saved))
-        row_id, summary = None, None
-        if refresh and depth == FULL and verdict == decision.REFRESH:
-            row_id, summary = await _refresh(pool, slug, checks, found, given.context, saved)
-            say(summary)
-        elif refresh:
-            say(f"{slug}: no refresh: the decision is {verdict}")
+        outcome = await traced_job(
+            settings, "sangam_source_check", lambda: _check(pool, run_id, slug, depth, refresh, given, say),
+            inputs={"slug": slug, "depth": depth, "refresh": refresh}, session_id=f"source-check-{run_id}",
+            tags=("source-check", depth))
         async with pool.connection() as conn:
-            await conn.execute(FINISH_SQL, (verdict, row_id, summary, run_id))
+            await conn.execute(FINISH_SQL, (outcome["decision"], outcome["refresh_row_id"],
+                                            outcome["refresh_summary"], run_id))
     except Exception as exc:
         logger.warning("change check of %s failed", slug, exc_info=True)
         failure = f"{type(exc).__name__}: {exc}"[:500]
         say(f"{slug}: the check failed: {failure}")
         async with pool.connection() as conn:
             await conn.execute(FAIL_SQL, (failure, run_id))
+    finally:
+        flush_traces()
     return run_id
+
+
+async def _check(pool: Any, run_id: UUID, slug: str, depth: str, refresh: bool, given: Inputs,
+                 say: Say) -> dict[str, Any]:
+    """Every stage, the save and any update; what it returns is the trace's output."""
+    # One folder for the run: a document that differed is archived from it before it goes.
+    with tempfile.TemporaryDirectory(prefix="source-check-") as scratch:
+        ended = await stages(slug, depth, Path(scratch), given, say=say)
+        assert ended is not None  # no `until`, so every stage ran
+        checks, found, verdict = ended
+        keys = await save.archive_all(checks, found)
+        async with pool.connection() as conn:
+            saved = await save.write(conn, run_id, slug, checks, found, keys)
+        say(save.describe(slug, run_id, saved))
+    row_id, summary = None, None
+    if refresh and depth == FULL and verdict == decision.REFRESH:
+        row_id, summary = await _refresh(pool, slug, checks, found, given.context, saved)
+        say(summary)
+    elif refresh:
+        say(f"{slug}: no refresh: the decision is {verdict}")
+    return {"decision": verdict, "sources": compare.counts(checks), "new_sources": len(found.new),
+            "source_checks_rows": saved.rows, "refresh_row_id": row_id, "refresh_summary": summary}
 
 
 async def stages(slug: str, depth: str, scratch: Path, given: Inputs, until: str | None = None,
