@@ -7,7 +7,17 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.ingest.refresh import baseline, change_check, diff, discover, fetch_status, judge, save
+from app.ingest.refresh import (
+    baseline,
+    change_check,
+    decision,
+    delta,
+    diff,
+    discover,
+    fetch_status,
+    judge,
+    save,
+)
 from tests.cov_ingest_fakes import ScriptConn, ScriptPool
 
 SLUG = "azim-premji-foundation"
@@ -38,6 +48,13 @@ def test_write_runs_every_stage(capsys):
     with pytest.raises(SystemExit):
         change_check.parse(["--slug", SLUG, "--write", "--until", "judge"])
     assert "cannot stop early" in capsys.readouterr().err
+
+
+def test_refresh_needs_write(capsys):
+    assert change_check.parse(["--slug", SLUG, "--write", "--refresh"]).refresh
+    with pytest.raises(SystemExit):
+        change_check.parse(["--slug", SLUG, "--refresh"])
+    assert "--refresh needs --write" in capsys.readouterr().err
 
 
 def test_without_until_it_runs_every_stage():
@@ -142,7 +159,7 @@ class TestStages:
         async def ainvoke(messages):
             return judge.Judgement(meaningful=True, confidence="high", reason="a new programme")
 
-        async def archive_all(checks):
+        async def archive_all(checks, found):
             calls.append(("archive", [c.status for c in checks]))
             return {"https://a.org/about": "key"}
 
@@ -183,6 +200,32 @@ class TestStages:
         await change_check.main(SLUG, "discover")
         out = capsys.readouterr().out
         assert "judge and discovery skipped" in out and out.strip().endswith("1 changed → full pull")
+
+    @pytest.fixture
+    def written(self, monkeypatch):
+        """Every stage faked, the judge calling /about a change, and WRITE=1's own saving faked."""
+        async def ainvoke(messages):
+            return judge.Judgement(meaningful=True, confidence="high", reason="a new programme")
+        monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
+        monkeypatch.setattr(change_check, "resolve_model", lambda spec: SimpleNamespace(
+            with_structured_output=lambda schema, **kw: SimpleNamespace(ainvoke=ainvoke)))
+        monkeypatch.setattr(discover, "run", lambda *a: _value(discover.Discovery(searched=3)))
+        monkeypatch.setattr(save, "archive_all", lambda checks, found: _value({}))
+        monkeypatch.setattr(save, "write", lambda *a: _value(save.Saved(2, 1, 0, {"https://a.org/about": 55})))
+        refreshed: list = []
+        monkeypatch.setattr(change_check, "_refresh", lambda *a: _value(refreshed.append(a)))
+        return refreshed
+
+    async def test_refresh_runs_only_when_the_decision_is_refresh(self, run, written, monkeypatch, capsys):
+        await change_check.main(SLUG, "discover", write=True, refresh=True)
+        assert len(written) == 1 and written[0][4].snapshot_ids == {"https://a.org/about": 55}
+        monkeypatch.setattr(decision, "decide", lambda *a: decision.NOTHING)
+        await change_check.main(SLUG, "discover", write=True, refresh=True)
+        assert len(written) == 1 and f"{SLUG}: no refresh: the decision is nothing to do" in capsys.readouterr().out
+
+    async def test_without_refresh_no_delta(self, run, written):
+        await change_check.main(SLUG, "discover", write=True)
+        assert written == []
 
     async def test_nothing_to_check_stops_before_fetching(self, run, monkeypatch, capsys):
         monkeypatch.setattr(baseline, "load", lambda conn, slug: _empty())
@@ -225,3 +268,40 @@ class TestDescribe:
         out = baseline.describe(SLUG, [], 3)
         assert "nothing to check" in out and "Run a full pull first" in out
         assert "(3 research rows predate snapshots" in out
+
+
+class TestRefresh:
+    @pytest.fixture
+    def refresh(self, monkeypatch):
+        state = SimpleNamespace(models=[], published=[], entity={"slug": SLUG, "entity_name": "Funder",
+                                                                 "canonical_name": None, "summary": "s"})
+        monkeypatch.setattr(change_check, "make_pool", lambda url, max_size: _Pool())
+        monkeypatch.setattr(delta, "load", lambda conn, slug: _value((state.entity, [])))
+
+        def resolve(spec):
+            state.models.append(spec)
+            return SimpleNamespace(with_structured_output=lambda schema, **kw: (schema, kw))
+        monkeypatch.setattr(change_check, "resolve_model", resolve)
+
+        async def propose(model, grader, question):
+            state.question, state.model, state.grader = question, model, grader
+            return delta.Delta(summary="The CSR mailbox moved."), ["f1 should be an update"]
+        monkeypatch.setattr(delta, "propose", propose)
+        monkeypatch.setattr(delta, "save_row", lambda conn, *a: _value(91))
+        monkeypatch.setattr(change_check.brief, "rows_for", lambda conn, slug: _value([{"slug": slug}]))
+        monkeypatch.setattr(change_check.brief, "publish", lambda rows: _value(state.published.append(rows)))
+        return state
+
+    async def test_the_delta_is_asked_of_the_research_model_and_saved(self, refresh, capsys):
+        await change_check._refresh(SLUG, [], discover.Discovery(), judge.Context((), ()), save.Saved(0, 0, 0))
+        settings = change_check.get_settings()
+        assert refresh.models == [settings.research_model, settings.utility_model]
+        assert refresh.model == (delta.Delta, {"method": "json_schema"}) and refresh.grader == (delta.Grade, {})
+        assert refresh.question.startswith("Organisation: Funder") and refresh.published == [[{"slug": SLUG}]]
+        out = capsys.readouterr().out
+        assert "refresh saved as entity_research #91" in out and "reviewer: f1 should be an update" in out
+
+    async def test_no_row_to_carry_forward_asks_nothing(self, refresh, capsys):
+        refresh.entity = None
+        await change_check._refresh(SLUG, [], discover.Discovery(), judge.Context((), ()), save.Saved(0, 0, 0))
+        assert refresh.models == [] and "no research row to carry forward" in capsys.readouterr().out

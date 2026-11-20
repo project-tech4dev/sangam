@@ -54,24 +54,32 @@ class TestArchive:
         return calls
 
     async def test_a_page_is_archived_by_its_text(self, stored):
-        assert await save.archive(check(new="Today's text")) == "key/page.md"
+        page = check(new="Today's text")
+        assert await save.archive(URL, "page", page.today) == "key/page.md"
         assert stored == [("page", URL, "Today's text")]
 
     async def test_a_document_is_archived_from_the_runs_folder(self, stored, tmp_path):
         path = tmp_path / "report.pdf"
         path.write_bytes(b"%PDF")
         doc = replace(check(kind="document"), today=Today(URL, OK, "HTTP 200", text="t", path=path, fingerprint="b"))
-        assert await save.archive(doc) == "key/report.pdf"
+        assert await save.archive(URL, "document", doc.today) == "key/report.pdf"
         assert stored == [("document", URL, "report.pdf", "application/pdf")]
 
     async def test_a_document_no_longer_on_disk_is_not_archived(self, stored, tmp_path):
         doc = replace(check(kind="document"),
                       today=Today(URL, OK, "HTTP 200", path=tmp_path / "gone.pdf", fingerprint="b"))
-        assert await save.archive(doc) is None and stored == []
+        assert await save.archive(URL, "document", doc.today) is None and stored == []
 
     async def test_only_what_differed_is_archived(self, stored):
-        keys = await save.archive_all([same(), blocked(), check(status=CHANGED)])
+        keys = await save.archive_all([same(), blocked(), check(status=CHANGED)], Discovery())
         assert keys == {URL: "key/page.md"} and len(stored) == 1
+
+    async def test_a_new_source_that_was_read_is_archived_too(self, stored):
+        lead = Lead.of(RESULTS[2])
+        found = Discovery(new=[(lead, "programme"), (Lead.of(RESULTS[3]), "report (unverified: HTTP 403)")],
+                          fetched={lead.url: Today(lead.url, OK, "HTTP 200", text="Fellowship", fingerprint="n")})
+        assert await save.archive_all([], found) == {lead.url: "key/page.md"}
+        assert stored == [("page", lead.url, "Fellowship")]
 
 
 class TestWrite:
@@ -86,7 +94,7 @@ class TestWrite:
                          judgement={"meaningful": True})
         unchanged = replace(same(), baseline=replace(same().baseline, url=OTHER, snapshot_id=8))
         saved = await save.write(conn, RUN, SLUG, [judged, unchanged], Discovery(), {URL: "key/page.md"})
-        assert saved == save.Saved(rows=2, snapshots=1, archive_failed=0)
+        assert saved == save.Saved(rows=2, snapshots=1, archive_failed=0, snapshot_ids={URL: 55})
         [(_sql, snapshot)] = conn.sql("INSERT INTO source_snapshots")
         assert snapshot == (URL, "page", "b" * 64, "key/page.md")
         first, second = self.rows(conn)
@@ -107,6 +115,16 @@ class TestWrite:
         await save.write(conn, RUN, SLUG, [blocked()], Discovery(), {})
         [row] = self.rows(conn)
         assert row[5] == UNVERIFIED and row[10] == "HTTP 403"
+
+    async def test_a_new_source_read_today_gets_its_snapshot(self):
+        conn = ScriptConn([("INSERT INTO source_snapshots", {"id": 77})])
+        lead = Lead.of(RESULTS[2])
+        found = Discovery(new=[(lead, "programme")],
+                          fetched={lead.url: Today(lead.url, OK, "HTTP 200", text="t", fingerprint="n" * 64)})
+        saved = await save.write(conn, RUN, SLUG, [], found, {lead.url: "key/new.md"})
+        assert saved.snapshot_ids == {lead.url: 77}
+        [(_sql, snapshot)] = conn.sql("INSERT INTO source_snapshots")
+        assert snapshot == (lead.url, "page", "n" * 64, "key/new.md") and self.rows(conn)[0][4] == 77
 
     async def test_a_new_source_has_no_baseline(self):
         conn = ScriptConn()
