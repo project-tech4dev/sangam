@@ -36,11 +36,17 @@ def settle(checks: list[Check]) -> list[Check]:
 def decide(checks: list[Check], found: Discovery, redesign: bool) -> str:
     if redesign:
         return FULL_PULL
-    if found.new or any(c.status in ACT_ON for c in checks):
+    if found.new or gap_sources(found) or any(c.status in ACT_ON for c in checks):
         return REFRESH
     return NOTHING
 
 
+def gap_sources(found: Discovery) -> int:
+    """Only an off-site page that was read can fill a gap; one that would not open gives the update nothing."""
+    return sum(lead.url in found.fetched for lead, _gap, _why in found.gap_leads)
+
+
 def describe(slug: str, checks: list[Check], found: Discovery, verdict: str) -> str:
     new = f" · {len(found.new)} {NEW}" if found.new else ""
-    return f"{slug}: {counts(checks)}{new} → {verdict}"
+    gaps = f" · {n} for gaps" if (n := gap_sources(found)) else ""
+    return f"{slug}: {counts(checks)}{new}{gaps} → {verdict}"

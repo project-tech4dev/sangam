@@ -389,3 +389,45 @@ def test_a_refresh_is_a_draft_until_a_person_saves_it():
     """Unsaved and unresolved, the row lists as "Not saved" with Review & save; nothing reaches the catalog."""
     columns = delta.INSERT_SQL.split("VALUES")[0]
     assert "saved_at" not in columns and "saved," not in columns
+
+
+class TestGapSource:
+    """A page off the funder's site, read for one open gap, may only add a fact of that gap's concept."""
+
+    URL = "https://partner.org/annual-report"
+    SENTENCE = "Applications to the Foundation's fellowship are made through its partner portal each March."
+    FOUND = Discovery(gap_leads=[(Lead.of({"url": URL, "title": "t", "content": "c"}), "rfp.how_to_apply", "a call")],
+                      fetched={URL: Today(URL, OK, "HTTP 200", text=f"Partner report\n\n{SENTENCE}")})
+
+    def srcs(self):
+        return delta.sources([changed()], self.FOUND, {URL: [OLD, KEPT]})
+
+    def test_it_is_read_with_the_gap_it_fills(self):
+        gap = self.srcs()[-1]
+        assert (gap.status, gap.url) == ("gap", self.URL)
+        assert gap.hint == {"fills": "rfp.how_to_apply", "why": "a call"}
+        assert '<source status="gap"' in delta.ask("Funder", self.srcs(), CONTEXT)
+
+    def test_an_add_of_its_gaps_concept_is_taken(self):
+        add = {**CALL, "title": "Fellowship", "evidence": self.SENTENCE, "source_url": self.URL}
+        out = delta.apply(answer(add=[json.dumps(add)]), self.srcs())
+        assert out.added == 1 and out.refused == []
+
+    def test_another_concept_or_an_update_from_it_is_refused(self):
+        other = {**OLD, "evidence": self.SENTENCE, "source_url": self.URL}
+        out = delta.apply(answer(add=[json.dumps(other)], update=[Update(id="f1", finding=json.dumps(other))]),
+                          self.srcs())
+        assert (out.added, out.updated, out.supersedes) == (0, 0, [])
+        assert all("was read only for rfp.how_to_apply" in r for r in out.refused) and len(out.refused) == 2
+
+    def test_the_prompts_say_so(self):
+        assert "`gap` source only fills" in delta.PROMPT and "`gap` source" in delta.RUBRIC
+
+
+async def test_a_gap_closes_only_when_an_accepted_finding_fills_it():
+    conn = ScriptConn([("INSERT INTO entity_research", {"id": 92})])
+    applied = delta.Applied(findings=[{**CALL, "how_to_apply": "Apply on this page."}])
+    proposed = answer(gaps_closed=["rfp.how_to_apply", "csr_year"])
+    await delta.save_row(conn, TestSaveRow.ENTITY, applied, proposed, CONTEXT, [], [])
+    [(_sql, p)] = conn.sql("INSERT INTO entity_research")
+    assert json.loads(p[14]) == [{"concept": "csr_year"}]

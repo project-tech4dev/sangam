@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 from app.ingest import brief
 from app.ingest.reading.access import canonical_url
 from app.ingest.refresh.compare import CHANGED, Check
-from app.ingest.refresh.discover import Discovery
+from app.ingest.refresh.discover import GAP, Discovery
 from app.ingest.refresh.evidence import BROKEN, UNANCHORED, on_page
 from app.ingest.refresh.fetch_status import DEAD
 from app.ingest.refresh.judge import DIFF_CHARS, Context, gap_name
@@ -93,7 +93,7 @@ class Fact:
 @dataclass(frozen=True)
 class Source:
     url: str
-    status: str  # changed, dead or new
+    status: str  # changed, dead, new, or gap (off the funder's site)
     text: str  # today's text, what an update or add must quote; empty for a dead page
     facts: tuple[Fact, ...] = ()
     removed: tuple[str, ...] = ()
@@ -176,6 +176,9 @@ def sources(checks: list[Check], found: Discovery, facts: dict[str, list[dict[st
     for lead, why in found.new:
         if lead.url in found.fetched:
             out.append(Source(lead.url, "new", found.fetched[lead.url].text, hint={"why": why}))
+    for lead, gap, why in found.gap_leads:
+        if lead.url in found.fetched:
+            out.append(Source(lead.url, GAP, found.fetched[lead.url].text, hint={"fills": gap, "why": why}))
     return out
 
 
@@ -260,7 +263,18 @@ def apply(delta: Delta, srcs: list[Source], kind: str | None = None) -> Applied:
     facts = {f.id: f for s in srcs for f in s.facts}
     # A changed page is quoted from what it added, so an old, unchanged sentence cannot pass as new.
     texts = {s.url: "\n".join(s.added) if s.status == "changed" and s.added else s.text for s in srcs if s.text}
+    fills = {s.url: str((s.hint or {}).get("fills", "")) for s in srcs if s.status == GAP}
     out, seen = Applied(), set()
+
+    def own_gap(finding: dict[str, Any], verb: str) -> bool:
+        """A page off the funder's site may only add a fact for the gap it was read for."""
+        url = canonical_url(finding["source_url"])
+        if url not in fills:
+            return True
+        if verb == "add" and finding.get("concept") == fills[url].split(".")[0]:
+            return True
+        out.refused.append(f"{verb} {finding.get('concept')}: {url} was read only for {fills[url]}")
+        return False
 
     def known(fact_id: str, verb: str) -> Fact | None:
         if fact_id not in facts or fact_id in seen:
@@ -298,7 +312,7 @@ def apply(delta: Delta, srcs: list[Source], kind: str | None = None) -> Applied:
             settled.add(fact_id)
     for u in delta.update:
         if ((old := known(u.id, "update")) and (new := parsed(u.finding, f"update {u.id}"))
-                and quoted(new, f"update {u.id} →")):
+                and quoted(new, f"update {u.id} →") and own_gap(new, f"update {u.id} →")):
             out.supersedes.append(brief.superseded(old.finding, updated=True))
             out.findings.append(new)
             out.updated += 1
@@ -318,7 +332,7 @@ def apply(delta: Delta, srcs: list[Source], kind: str | None = None) -> Applied:
                 out.unhandled.append(f.id)
                 out.stale.add(s.url)
     for a in delta.add:
-        if (new := parsed(a, "add")) and quoted(new, "add"):
+        if (new := parsed(a, "add")) and quoted(new, "add") and own_gap(new, "add"):
             out.findings.append(new)
             out.added += 1
     return out

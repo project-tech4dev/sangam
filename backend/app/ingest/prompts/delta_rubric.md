@@ -9,6 +9,7 @@ The delta passes when all of these hold:
 5. A fact from a dead page is removed only when another given source says it ended.
 6. `gaps_closed` names only missing facts that an `update` or `add` supplies.
 7. The summary says what changed and makes no judgement about the organisation.
+8. A finding from a `gap` source is an `add` of the concept its hint `fills`, about this organisation, and nothing else.
 
 Do not ask for more research or for facts the sources do not state. Judge only whether the delta matches the change.
 

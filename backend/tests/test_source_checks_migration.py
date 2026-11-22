@@ -1,4 +1,4 @@
-"""0059 and 0062: source_checks, one row per source per check, and source_check_runs, one per run; staff-only."""
+"""0059, 0062 and 0063: source_checks, one row per source per check, and source_check_runs, one per run; staff-only."""
 
 from __future__ import annotations
 
@@ -21,12 +21,12 @@ def test_the_table_has_its_columns(conn):  # noqa: F811
         "evidence": "YES"}
 
 
-def test_a_status_outside_the_seven_is_refused(conn):  # noqa: F811
+def test_a_status_outside_the_eight_is_refused(conn):  # noqa: F811
     row = conn.execute(
         "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
         "WHERE conrelid = 'source_checks'::regclass AND contype = 'c'"
     ).fetchone()
-    assert all(s in row["def"] for s in ("unchanged", "differs", "minor", "changed", "unverified", "dead", "new"))
+    assert all(s in row["def"] for s in ("unchanged", "differs", "minor", "changed", "unverified", "dead", "new", "gap"))
 
 
 def test_staff_only_like_source_snapshots(conn):  # noqa: F811

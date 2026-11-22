@@ -26,6 +26,7 @@ from app.ingest.refresh import (
     discover,
     evidence,
     fetch_status,
+    gap_search,
     judge,
     save,
 )
@@ -177,7 +178,7 @@ async def _check(pool: Any, run_id: UUID, slug: str, depth: str, refresh: bool, 
     elif refresh:
         say(f"{slug}: no refresh: the decision is {verdict}")
     return {"decision": verdict, "sources": compare.counts(checks), "new_sources": len(found.new),
-            "source_checks_rows": saved.rows, "refresh_row_id": row_id, "refresh_summary": summary}
+            "gap_sources": decision.gap_sources(found), "source_checks_rows": saved.rows, "refresh_row_id": row_id, "refresh_summary": summary}
 
 
 async def stages(slug: str, depth: str, scratch: Path, given: Inputs, until: str | None = None,
@@ -228,7 +229,18 @@ async def stages(slug: str, depth: str, scratch: Path, given: Inputs, until: str
                                        named(model.with_structured_output(discover.Picks), "discover"),
                                        settings.tavily_api_key,
                                        client, scratch)
-        say(discover.describe(slug, found))
+            say(discover.describe(slug, found))
+            if until == "discover":
+                return None
+            # What discovery just found is known too, so the gap search never reads it twice.
+            known_urls |= {lead.url for lead, _why in found.new}
+            known_hashes |= {t.fingerprint for t in found.fetched.values() if t.fingerprint}
+            gaps = await gap_search.run(given.subject, known_urls, known_hashes, given.context,
+                                        named(model.with_structured_output(gap_search.GapPicks), "gaps"),
+                                        settings.tavily_api_key,
+                                        client, scratch)
+        say(gap_search.describe(slug, gaps))
+        found = gap_search.merge(found, gaps)
         verdict = decision.decide(checks, found, redesign)
     say(decision.describe(slug, checks, found, verdict))
     return checks, found, verdict

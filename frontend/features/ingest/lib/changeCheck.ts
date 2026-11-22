@@ -73,6 +73,8 @@ export function statusOf(status: string): { label: string; tag: string } {
       return { label: "Page gone", tag: "tag-accent" };
     case "new":
       return { label: "New source", tag: "tag-accent-2" };
+    case "gap":
+      return { label: "Fills a gap", tag: "tag-accent-2" };
     case "unverified":
       return { label: "Couldn't open", tag: "tag-outline" };
     default:
@@ -125,6 +127,7 @@ const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 export function stepsOf(c: SourceCheck, depth: "free" | "full", facts: number): Step[] {
   const read = c.status !== "unverified" && c.status !== "dead";
   const same = c.status === "unchanged";
+  const unread = c.status === "new" || c.status === "gap";
   const steps: Step[] = [];
   steps.push(
     c.status === "unverified"
@@ -133,10 +136,12 @@ export function stepsOf(c: SourceCheck, depth: "free" | "full", facts: number): 
         ? { name: "Fetch today's version", state: "flag", text: `The page is gone (${c.detail ?? "404"}).` }
         : c.status === "new"
           ? { name: "Fetch today's version", state: "flag", text: "A source no research has read, found on the organisation's site." }
-          : { name: "Fetch today's version", state: "done", text: "Opened and read." },
+          : c.status === "gap"
+            ? { name: "Fetch today's version", state: "flag", text: `Found on another site for a missing fact: ${c.detail ?? "a gap"}.` }
+            : { name: "Fetch today's version", state: "done", text: "Opened and read." },
   );
   steps.push(
-    !read || c.status === "new"
+    !read || unread
       ? { name: "Compare fingerprints", state: "skipped", text: "Nothing to compare." }
       : same
         ? { name: "Compare fingerprints", state: "done", text: `Same text: kept copy ${short(c.baseline_hash)} = today ${short(c.today_hash)}.` }
@@ -144,7 +149,7 @@ export function stepsOf(c: SourceCheck, depth: "free" | "full", facts: number): 
   );
   const changedLines = c.removed_text.length + c.added_text.length;
   steps.push(
-    !read || c.status === "new"
+    !read || unread
       ? { name: "Compare the text", state: "skipped", text: "Nothing to compare." }
       : same
         ? { name: "Compare the text", state: "skipped", text: "Not needed: the fingerprints match, so the text is identical." }
@@ -159,7 +164,7 @@ export function stepsOf(c: SourceCheck, depth: "free" | "full", facts: number): 
   steps.push(
     c.status === "dead"
       ? { name: "Check each fact is still there", state: "flag", text: `${plural(facts, "fact")} cite a page that is gone.` }
-      : !read || c.status === "new"
+      : !read || unread
         ? { name: "Check each fact is still there", state: "skipped", text: "Nothing to check." }
         : same
           ? { name: "Check each fact is still there", state: "skipped", text: `Not needed: the text is identical, so all ${plural(facts, "fact")} still hold.` }

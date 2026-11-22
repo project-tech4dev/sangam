@@ -11,11 +11,11 @@ from typing import Any
 
 from app.core.config import get_settings
 from app.db.checkpointer import make_pool
-from app.ingest.refresh import baseline, compare, service
+from app.ingest.refresh import baseline, compare, decision, service
 from app.integrations.tracing import configure_langfuse, flush_traces, traced_job
 
 # The stages in the order they run; each new stage of the check is added here as it lands.
-STAGES = ("baseline", "fetch", "hash", "diff", "evidence", "judge", "discover")
+STAGES = ("baseline", "fetch", "hash", "diff", "evidence", "judge", "discover", "gaps")
 
 
 def parse(argv: list[str] | None = None) -> argparse.Namespace:
@@ -71,7 +71,8 @@ async def _look(pool: Any, slug: str, until: str) -> dict[str, Any]:
     if ended is None:
         return {"stopped_after": until}
     checks, found, verdict = ended
-    return {"decision": verdict, "sources": compare.counts(checks), "new_sources": len(found.new)}
+    return {"decision": verdict, "sources": compare.counts(checks), "new_sources": len(found.new),
+            "gap_sources": decision.gap_sources(found)}
 
 
 if __name__ == "__main__":

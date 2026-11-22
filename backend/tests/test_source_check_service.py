@@ -17,6 +17,7 @@ from app.ingest.refresh import (
     discover,
     evidence,
     fetch_status,
+    gap_search,
     judge,
     save,
     service,
@@ -160,8 +161,8 @@ class TestRun:
         await service.run(ScriptPool(ScriptConn()), SLUG, service.FREE, False, USER)
         [out] = outputs
         assert out["decision"] == decision.REFRESH and out["refresh_row_id"] is None
-        assert set(out) == {"decision", "sources", "new_sources", "source_checks_rows", "refresh_row_id",
-                            "refresh_summary"}
+        assert set(out) == {"decision", "sources", "new_sources", "gap_sources", "source_checks_rows",
+                            "refresh_row_id", "refresh_summary"}
 
     async def test_langfuse_is_set_up_and_flushed_once_even_when_the_check_fails(self, stubbed, monkeypatch):
         calls = []
@@ -197,10 +198,6 @@ async def test_the_baseline_view_counts_the_facts_each_source_holds(monkeypatch)
     assert [(s.url, s.facts, s.archived, s.read_on) for s in sources] == [
         (URL, 2, True, "2026-11-14"), ("https://a.org/x", 0, True, "2026-11-14")]
     assert unrecorded == 2
-
-
-async def _value(v):
-    return v
 
 
 def _changed(url: str = "https://a.org/about", status: str = compare.CHANGED) -> compare.Check:
@@ -312,6 +309,40 @@ class TestRefresh:
         refresh.entity = None
         assert await self.run() == (None, f"{SLUG}: no refresh: no research row to carry forward")
         assert refresh.models == []
+
+
+async def test_a_full_check_searches_for_gaps_after_discovery_and_skips_what_it_found(monkeypatch, tmp_path):
+    new = discover.Lead.of({"url": "https://a.org/new-report", "title": "t", "content": "c"})
+    off = discover.Lead.of({"url": "https://csr.gov.in/a", "title": "t", "content": "c"})
+    read = fetch_status.Today(off.url, fetch_status.OK, "HTTP 200", text="t", fingerprint="f" * 64)
+    seen = {}
+
+    async def fetch_today(source, scratch):
+        return fetch_status.Today(source.url, fetch_status.OK, "HTTP 200", text="t",
+                                  fingerprint="a" * 64 if source.url.endswith("contact") else "b" * 64)
+
+    async def found_new(*a):
+        return discover.Discovery(new=[(new, "report")], fetched={new.url: read})
+
+    async def gaps(subject, known_urls, known_hashes, *rest):
+        seen.update(urls=set(known_urls), hashes=set(known_hashes))
+        return gap_search.GapSearch(leads=[(off, "csr_year", "a filing")], fetched={off.url: read})
+
+    monkeypatch.setattr(fetch_status, "fetch_today", fetch_today)
+    monkeypatch.setattr("app.ingest.refresh.diff.old_text", lambda source: _value("t"))
+    monkeypatch.setattr(service, "resolve_model",
+                        lambda spec: SimpleNamespace(with_structured_output=lambda s: _Structured(s, {})))
+    monkeypatch.setattr(judge, "run", lambda checks, *a: _value(checks))
+    monkeypatch.setattr(discover, "run", found_new)
+    monkeypatch.setattr(gap_search, "run", gaps)
+    given = service.Inputs([base(), base("https://a.org/contact", snapshot_id=8)], 0, {}, judge.Context((), ()),
+                           discover.Subject("A", "a.org"))
+    ended = await service.stages(SLUG, service.FULL, tmp_path, given)
+    assert ended is not None
+    _checks, found, verdict = ended
+    assert new.url in seen["urls"] and "f" * 64 in seen["hashes"]
+    assert found.gap_leads == [(off, "csr_year", "a filing")] and decision.gap_sources(found) == 1
+    assert verdict == decision.REFRESH
 
 
 class _Structured:

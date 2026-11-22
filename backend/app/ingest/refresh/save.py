@@ -12,7 +12,7 @@ from psycopg.types.json import Jsonb
 from app.ingest.reading.fetch import archive_document, archive_page
 from app.ingest.reading.snapshots import RECORD_SQL
 from app.ingest.refresh.compare import Check
-from app.ingest.refresh.discover import NEW, Discovery
+from app.ingest.refresh.discover import GAP, NEW, Discovery
 from app.ingest.refresh.evidence import BROKEN, INTACT, UNANCHORED
 from app.ingest.refresh.fetch_status import OK, Today
 
@@ -51,7 +51,7 @@ async def archive_all(checks: list[Check], found: Discovery) -> dict[str, str | 
     """Each source that differed, and each new one, archived before any row is written: a snapshot row never
     names a missing file."""
     keys = {c.baseline.url: await archive(c.baseline.url, c.baseline.kind, c.today) for c in checks if differed(c)}
-    for lead, _why in found.new:
+    for lead in [lead for lead, _why in found.new] + [lead for lead, _gap, _why in found.gap_leads]:
         if lead.url in found.fetched:
             keys[lead.url] = await archive(lead.url, lead.kind, found.fetched[lead.url])
     return keys
@@ -87,7 +87,12 @@ async def write(conn: Any, run_id: UUID, slug: str, checks: list[Check], found: 
             new_id, note = await snapshot(lead.url, lead.kind, today) if today else (None, "")
             await conn.execute(INSERT_SQL, (run_id, slug, lead.url, None, new_id, NEW, 0, 0, 0, None, f"{why}{note}",
                                             [], [], None))
-    return Saved(len(checks) + len(found.new), len(ids), failed, ids)
+        for lead, gap, why in found.gap_leads:
+            today = found.fetched.get(lead.url)
+            new_id, note = await snapshot(lead.url, lead.kind, today) if today else (None, "")
+            await conn.execute(INSERT_SQL, (run_id, slug, lead.url, None, new_id, GAP, 0, 0, 0, None,
+                                            f"fills {gap}: {why}{note}", [], [], None))
+    return Saved(len(checks) + len(found.new) + len(found.gap_leads), len(ids), failed, ids)
 
 
 def _text(paragraphs: tuple[str, ...]) -> list[str]:
