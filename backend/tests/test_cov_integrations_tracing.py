@@ -77,6 +77,21 @@ def test_export_drops_the_anthropic_sdks_copy_of_each_call(monkeypatch):
     assert tracing.export_span(SimpleNamespace(name="ChatAnthropic", instrumentation_scope=ours)) is True
 
 
+@pytest.mark.parametrize(("metadata", "name"), [
+    ({"langgraph_checkpoint_ns": "model:6e1e", "lc_agent_name": "None"}, "sangam_import/model"),
+    ({"langgraph_checkpoint_ns": "tools:0101|model:f580", "lc_agent_name": "entity-researcher"},
+     "entity-researcher/model"),
+    ({"langgraph_checkpoint_ns": "tools:0101|ResearchRubric.after_agent:9a|model:33", "lc_agent_name": "entity-researcher"},
+     "entity-researcher/ResearchRubric.after_agent/model"),
+    ({"langgraph_checkpoint_ns": "answer_audit.after_agent:1", "lc_agent_name": None}, "sangam_import/answer_audit.after_agent"),
+    ({"langgraph_checkpoint_ns": "tools:1|tools:2|model:3", "lc_agent_name": "workbook-reader"}, "workbook-reader/model"),
+    ({}, None),
+    (None, None),
+])
+def test_a_model_call_is_named_by_its_agent_and_node(metadata, name):
+    assert tracing.model_call_name(metadata, "sangam_import") == name
+
+
 def test_flush_calls_the_client_and_swallows_errors(monkeypatch):
     flushed = []
     _install(monkeypatch, get_client=lambda: SimpleNamespace(flush=lambda: flushed.append(1)))
@@ -236,7 +251,7 @@ def handler(monkeypatch):
         return lambda self, *a, **kw: calls.append((attr, a, kw))
 
     for attr in ("on_chain_start", "on_chat_model_start", "on_llm_start", "on_tool_start", "on_chain_end",
-                 "on_tool_end", "on_chain_error"):
+                 "on_tool_end", "on_chain_error", "on_llm_end"):
         setattr(CallbackHandler, attr, recorder(attr))
 
     sub = types.ModuleType("langfuse.langchain")
@@ -246,6 +261,49 @@ def handler(monkeypatch):
     h = tracing._build_handler(Settings(**ENABLED))
     h.calls = calls
     return h
+
+
+def test_a_model_call_reaches_langfuse_with_its_name(handler):
+    meta = {"langgraph_checkpoint_ns": "tools:1|model:2", "lc_agent_name": "entity-researcher"}
+    handler.on_chat_model_start({}, [], run_id="m1", metadata=meta)
+    assert handler.calls[-1][2]["name"] == "entity-researcher/model"
+    handler.on_chat_model_start({}, [], run_id="m2", metadata=meta, name="mine")
+    assert handler.calls[-1][2]["name"] == "mine"
+
+
+def test_cached_tokens_reach_langfuse_under_one_name(handler):
+    from langchain_core.outputs import ChatGeneration, LLMResult
+
+    raw = {"input_tokens": 2, "cache_read_input_tokens": 17101, "cache_creation_input_tokens": 705}
+    # langchain-anthropic's shape when the TTL split is reported: cache_creation zeroed, the writes in ephemeral_*.
+    message = AIMessage("hi", response_metadata={"usage": raw, "model_name": "claude"}, usage_metadata={
+        "input_tokens": 17808, "output_tokens": 360, "total_tokens": 18168,
+        "input_token_details": {"cache_read": 17101, "cache_creation": 0,
+                                "ephemeral_5m_input_tokens": 705, "ephemeral_1h_input_tokens": 0}})
+    handler.on_llm_end(LLMResult(generations=[[ChatGeneration(message=message)]]), run_id="m1")
+
+    sent = handler.calls[-1][1][0].generations[0][0].message
+    assert "usage" not in sent.response_metadata and sent.response_metadata["model_name"] == "claude"
+    assert sent.usage_metadata["input_token_details"] == {"cache_read": 17101, "cache_creation": 705}
+    assert message.response_metadata["usage"] == raw  # the agent's own message is untouched
+
+
+def test_a_streamed_call_without_the_ttl_split_keeps_its_cache_write(handler):
+    from langchain_core.outputs import ChatGeneration, LLMResult
+
+    message = AIMessage("hi", usage_metadata={"input_tokens": 9, "output_tokens": 1, "total_tokens": 10,
+                                              "input_token_details": {"cache_read": 4, "cache_creation": 3}})
+    handler.on_llm_end(LLMResult(generations=[[ChatGeneration(message=message)]]), run_id="m1")
+    sent = handler.calls[-1][1][0].generations[0][0].message
+    assert sent.usage_metadata["input_token_details"] == {"cache_read": 4, "cache_creation": 3}
+
+
+def test_a_call_without_usage_metadata_keeps_the_raw_usage(handler):
+    from langchain_core.outputs import ChatGeneration, LLMResult
+
+    message = AIMessage("hi", response_metadata={"usage": {"input_tokens": 2}})
+    handler.on_llm_end(LLMResult(generations=[[ChatGeneration(message=message)]]), run_id="m1")
+    assert handler.calls[-1][1][0].generations[0][0].message.response_metadata["usage"] == {"input_tokens": 2}
 
 
 def test_root_chain_gets_the_question_and_is_an_agent(handler):
