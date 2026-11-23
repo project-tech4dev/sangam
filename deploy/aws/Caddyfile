@@ -1,0 +1,8 @@
+# Domains come from the instance's .env, so none is written in this public repo. Caddy fetches the certificates.
+{$APP_DOMAIN} {
+	reverse_proxy frontend:3000
+}
+
+{$API_DOMAIN} {
+	reverse_proxy backend:8000
+}

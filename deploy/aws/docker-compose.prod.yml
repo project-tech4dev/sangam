@@ -1,0 +1,41 @@
+# The stack on one EC2 instance; Postgres stays on Supabase. Secrets and domains come from .env beside this file.
+services:
+  backend:
+    image: ghcr.io/project-tech4dev/sangam-backend:${TAG:-latest}
+    env_file: .env
+    volumes:
+      - ./db:/srv/db:ro   # the migration runner reads db/migrations from here
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  frontend:
+    image: ghcr.io/project-tech4dev/sangam-frontend:${TAG:-latest}
+    environment:
+      AGENT_URL: http://backend:8000/agent
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN in .env}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [frontend, backend]
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
