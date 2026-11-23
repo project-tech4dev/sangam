@@ -6,7 +6,7 @@ from functools import lru_cache
 from urllib.parse import urlparse
 
 from psycopg.conninfo import conninfo_to_dict
-from pydantic import ValidationInfo, field_validator
+from pydantic import ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Work that needs no reasoning: a fixed record from one article, the catalog-writer (two tools, a
     # report) and the workbook-reader (one tool, a list of names).
     utility_model: str = "anthropic:claude-haiku-5-5"
+    # The endpoint a "compat:<model>" spec calls, e.g. RESEARCH_MODEL=compat:deepseek-v4.1-flash-fast-fp4.
+    compat_base_url: str = ""
+    compat_api_key: str = ""
 
     # Local only: also accept `Authorization: Bearer dev` as the seeded dev user. Never set when deployed.
     dev_auth: bool = False
@@ -156,6 +159,18 @@ class Settings(BaseSettings):
     @classmethod
     def _off_disables_the_audit(cls, v: str) -> str:
         return "" if v.strip().lower() == "off" else v
+
+    @model_validator(mode="after")
+    def _compat_runs_alone(self) -> Settings:
+        """One tier on a compat model puts every tier on one, so no call reaches Claude (or another provider)."""
+        tiers = {"MODEL": self.model, "RESEARCH_MODEL": self.research_model, "UTILITY_MODEL": self.utility_model}
+        if self.sql_audit_model:
+            tiers["SQL_AUDIT_MODEL"] = self.sql_audit_model
+        others = [name for name, spec in tiers.items() if not spec.startswith("compat:")]
+        if others and len(others) < len(tiers):
+            raise ValueError(f"a compat: tier needs every tier on compat:, but {', '.join(others)} is not "
+                             "(SQL_AUDIT_MODEL may be off)")
+        return self
 
     @property
     def db_gate_slots(self) -> int:

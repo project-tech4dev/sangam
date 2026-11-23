@@ -193,6 +193,38 @@ class TestEachTierGetsItsModel:
         assert models.resolve_model("anthropic:claude-haiku-5-5-20261007")["output_config"] == {"effort": "low"}
         assert "output_config" not in models.resolve_model("anthropic:claude-opus-5-5")
 
+    def test_compat_calls_its_own_openai_compatible_endpoint(self, monkeypatch):
+        from app.agentkit import models
+        from app.core.config import Settings
+
+        monkeypatch.setattr(models, "init_chat_model", lambda name, **kw: {"name": name, **kw})
+        monkeypatch.setattr(models, "get_settings", lambda: Settings(
+            _env_file=None, compat_base_url="https://llm.example/v1", compat_api_key="k"))
+        got = models.resolve_model("compat:open-model")
+        assert got == {"name": "open-model", "model_provider": "openai", "base_url": "https://llm.example/v1",
+                       "api_key": "k", "stream_usage": True}
+
+    def test_compat_without_a_base_url_refuses_to_build(self, monkeypatch):
+        from app.agentkit import models
+        from app.core.config import Settings
+
+        monkeypatch.setattr(models, "get_settings", lambda: Settings(_env_file=None))
+        with pytest.raises(ValueError, match="COMPAT_BASE_URL"):
+            models.resolve_model("compat:open-model")
+
+    def test_a_compat_tier_puts_every_tier_on_compat(self):
+        from pydantic import ValidationError
+
+        from app.core.config import Settings
+
+        c = "compat:open-model"
+        with pytest.raises(ValidationError, match="MODEL, UTILITY_MODEL, SQL_AUDIT_MODEL"):
+            Settings(_env_file=None, research_model=c)
+        with pytest.raises(ValidationError, match="SQL_AUDIT_MODEL"):
+            Settings(_env_file=None, model=c, research_model=c, utility_model=c)
+        assert Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off")
+        assert Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model=c)
+
     def test_the_module_level_specs_are_not_mutated(self, build_import):
         # build_ingest_agent copies each spec before adding a model, so builds cannot leak between them.
         from app.ingest.agent import CATALOG_WRITER, ENTITY_RESEARCHER, VAULT_READER, WORKBOOK_READER
