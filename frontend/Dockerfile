@@ -8,11 +8,16 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-RUN npm run build && npm prune --omit=dev
+ENV NEXT_OUTPUT=standalone
+RUN npm run build
 
+# Standalone keeps only the files the server traces as imported; static assets are copied beside it.
 FROM node:22-alpine
 WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=build /app ./
+ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000
+COPY --from=build --chown=node:node /app/.next/standalone ./
+COPY --from=build --chown=node:node /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
+USER node
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

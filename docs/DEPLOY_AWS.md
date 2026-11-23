@@ -16,7 +16,7 @@ GitHub Actions ── build ──▶ ghcr.io/…/sangam-backend, sangam-fronten
 | `.github/workflows/deploy-aws.yml` | Builds, pushes, copies the bundle, migrates, restarts, waits for `/health` |
 | `deploy/aws/docker-compose.prod.yml` | The three services on the instance |
 | `deploy/aws/Caddyfile` | Two hosts, read from `APP_DOMAIN` / `API_DOMAIN` |
-| `frontend/Dockerfile` | Production Next.js build (`Dockerfile.dev` stays for local) |
+| `frontend/Dockerfile` | Production Next.js build, standalone (~260 MB); `NEXT_OUTPUT=standalone` is set only here, so Vercel and local are unchanged |
 
 No domain, host or key is written in the repo. They live in the instance's `.env` and in GitHub **secrets**:
 the repo is public, so its Actions logs are too, and variables are printed there in clear.
