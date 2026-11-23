@@ -1,11 +1,12 @@
 FROM python:3.12-slim
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.9 /uv /usr/local/bin/uv
 
 WORKDIR /srv
 
-# Install dependencies first for layer caching.
-COPY pyproject.toml ./
-RUN uv pip install --system --no-cache -r pyproject.toml
+# Install the locked versions CI tested, first for layer caching; dev tools stay out.
+COPY pyproject.toml uv.lock ./
+RUN uv export --frozen --no-dev --no-emit-project --no-hashes -o /tmp/req.txt \
+    && uv pip install --system --no-cache -r /tmp/req.txt && rm /tmp/req.txt
 
 COPY app/ app/
 
