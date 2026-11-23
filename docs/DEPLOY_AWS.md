@@ -70,7 +70,8 @@ LANGFUSE_HOST=https://cloud.langfuse.com
 LANGFUSE_TRACING_ENVIRONMENT=aws
 ```
 
-Never set `DEV_AUTH` here. Leave `NEO4J_URI` unset and the graph switches itself off. `chmod 600 .env`.
+Never set `DEV_AUTH` here. Leave `NEO4J_URI` unset (don't copy it from a local `.env`): unset, the graph switches itself
+off, but set to a host it cannot reach, the backend fails at startup. `chmod 600 .env`.
 
 ## 4. GitHub (once)
 
