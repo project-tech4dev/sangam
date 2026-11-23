@@ -1,4 +1,5 @@
-# Self-hosted deploy to one EC2 instance, run by hand (Actions → Deploy (AWS) → Run workflow). Setup: docs/DEPLOY_AWS.md.
+# Phase 2, not in use yet: today the instance deploys itself with deploy/aws/deploy.sh (docs/DEPLOY_AWS.md).
+# Before using this, apply the open review points: master only, actions pinned by SHA, packages: read on deploy.
 # Domains and hosts live in secrets, not variables: this repo is public, and so are its Actions logs.
 name: Deploy (AWS)
 
@@ -66,10 +67,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Bundle compose, Caddyfile and migrations
         run: |
-          mkdir bundle
-          cp deploy/aws/docker-compose.prod.yml deploy/aws/Caddyfile bundle/
-          mkdir bundle/db && cp -r db/migrations bundle/db/
-          tar -czf sangam-deploy.tgz -C bundle .
+          tar -czf sangam-deploy.tgz deploy/aws/compose.yaml deploy/aws/caddy db/migrations
       - name: Copy the bundle to the instance
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -95,15 +93,16 @@ jobs:
             set -eu
             cd /opt/sangam
             rm -rf db && tar -xzf sangam-deploy.tgz && rm sangam-deploy.tgz
-            test -f .env || { echo "/opt/sangam/.env is missing; see docs/DEPLOY_AWS.md"; exit 1; }
+            cd deploy/aws
+            test -f .env || { echo "/opt/sangam/deploy/aws/.env is missing; see docs/DEPLOY_AWS.md"; exit 1; }
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             export TAG
-            compose="docker compose -f docker-compose.prod.yml"
+            compose="docker compose"
             $compose pull
             if [ "$MIGRATE" = "true" ]; then
               $compose run --rm --no-deps backend python -m app.db.migrate
             fi
-            $compose up -d --remove-orphans
+            $compose up -d --no-build --remove-orphans
             docker logout ghcr.io
             echo "TAG=$TAG" > deployed.txt
             for i in $(seq 1 30); do

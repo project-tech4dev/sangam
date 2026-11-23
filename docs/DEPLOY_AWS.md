@@ -1,9 +1,9 @@
 # Deploying Sangam on AWS (one EC2 instance)
 
-A self-hosted alternative to the Vercel deploy in `CLAUDE.md`, "Deployment". A GitHub Actions workflow builds both
-images, pushes them to GHCR, and restarts them on one EC2 instance over SSH. Postgres, Storage and sign-in stay on
-Supabase; Caddy on the instance serves HTTPS with Let's Encrypt certificates. Nothing deploys on a push: the workflow
-is run by hand, like the Vercel one.
+A self-hosted alternative to the Vercel deploy in `CLAUDE.md`, "Deployment". The instance holds a checkout of this
+repo; `deploy/aws/deploy.sh` pulls a ref, builds both images there, migrates and restarts them. Postgres, Storage and
+sign-in stay on Supabase; Caddy on the instance serves HTTPS with Let's Encrypt certificates. Nothing deploys on a
+push: someone with the server key runs the script.
 
 ```
 browser ──https──▶ Cloudflare DNS (grey cloud) ──▶ EC2 Elastic IP
@@ -11,18 +11,18 @@ browser ──https──▶ Cloudflare DNS (grey cloud) ──▶ EC2 Elastic I
                                                                  └─ api.<domain> ──▶ backend  :8000 ◀┘
                                                                                        │
                                      Supabase (Postgres · Storage · Auth) ◀────────────┘
-GitHub Actions ── build ──▶ ghcr.io/…/sangam-backend, sangam-frontend ── ssh ──▶ EC2: docker compose pull && up
+you ── ssh ──▶ EC2: /opt/sangam/deploy/aws/deploy.sh  (git fetch → docker compose build → migrate → up)
 ```
 
 | File | Role |
 |---|---|
-| `.github/workflows/deploy-aws.yml` | Builds, pushes, copies the bundle, migrates, restarts, waits for `/health` |
-| `deploy/aws/docker-compose.prod.yml` | The three services on the instance |
-| `deploy/aws/Caddyfile` | Two hosts, read from `APP_DOMAIN` / `API_DOMAIN` |
+| `deploy/aws/deploy.sh` | Checks out a ref, builds, migrates, restarts, reloads Caddy, waits for `/health` |
+| `deploy/aws/compose.yaml` | The three services; builds from the checkout |
+| `deploy/aws/caddy/Caddyfile` | Two hosts, read from `APP_DOMAIN` / `API_DOMAIN` |
 | `frontend/Dockerfile` | Production Next.js build, standalone (~260 MB); `NEXT_OUTPUT=standalone` is set only here, so Vercel and local are unchanged |
+| `.github/workflows/deploy-aws.yml` | Phase 2, not in use: the same deploy from GitHub Actions through GHCR (see the end) |
 
-No domain, host or key is written in the repo. They live in the instance's `.env` and in GitHub **secrets**: the repo
-is public, so its Actions logs are too, and Actions variables are printed there in clear.
+No domain, host or key is written in the repo. They live only in the instance's `deploy/aws/.env`, which git ignores.
 
 Throughout, replace:
 
@@ -40,10 +40,10 @@ Do the steps in order: DNS must point at the instance before the first deploy, o
 
 ## Step 0. Before you start
 
-- [ ] Admin on the AWS account, the Cloudflare zone for `<domain>`, the Supabase project, the Google Cloud project that
-      owns the OAuth client, and the GitHub repo.
-- [ ] This branch merged to `master`. GitHub lists a `workflow_dispatch` workflow only once it is on the default branch.
-- [ ] The Supabase database already migrated and seeded (it is, if Vercel serves it today). The workflow migrates;
+- [ ] Admin on the AWS account, the Cloudflare zone for `<domain>`, the Supabase project, and the Google Cloud project
+      that owns the OAuth client.
+- [ ] The code you deploy is on GitHub: `master` by default, or any branch, tag or SHA you pass to the script.
+- [ ] The Supabase database already migrated and seeded (it is, if Vercel serves it today). The script migrates;
       it never seeds.
 - [ ] Decide: **same Supabase project as Vercel, or a new one?** This guide assumes the same one. Then both deploys
       share every row, and an Import run from either writes to the data the other serves. For a separate copy,
@@ -63,8 +63,8 @@ EC2 → **Launch instance**:
 |---|---|
 | Name | `sangam` |
 | AMI | **Ubuntu Server 24.04 LTS** (64-bit x86) |
-| Instance type | **t3.large** (2 vCPU, 8 GB). `t3.medium` (4 GB) works for light use; a large Import needs the memory |
-| Key pair | Create new → `sangam-admin`, ED25519, `.pem`. This is *your* login; the deploy key comes later |
+| Instance type | **t3.large** (2 vCPU, 8 GB). It also builds the images, and a large Import needs the memory |
+| Key pair | Create new → `sangam-admin`, ED25519, `.pem`. Whoever holds it can deploy |
 | Network settings → Edit | Create security group `sangam-web` with the rules in 1.2 |
 | Storage | **30 GiB gp3** |
 
@@ -74,18 +74,18 @@ EC2 → **Launch instance**:
 
 | Type | Port | Source | Why |
 |---|---|---|---|
-| SSH | 22 | `0.0.0.0/0` | GitHub's runners SSH in from changing IPs. Keys only, no passwords (Ubuntu's default). See "Hardening" to narrow it |
+| SSH | 22 | **My IP** (and each deployer's IP) | Only people deploy now, so SSH need not be open to the world. Keys only |
 | HTTP | 80 | `0.0.0.0/0`, `::/0` | Let's Encrypt challenge, and the redirect to HTTPS |
 | HTTPS | 443 | `0.0.0.0/0`, `::/0` | The app |
 
-Nothing else: 3000 and 8000 are reached only through Caddy, inside Docker.
+Nothing else: 3000 and 8000 are reached only through Caddy, inside Docker. If your IP changes, edit the SSH rule.
 
 ### 1.3 Elastic IP
 
 EC2 → Network & Security → **Elastic IPs** → Allocate → then Actions → **Associate** → instance `sangam`.
 Note the address: it is `<elastic-ip>` from here on, and it survives stops and restarts.
 
-### 1.4 Install Docker
+### 1.4 Install Docker and clone the repo
 
 From your machine:
 
@@ -98,26 +98,24 @@ On the instance:
 
 ```bash
 sudo apt update && sudo apt -y upgrade
-sudo apt install -y docker.io docker-compose-v2 unattended-upgrades
+sudo apt install -y docker.io docker-compose-v2 docker-buildx git unattended-upgrades
 sudo systemctl enable --now docker
 sudo usermod -aG docker ubuntu
+
+# 4 GB of swap, so a frontend build beside the running app cannot run out of memory
+sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# The repo is public, so cloning needs no credentials
 sudo mkdir -p /opt/sangam && sudo chown ubuntu:ubuntu /opt/sangam
+git clone https://github.com/project-tech4dev/sangam.git /opt/sangam
 exit      # log out and back in so the docker group applies
 ```
 
-Check: `ssh -i ~/Downloads/sangam-admin.pem ubuntu@<elastic-ip> 'docker compose version'` prints a version.
+Check: `ssh -i ~/Downloads/sangam-admin.pem ubuntu@<elastic-ip> 'docker compose version && docker buildx version'`
+prints two versions.
 
-### 1.5 Deploy key for GitHub Actions
-
-A separate key, so the workflow never holds your admin key. On your machine:
-
-```bash
-ssh-keygen -t ed25519 -C "sangam-github-deploy" -f ~/.ssh/sangam-deploy -N ""
-ssh-copy-id -i ~/.ssh/sangam-deploy.pub -o "IdentityFile ~/Downloads/sangam-admin.pem" ubuntu@<elastic-ip>
-ssh -i ~/.ssh/sangam-deploy ubuntu@<elastic-ip> 'echo deploy key works'
-```
-
-`~/.ssh/sangam-deploy` (the private half, no `.pub`) becomes the `EC2_SSH_KEY` secret in Step 5.
+To let a teammate deploy, add their public key to `~ubuntu/.ssh/authorized_keys` and their IP to the SSH rule.
 
 ---
 
@@ -148,14 +146,14 @@ dig +short api.<domain>    # → <elastic-ip>
 
 Supabase dashboard → your project.
 
-### 3.1 Values to copy (you will paste them in Steps 4 and 5)
+### 3.1 Values to copy (you will paste them in Step 4)
 
 | Value | Where in Supabase | Goes to |
 |---|---|---|
-| Project URL `https://<ref>.supabase.co` | Project Settings → **Data API** (or the **Connect** button) | instance `.env` `SUPABASE_URL`, GitHub secret `AWS_NEXT_PUBLIC_SUPABASE_URL` |
-| Publishable key (`sb_publishable_…`, or the legacy `anon` key) | Project Settings → **API Keys** | GitHub secret `AWS_NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
-| Secret key (`sb_secret_…`, or the legacy `service_role` key) | Project Settings → **API Keys** | instance `.env` `SUPABASE_SERVICE_KEY` only. Never in GitHub, never in the frontend |
-| Session pooler connection string | **Connect** → *Connection string* → **Session pooler** (port **5432**) | instance `.env` `DATABASE_URL` |
+| Project URL `https://<ref>.supabase.co` | Project Settings → **Data API** (or the **Connect** button) | `.env` `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL` |
+| Publishable key (`sb_publishable_…`, or the legacy `anon` key) | Project Settings → **API Keys** | `.env` `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
+| Secret key (`sb_secret_…`, or the legacy `service_role` key) | Project Settings → **API Keys** | `.env` `SUPABASE_SERVICE_KEY` only. Never in the frontend, never in a `NEXT_PUBLIC_*` |
+| Session pooler connection string | **Connect** → *Connection string* → **Session pooler** (port **5432**) | `.env` `DATABASE_URL` |
 
 Use the **session** pooler on 5432. The direct host `db.<ref>.supabase.co` is IPv6-only and Docker cannot reach it
 (connections hang rather than fail), and the transaction pooler on 6543 is not supported. Replace `[YOUR-PASSWORD]`
@@ -211,19 +209,25 @@ those three as **private** buckets.
 
 ---
 
-## Step 4. The instance: write `/opt/sangam/.env`
+## Step 4. The instance: write `/opt/sangam/deploy/aws/.env`
 
-The backend reads every variable in this file, and Caddy reads the two domains. On the instance:
+Compose reads this file: the backend gets every variable, the frontend build gets the three `NEXT_PUBLIC_*`, and Caddy
+the two domains. Git ignores it. On the instance:
 
 ```bash
 ssh -i ~/Downloads/sangam-admin.pem ubuntu@<elastic-ip>
-nano /opt/sangam/.env
+nano /opt/sangam/deploy/aws/.env
 ```
 
 ```bash
 # Caddy: the two hosts it serves and gets certificates for
 APP_DOMAIN=app.<domain>
 API_DOMAIN=api.<domain>
+
+# Compiled into the frontend at build time; a change needs a redeploy. Public by design.
+NEXT_PUBLIC_API_URL=https://api.<domain>
+NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable key>
 
 # Supabase (Step 3.1)
 DATABASE_URL=postgresql://postgres.<ref>:<db-password>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres
@@ -246,10 +250,10 @@ LANGFUSE_TRACING_ENVIRONMENT=aws
 ```
 
 ```bash
-chmod 600 /opt/sangam/.env
+chmod 600 /opt/sangam/deploy/aws/.env
 ```
 
-Do **not** add:
+`NEXT_PUBLIC_API_URL` has no trailing slash. Do **not** add:
 
 - `DEV_AUTH`: it would accept `Bearer dev` as a signed-in user.
 - `NEO4J_URI`, if you copy from a local `.env`: unset, the graph switches itself off, but set to a host the instance
@@ -262,55 +266,28 @@ unset means the default in `backend/app/core/config.py`. If Vercel stays up on t
 
 ---
 
-## Step 5. GitHub: environment and secrets
+## Step 5. First deploy
 
-Repo → **Settings**.
+On the instance:
 
-### 5.1 Environment
+```bash
+/opt/sangam/deploy/aws/deploy.sh
+```
 
-**Environments** → New environment → `aws-production` → Configure. Optional but recommended: tick *Required
-reviewers* and add yourself, so every deploy waits for an approval click.
+It checks out `origin/master`, builds both images (~5–10 min the first time, faster once layers are cached), applies
+`db/migrations`, restarts, and ends with `backend healthy at <sha>`, or prints the backend's last 100 log lines and
+fails. The old containers keep serving while it builds.
 
-### 5.2 Secrets
-
-**Secrets and variables → Actions → Secrets** tab → New repository secret, one per row. Secrets, not variables:
-variables appear in the public run logs.
-
-| Secret | Value |
-|---|---|
-| `EC2_HOST` | `<elastic-ip>` |
-| `EC2_USER` | `ubuntu` |
-| `EC2_SSH_KEY` | The whole of `~/.ssh/sangam-deploy`, including the `-----BEGIN…` and `-----END…` lines (`pbcopy < ~/.ssh/sangam-deploy` on a Mac) |
-| `AWS_NEXT_PUBLIC_API_URL` | `https://api.<domain>` (no trailing slash) |
-| `AWS_NEXT_PUBLIC_SUPABASE_URL` | `https://<ref>.supabase.co` |
-| `AWS_NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | The publishable key from Step 3.1 |
-
-The three `NEXT_PUBLIC_*` values are compiled into the frontend at build time, so changing one needs a new deploy, and
-any visitor can read them in the page's JavaScript. They are secrets here only to keep them out of the logs.
-
----
-
-## Step 6. First deploy
-
-1. **Actions** → **Deploy (AWS)** → **Run workflow** → branch `master`.
-   - *Apply db/migrations before restarting*: leave ticked for a database only this deploy uses. If Vercel serves the
-     same database, untick it and apply migrations yourself after a backup (`make migrate ENV=staging`), as the repo
-     does today.
-2. Approve it if you set required reviewers.
-3. The `build` job takes ~5–10 min the first time (cached afterwards); `deploy` ~1–2 min. It ends with
-   `backend healthy at <sha>`, or prints the backend's last 100 log lines and fails.
+- **Migrations** run by default. If Vercel serves the same database and you would rather apply them yourself after a
+  backup (`make migrate ENV=staging`), run `MIGRATE=0 /opt/sangam/deploy/aws/deploy.sh`.
+- **Another ref**: `deploy.sh origin/<branch>`, a tag, or a SHA.
+- The script refuses to run if someone edited files in the checkout; `.env` and `deployed.txt` are ignored and fine.
 
 The first request to each domain makes Caddy fetch its certificate; give it up to a minute.
 
-### 6.1 Make the images private
-
-The first run creates two packages under the org, public by default because the repo is. GitHub → the org →
-**Packages** → `sangam-backend` → Package settings → Danger zone → **Change visibility** → Private. Same for
-`sangam-frontend`. The workflow logs in with its own token, so deploys keep working.
-
 ---
 
-## Step 7. Check it
+## Step 6. Check it
 
 From your machine:
 
@@ -332,28 +309,30 @@ In a browser:
 
 ## Everyday
 
+All on the instance, in `/opt/sangam/deploy/aws` (plain `docker compose` finds `compose.yaml` there):
+
 | To | Do |
 |---|---|
-| Deploy a new version | Actions → Deploy (AWS) → Run workflow on `master` |
-| See what is running | `ssh … 'cat /opt/sangam/deployed.txt'` |
-| Change a backend setting | Edit `/opt/sangam/.env`, then `docker compose -f docker-compose.prod.yml up -d` in `/opt/sangam` |
-| Change a `NEXT_PUBLIC_*` value | Edit the GitHub secret, then re-run the workflow |
-| Read logs | `cd /opt/sangam && docker compose -f docker-compose.prod.yml logs -f backend` (or `frontend`, `caddy`) |
-| Restart | `docker compose -f docker-compose.prod.yml restart backend` |
+| Deploy a new version | `./deploy.sh` |
+| See what is running, and when it went out | `tail deployed.txt` |
+| Change a backend setting | Edit `.env`, then `docker compose up -d` |
+| Change a `NEXT_PUBLIC_*` value or a domain | Edit `.env`, then `./deploy.sh` (it rebuilds the frontend) |
+| Read logs | `docker compose logs -f backend` (or `frontend`, `caddy`) |
+| Restart | `docker compose restart backend` |
 | Watch memory during an Import | `docker stats` |
 
-A manual `docker compose pull` on the instance needs a GHCR login once the packages are private: a personal access
-token (classic) with `read:packages`, then `echo <token> | docker login ghcr.io -u <github-user> --password-stdin`.
+**A deploy interrupts running Imports and chats.** The backend gets 30 s to finish on restart; an Import takes
+15–20 min. Check nobody is mid-Import before deploying.
 
 ### Rolling back
 
-Every deploy's images stay in GHCR under their commit SHA:
+Deploy the older commit; the script rebuilds it, mostly from cached layers:
 
 ```bash
-cd /opt/sangam && TAG=<older-sha> docker compose -f docker-compose.prod.yml up -d
+./deploy.sh <older-sha>      # deployed.txt lists the SHAs that went out
 ```
 
-or run the workflow from an older commit's branch or tag. Migrations are additive and are not rolled back.
+Migrations are additive and are not rolled back, so use `MIGRATE=0` when the older commit has fewer of them.
 
 ---
 
@@ -361,32 +340,43 @@ or run the workflow from an older commit's branch or tag. Migrations are additiv
 
 | Symptom | Likely cause |
 |---|---|
-| Certificate error for a minute after the first deploy | Caddy is still getting the certificate. Longer: `docker compose … logs caddy`; usually DNS not yet pointing at `<elastic-ip>`, port 80 closed, or an orange cloud |
-| `deploy` job: `ssh: handshake failed` | `EC2_SSH_KEY` is not the full private key, or the `.pub` was not added to `~ubuntu/.ssh/authorized_keys` (Step 1.5) |
-| `deploy` job: `/opt/sangam/.env is missing` | Step 4 |
+| Certificate error for a minute after the first deploy | Caddy is still getting the certificate. Longer: `docker compose logs caddy`; usually DNS not yet pointing at `<elastic-ip>`, port 80 closed, or an orange cloud |
+| `ssh: connect … timed out` | Your IP is not in the SSH rule (Step 1.2) |
+| `deploy/aws/.env is missing` | Step 4 |
+| `set NEXT_PUBLIC_… in .env` (or `APP_DOMAIN`) | That line is missing from `.env` |
+| `the checkout has local changes` | `git -C /opt/sangam status`; discard with `git -C /opt/sangam checkout .` |
+| Build killed, or the instance freezes while building | Out of memory: check the swap from Step 1.4 is on (`swapon --show`) |
 | `backend did not become healthy`, logs mention neo4j | `NEO4J_URI` is set in `.env`; remove it |
-| …logs mention a missing table or `_verify_sql_catalog` | The database is not migrated; run the workflow with *migrate* ticked, or `make migrate ENV=staging` |
+| …logs mention a missing table or `_verify_sql_catalog` | The database is not migrated; run without `MIGRATE=0`, or `make migrate ENV=staging` |
 | …connections hang or time out | `DATABASE_URL` uses the direct host or port 6543; use the session pooler on 5432 |
 | Sign-in returns to the Vercel site | Step 3.2's redirect URL |
 | Google error `redirect_uri_mismatch` | The Google client's redirect URI is not exactly `https://<ref>.supabase.co/auth/v1/callback` |
 | "Access blocked: app is in testing" | Publish the consent screen (Step 3.4), or add the user as a test user |
 | Pages load but API calls fail with CORS errors in the console | `ALLOWED_ORIGINS` is not exactly `https://app.<domain>` |
-| Frontend calls the wrong API host | `AWS_NEXT_PUBLIC_API_URL` was wrong at build time; fix the secret and redeploy |
+| Frontend calls the wrong API host | `NEXT_PUBLIC_API_URL` was wrong at build time; fix `.env` and `./deploy.sh` |
+| Disk filling up | `docker system df`; `docker builder prune` clears the build cache |
 
 ---
 
 ## Differences from Vercel
 
-- No 1800 s ceiling: a long Import runs to the end.
+- No 1800 s ceiling: a long Import runs to the end, unless a deploy restarts the backend under it.
 - One instance, one container each: no autoscaling, no cold starts, and no keep-warm cron needed.
-- You patch the OS (`unattended-upgrades` handles security updates) and watch the disk; the workflow prunes old images.
+- You patch the OS (`unattended-upgrades` handles security updates) and watch the disk; the script prunes old images.
 
 ## Hardening (optional)
 
-- **Narrow SSH.** Replace the `0.0.0.0/0` rule with your IP and run deploys through AWS SSM (`aws ssm send-command`)
-  instead of SSH, or allow GitHub's runner ranges (`curl -s https://api.github.com/meta | jq .actions`; long and
-  changing).
 - **Cloudflare proxy.** To hide the instance IP behind the orange cloud: set SSL/TLS mode to *Full (strict)*, and know
   that responses over ~100 s are cut, which breaks long Imports.
 - **Back up `caddy_data`** if you rebuild the instance often; Let's Encrypt rate-limits re-issuing the same certificate.
 - Instance snapshots are not needed for data (it is all in Supabase); the instance is rebuildable from this guide.
+
+## Phase 2: deploying from GitHub Actions
+
+`.github/workflows/deploy-aws.yml` is kept for later and is not in use. It builds the images on GitHub, pushes them to
+GHCR, and has the instance pull them over SSH, so the instance stops building and deploys gain an approval step and a
+log in GitHub. Before switching to it, apply the open review points: run only from `master`, push `:latest` only after
+approval (or drop it), pin each action to a commit SHA, give the deploy job `packages: read`, log out of GHCR in a
+`trap`, and let the health loop print the logs when `up` fails. It then also needs a deploy key, the SSH rule opened to
+GitHub's runners (or AWS SSM instead of SSH), an `aws-production` environment, and the `NEXT_PUBLIC_*` values as
+repository secrets.
