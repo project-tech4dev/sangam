@@ -507,7 +507,8 @@ file it pages back. `RESEARCH_PAGE_LIMIT` and `RESEARCH_MODEL_CALL_LIMIT`, when 
 it saves what it has) and model calls; Vercel's 1800 s is the stop that always applies.
 Once a `save_research` call is refused for a malformed payload, the rest of that run moves to `MODEL`.
 A Haiku grader checks the save and summary against `prompts/research_rubric.md` and allows one revision.
-Summaries of long runs are written by `UTILITY_MODEL` at the same thresholds as before.
+Summaries of long runs are written by `UTILITY_MODEL` at a fixed 170k tokens, keeping the last 20k, for every model
+(`SUMMARY_TRIGGER`/`SUMMARY_KEEP` in `agentkit/middleware.py`), and keep each source's full URL beside its facts.
 
 **How many organisations Import researches at once is a setting, not a number in the
 prompt.** `MAX_PARALLEL_RESEARCH` (default 8) bounds one *wave*, never the size of the list:

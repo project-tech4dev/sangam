@@ -327,7 +327,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             *([EscalateAfterFailedSave(strong)] if research_spec != settings.model else []),
             *fallback(research_spec, settings.model),
             research_rubric(utility),
-            cheap_summarizer(research, utility, backend),
+            cheap_summarizer(utility, backend),
         ],
     }
     # save_questions pauses every promote_research for staff to approve, with a button per open question.
@@ -382,7 +382,7 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             tool_errors(),
             clear_old_tool_results(),
             *fallback(settings.model, research_spec),
-            cheap_summarizer(strong, utility, backend),
+            cheap_summarizer(utility, backend),
             CallerNote(),
             ChosenSources(),
             TickedSources(),
