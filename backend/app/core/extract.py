@@ -8,6 +8,7 @@ import io
 import posixpath
 import re
 import zipfile
+from functools import lru_cache
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -144,6 +145,38 @@ def _normalize_line(line: str) -> str:
         words = re.split(r"\s{2,}", line.strip())
         return " ".join(word.replace(" ", "") for word in words)
     return line
+
+
+def _snippet(text: str, terms: list[str], width: int = 80) -> str | None:
+    """The text around the first term found, on one line; None when no term is there."""
+    flat = " ".join(text.split())
+    low = flat.lower()
+    at = min((i for i in (low.find(t) for t in terms) if i >= 0), default=-1)
+    if at < 0:
+        return None
+    start, end = max(at - width, 0), at + width * 2
+    return ("…" if start else "") + flat[start:end].strip() + ("…" if end < len(flat) else "")
+
+
+@lru_cache(maxsize=4)
+def _pdf_pages(path: str, mtime_ns: int, size: int) -> tuple[str, ...]:
+    """Every page's text, kept per file version, so a second find in the same report extracts nothing again."""
+    pages = (((p.extract_text() or "").strip()) for p in PdfReader(path).pages)
+    return tuple("\n".join(_normalize_line(l) for l in t.splitlines()) for t in pages)
+
+
+def find_in_pdf(source: Path, terms: list[str]) -> tuple[list[tuple[int, str]], int, int]:
+    """(page, snippet) for each page naming any term, the page count, and how many pages had no text to search."""
+    stat = source.stat()
+    pages = _pdf_pages(str(source), stat.st_mtime_ns, stat.st_size)
+    hits = [(n, s) for n, t in enumerate(pages, 1) if t and (s := _snippet(t, terms)) is not None]
+    return hits, len(pages), sum(1 for t in pages if not t)
+
+
+def find_in_docx(data: bytes, terms: list[str]) -> tuple[list[tuple[int, str]], int]:
+    """(paragraph, snippet) for each paragraph naming any term, and the paragraph count."""
+    paras = docx_paragraphs(data)
+    return [(n, s) for n, p in enumerate(paras, 1) if (s := _snippet(p, terms)) is not None], len(paras)
 
 
 def extract_pdf_text(source: Path, start_page: int = 1, end_page: int | None = None) -> tuple[str, int]:

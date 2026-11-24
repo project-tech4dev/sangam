@@ -108,7 +108,9 @@ class PublicGuard(AgentMiddleware):
                 run.pages[page_key(args.get("url"))] = text
             elif name == "fetch_document" and (m := _SAVED.match(text)):
                 run.files[m.group(1)] = page_key(args.get("url"))
-            elif name == "read_document_pages" and (url := run.files.get(_safe_name(str(args.get("filename") or "")))):
+            # A find lists snippets, not pages read, so a quote from one must not pass the quote check.
+            elif name == "read_document_pages" and not args.get("find") and \
+                    (url := run.files.get(_safe_name(str(args.get("filename") or "")))):
                 run.pages[url] = run.pages.get(url, "") + "\n" + text
         return result
 

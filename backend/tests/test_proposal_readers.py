@@ -172,6 +172,12 @@ class TestPublicGuard:
                                      files=files)
         assert state.pages == {"rchiips.org/nfhs/assam.pdf": "\nanaemia 65.9"}
 
+    async def test_a_find_snippet_is_not_a_page_read(self):
+        files = {"NFHS_5_Assam.pdf": "rchiips.org/nfhs/assam.pdf"}
+        _, _, state = await self.run("read_document_pages", {"filename": "NFHS_5_Assam.pdf", "find": "anaemia"},
+                                     reply="page 41: …anaemia 65.9…", files=files)
+        assert state.pages == {}
+
     async def test_a_refused_page_is_not_kept_and_its_host_is_shown(self):
         _, _, state = await self.run("read_page", {"url": "https://x.org/a"}, reply="REFUSED: robots.txt")
         assert state.pages == {} and state.unopened == {"x.org"}

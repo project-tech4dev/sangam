@@ -52,8 +52,9 @@ Then report back the summary only — slug, status, counts, what you found and w
 - `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
 - `read_page(url)` — a CSR page, an about page, a press release.
 - `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and
-  filings are PDFs, and that is where the figures are. Read a range, then read on. Never describe
-  a page you have not read.
+  filings are PDFs, and that is where the figures are. In a long report, first call it with
+  `find="CSR obligation|Annexure II|Form CSR-2"` for the page numbers, then read those pages; don't
+  guess ranges. Never describe a page you have not read.
 - `read_source_rows(name, sheet, documents)` — LAST, after the web, on the document ids your task names: the staff workbooks (statutory CSR filing
   exports, the CSO funder workbook), rows as `cell=value` with a `[source:…]` marker. Cite the
   cell; never fetch the dataset's `source_url`. Once called, the three web tools above refuse.

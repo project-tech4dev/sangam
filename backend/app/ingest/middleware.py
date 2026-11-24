@@ -38,6 +38,13 @@ from app.integrations.tracing import score_answer
 logger = logging.getLogger(__name__)
 
 READING_TOOLS = frozenset({"read_page", "fetch_document", "read_document_pages"})
+
+
+def _reads(call: dict) -> bool:
+    """A find inside a document only lists page numbers, so it spends none of the reading limit."""
+    finding = call["name"] == "read_document_pages" and (call.get("args") or {}).get("find")
+    return call["name"] in READING_TOOLS and not finding
+
 SAVE_TOOL = "save_research"
 CHECKPOINT_SIZE_WAIT_S = 2
 # The phrase the researcher copies into stopped_reason; the Working board matches it.
@@ -77,13 +84,13 @@ class ReadingLimit(AgentMiddleware):
 
     def _refusal(self, request: Any) -> ToolMessage | None:
         call = request.tool_call
-        if call["name"] not in READING_TOOLS:
+        if not _reads(call):
             return None
         # Counted from the run's own messages, so parallel reads in one turn are numbered in order.
         n = 0
         for message in _messages(request.state):
             for tc in getattr(message, "tool_calls", None) or []:
-                if tc["name"] in READING_TOOLS:
+                if _reads(tc):
                     n += 1
                     if tc["id"] == call["id"]:
                         return _refused(call) if n > self.limit else None

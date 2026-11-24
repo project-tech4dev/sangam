@@ -119,6 +119,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-17 · (unmerged) · A metric's period is one of four shapes, rewritten when exact and refused otherwise; old research is rewritten, never refused (#200). A programme placed only in a fiscal year starts on its 1 April, `basis: derived` (#199).
 - 2026-11-24 · #481 · A `compat:` model tier calls any OpenAI-compatible endpoint (`COMPAT_BASE_URL`, `COMPAT_API_KEY`) for a trial of an open model; boot refuses unless every tier is `compat:`. The Dockerfile's `uv export` typo from #427 is fixed.
 - 2026-11-24 · #482 · Every agent summarises at a fixed 170k tokens and keeps the last 20k, not 85% of the model's window (850k on a 1M model); the summary keeps each source's full URL.
+- 2026-11-24 · #440 · `read_document_pages(find="CSR obligation|Annexure II")` lists the pages of a long PDF or Word file that name any word, one line each, so a researcher reads those pages instead of guessing ranges; a find spends none of the reading limit, and a scanned PDF is a `blocked` gap.
 
 ## Funder Match and the taxonomy
 
