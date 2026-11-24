@@ -497,7 +497,8 @@ most of an import's tokens, and judging evidence still needs a capable model. Th
 (Haiku 5.5, at low effort) does work with a fixed shape — article extraction, the `catalog-writer`, the
 `workbook-reader` — and `SQL_AUDIT_MODEL` (Haiku 5.5, also at low effort) the post-answer audit. A blank or unset
 model variable means the default in `config.py`, the only place defaults are written; `SQL_AUDIT_MODEL=off`
-disables the audit. A deployed backend reads these from its
+disables the audit. `compat:<model>` puts a tier on any OpenAI-compatible endpoint (`COMPAT_BASE_URL`, `COMPAT_API_KEY`)
+for a trial of an open model, and then every tier must be `compat:` or boot refuses. A deployed backend reads these from its
 Vercel env, which beats the code defaults.
 
 **Import's middleware** (`app/ingest/middleware.py`). Each tier falls back to the next one when a call

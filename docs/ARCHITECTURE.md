@@ -294,6 +294,9 @@ Generated detail (every setting and default): [platform](../openwiki/architectur
 
 - **Models are tiered by how hard the work is**: Opus reasons once per turn, Sonnet reads long pages in parallel, Haiku
   does fixed-shape work. Defaults are written only in `core/config.py`.
+- **A `compat:` tier runs alone.** `compat:<model>` calls any OpenAI-compatible endpoint (`COMPAT_BASE_URL`,
+  `COMPAT_API_KEY`) for a trial of an open model; boot refuses unless every tier is `compat:` (the audit may be off), so
+  no fallback or escalation quietly reaches Claude and the trial measures one model. The graph keeps its OpenAI key.
 - **`MAX_PARALLEL_RESEARCH` is the only placeholder substituted into a prompt**, because a number frozen in prose made the
   setting decorative. The pool size moves with it; Supabase allows 60 connections across every instance.
 

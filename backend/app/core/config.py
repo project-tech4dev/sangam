@@ -162,7 +162,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _compat_runs_alone(self) -> Settings:
-        """One tier on a compat model puts every tier on one, so no call reaches Claude (or another provider)."""
+        """One tier on a compat model puts every tier on one, so no model call reaches Claude; the graph keeps OpenAI."""
         tiers = {"MODEL": self.model, "RESEARCH_MODEL": self.research_model, "UTILITY_MODEL": self.utility_model}
         if self.sql_audit_model:
             tiers["SQL_AUDIT_MODEL"] = self.sql_audit_model
@@ -170,6 +170,8 @@ class Settings(BaseSettings):
         if others and len(others) < len(tiers):
             raise ValueError(f"a compat: tier needs every tier on compat:, but {', '.join(others)} is not "
                              "(SQL_AUDIT_MODEL may be off)")
+        if not others and not (self.compat_base_url and self.compat_api_key):
+            raise ValueError("compat: tiers need COMPAT_BASE_URL and COMPAT_API_KEY set")
         return self
 
     @property
