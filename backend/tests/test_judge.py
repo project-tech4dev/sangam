@@ -63,6 +63,14 @@ class TestRun:
         [out] = await judge.run([differs()], {URL: FACTS}, CONTEXT, Model(answer(True, affected_findings=[0, 2, 9])))
         assert out.judgement["affected_findings"] == [2]
 
+    async def test_only_a_new_fact_quoted_from_the_added_lines_is_kept(self):
+        page = replace(check(), added=("Applications for the 2027 round", "close on 31 March."))
+        facts = [NewFact(field="rfp", excerpt="Applications for the 2027  round close on 31 March."),  # spans two lines
+                 NewFact(field="rfp", excerpt="Grant applications open until March 2027"),  # a paraphrase
+                 NewFact(field="rfp", excerpt="  ")]
+        [out] = await judge.run([page], {URL: FACTS}, CONTEXT, Model(answer(True, new_facts=facts)))
+        assert [f["excerpt"] for f in out.judgement["new_facts"]] == [facts[0].excerpt]
+
 
 class TestAsk:
     def test_the_diff_is_tagged_as_data_and_the_context_follows(self):

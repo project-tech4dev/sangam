@@ -24,6 +24,9 @@ API = "https://api.tavily.com/search"
 RESULTS = 5  # per search; three searches on one site rarely find more than a handful worth a look
 SNIPPET = 500
 NEW = "new"
+# A page on these is one account among many: searching the host would find other organisations' pages.
+SHARED_HOSTS = ("facebook.com", "instagram.com", "linkedin.com", "twitter.com", "x.com", "youtube.com", "google.com")
+SHARED_ROOTS = ("wordpress.com", "blogspot.com", "medium.com")  # shared bare; a subdomain is one blog
 
 SUBJECT_SQL = """
     SELECT coalesce(canonical_name, entity_name) AS name, website FROM entity_research
@@ -79,8 +82,8 @@ class Discovery:
     on_site: int = 0
     already_read: int = 0
     new: list[tuple[Lead, str]] = field(default_factory=list)  # (lead, why it matters)
-    dropped: list[tuple[Lead, str]] = field(default_factory=list)  # picked, then found to be a source already read
-    failed: list[str] = field(default_factory=list)  # searches that did not answer
+    dropped: list[tuple[Lead, str]] = field(default_factory=list)  # picked, then already read, dead or unverified
+    failed: list[str] = field(default_factory=list)  # a search or the lead judge that did not answer
     skipped: str = ""
 
 
@@ -94,6 +97,10 @@ def domain_of(url: str | None) -> str | None:
         return None
     host = urlsplit(url if "//" in url else f"https://{url}").hostname or ""
     return host.removeprefix("www.") or None
+
+
+def shared(domain: str) -> bool:
+    return domain in SHARED_ROOTS or any(domain == h or domain.endswith(f".{h}") for h in SHARED_HOSTS)
 
 
 def on_site(url: str, domain: str) -> bool:
@@ -130,12 +137,14 @@ async def run(subject: Subject | None, known_urls: set[str], known_hashes: set[s
         return Discovery(skipped="no TAVILY_API_KEY")
     if subject is None or not subject.domain:
         return Discovery(skipped="no website recorded for it")
+    if shared(subject.domain):
+        return Discovery(skipped=f"its website is on a shared host ({subject.domain})")
     leads: dict[str, Lead] = {}
     for query in queries(subject.name):
         try:
             results = await search(client, api_key, query, subject.domain)
         except Exception as exc:  # noqa: BLE001 — one failed search leaves the other two
-            found.failed.append(f"{query} ({type(exc).__name__})")
+            found.failed.append(f"search {query} ({type(exc).__name__})")
             continue
         found.searched += 1
         for result in results:
@@ -148,26 +157,28 @@ async def run(subject: Subject | None, known_urls: set[str], known_hashes: set[s
     found.on_site = len(leads)
     unread = [lead for url, lead in leads.items() if url not in known_urls]
     found.already_read = found.on_site - len(unread)
-    for lead, why in await _pick(unread, subject, context, model):
+    for lead, why in await _pick(unread, subject, context, model, found):
         today = await fetch_status.fetch_today(lead, scratch)
         if today.fingerprint and today.fingerprint in known_hashes:
             found.dropped.append((lead, "the same text as a source already read"))
         elif today.status == fetch_status.OK:
             found.new.append((lead, why))
         else:
-            found.new.append((lead, f"{why} ({today.status}: {today.reason})"))
+            found.dropped.append((lead, f"{today.status}: {today.reason}"))
     return found
 
 
-async def _pick(leads: list[Lead], subject: Subject, context: Context, model: Any) -> list[tuple[Lead, str]]:
-    """Only a yes is new; when the judge cannot answer, every lead is kept, since missing one costs more."""
+async def _pick(leads: list[Lead], subject: Subject, context: Context, model: Any,
+                found: Discovery) -> list[tuple[Lead, str]]:
+    """Only a yes is new; when the judge cannot answer, none is, since the next check searches again."""
     if not leads:
         return []
     try:
         answer: Picks = await model.ainvoke([SystemMessage(PROMPT), HumanMessage(ask(leads, subject, context))])
-    except Exception as exc:  # noqa: BLE001 — an unjudged lead is still a lead
+    except Exception as exc:  # noqa: BLE001 — an unjudged lead waits for the next check
         logger.warning("source-check discovery judge failed for %s: %s", subject.name, exc)
-        return [(lead, f"judge failed ({type(exc).__name__})") for lead in leads]
+        found.failed.append(f"lead judge ({type(exc).__name__}), {len(leads)} leads not judged")
+        return []
     picked = {p.number: p for p in answer.picks if 1 <= p.number <= len(leads)}
     return [(leads[n - 1], f"{p.what}: {p.reason}") for n, p in sorted(picked.items())]
 
@@ -180,5 +191,5 @@ def describe(slug: str, found: Discovery) -> str:
     lines = [head]
     lines += [f"  {NEW:10}  {lead.url}  ({why[:200]})" for lead, why in found.new]
     lines += [f"  {'dropped':10}  {lead.url}  ({why})" for lead, why in found.dropped]
-    lines += [f"  search failed: {q}" for q in found.failed]
+    lines += [f"  failed: {f}" for f in found.failed]
     return "\n".join(lines)

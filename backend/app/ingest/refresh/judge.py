@@ -9,6 +9,7 @@ from typing import Any, Literal
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from app.ingest.reading.fingerprint import normalise
 from app.ingest.refresh.compare import CHANGED, DIFFERS, MINOR, Check, counts
 from app.ingest.research.expectations import concepts_for
 
@@ -101,6 +102,9 @@ async def _judge_one(check: Check, sentences: list[str], context: Context, model
         logger.warning("source-check judge failed on %s: %s", check.baseline.url, exc)
         return replace(check, status=CHANGED, reason=f"{check.reason}; judge failed ({type(exc).__name__})")
     answer.affected_findings = [n for n in answer.affected_findings if 1 <= n <= len(sentences)]
+    added = normalise("\n".join(check.added))
+    # A paraphrase would later read as the page's own words, so only a real quote is kept.
+    answer.new_facts = [f for f in answer.new_facts if (quote := normalise(f.excerpt)) and quote in added]
     return replace(check, status=CHANGED if answer.meaningful else MINOR,
                    reason=f"{check.reason}; judge: {answer.reason}", judgement=answer.model_dump())
 

@@ -5,17 +5,26 @@ from __future__ import annotations
 from dataclasses import replace
 
 from app.ingest.refresh.compare import CHANGED, DIFFERS, Check, counts
+from app.ingest.refresh.diff import paragraphs
 from app.ingest.refresh.discover import NEW, Discovery
 
 NOTHING, REFRESH, FULL_PULL = "nothing to do", "refresh", "full pull"
 ACT_ON = ("changed", "dead")  # with any new source, these need the update; unchanged, minor and unverified do not
-REDESIGN = 0.5  # more than this share of sources changing at once is a new site, not news on the old one
+REDESIGN = 0.5  # more than this share of sources rebuilt at once is a new site, not news on the old one
+MIN_REDESIGN_SOURCES = 4  # with fewer, one page edit would already be "most of the site"
 REDESIGN_REASON = "most of its sources changed at once, so it was not judged"
 
 
 def redesigned(checks: list[Check]) -> bool:
-    """Read after the hash stage, before anything narrows `differs` down."""
-    return sum(c.status == DIFFERS for c in checks) > len(checks) * REDESIGN
+    """Read after the diff stage, so a new footer year on every page is not a redesign."""
+    if len(checks) < MIN_REDESIGN_SOURCES:
+        return False
+    return sum(_rebuilt(c) for c in checks) > len(checks) * REDESIGN
+
+
+def _rebuilt(check: Check) -> bool:
+    """Most of the page's old text is gone, not one line of it."""
+    return check.status == DIFFERS and len(check.removed) > len(paragraphs(check.old_text or "")) * REDESIGN
 
 
 def settle(checks: list[Check]) -> list[Check]:

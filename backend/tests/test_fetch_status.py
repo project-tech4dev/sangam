@@ -89,7 +89,17 @@ class TestFetchToday:
         monkeypatch.setattr(fetch_status, "download", download)
         monkeypatch.setattr(fetch_status, "document_text", lambda path: "Annual report")
         today = await fetch_status.fetch_today(source(kind="document"), tmp_path)
-        assert seen == [tmp_path] and (today.status, today.text) == (OK, "Annual report")
+        assert seen[0].parent == tmp_path and (today.status, today.text) == (OK, "Annual report")
+
+    async def test_two_documents_with_the_same_name_keep_their_own_files(self, monkeypatch, tmp_path):
+        async def download(url, filename, directory):
+            (directory / "annual-report.pdf").write_bytes(url.encode())
+            return Fetched(url, final_url=url, status=200, path=directory / "annual-report.pdf")
+        monkeypatch.setattr(fetch_status, "download", download)
+        monkeypatch.setattr(fetch_status, "document_text", lambda path: "")
+        urls = ["https://funder.example/2023/annual-report.pdf", "https://funder.example/2024/annual-report.pdf"]
+        today = [await fetch_status.fetch_today(source(u, "document"), tmp_path) for u in urls]
+        assert [t.path.read_bytes() for t in today] == [u.encode() for u in urls]
 
     async def test_a_document_is_fingerprinted_by_the_tools_rule(self, monkeypatch, tmp_path):
         async def download(url, filename, directory):
@@ -131,13 +141,12 @@ class TestFetchToday:
         assert today.status == UNVERIFIED and today.fingerprint is None
 
     async def test_fetch_all_runs_a_few_at_once_and_keeps_the_order(self, monkeypatch, tmp_path):
-        running, peak, folders = 0, 0, []
+        running, peak = 0, 0
 
         async def fetch_today(source, folder):
             nonlocal running, peak
             running += 1
             peak = max(peak, running)
-            folders.append(folder)
             await asyncio.sleep(0.01)
             running -= 1
             return fetch_status.Today(source.url, OK, "HTTP 200")
@@ -145,7 +154,7 @@ class TestFetchToday:
         urls = [f"https://funder.example/{n}" for n in range(8)]
         today = await fetch_status.fetch_all([source(u) for u in urls], tmp_path)
         assert [t.url for t in today] == urls
-        assert peak == fetch_status.FETCH_AT_ONCE and len(set(folders)) == len(urls)
+        assert peak == fetch_status.FETCH_AT_ONCE
 
 def _pdf(text: str) -> bytes:
     writer = PdfWriter()
