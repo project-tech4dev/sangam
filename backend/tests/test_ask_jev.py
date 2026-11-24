@@ -106,6 +106,13 @@ def test_skill_agreement_is_with_the_first_skill_read(scores, skill, label, agre
     assert scores == [("jev_skill_agree", agree)]
 
 
+def test_a_follow_up_answered_from_the_chat_is_not_scored(scores):
+    jev.score_route(_decision(route="catalog"), jev.Did((), False), follow_up=True)
+    assert scores == []
+    jev.score_route(_decision(route="off_topic"), jev.Did((), False), follow_up=True)
+    assert scores == [("jev_route_agree", 1.0)]
+
+
 def test_an_unanswered_question_scores_nothing(scores):
     empty = Decision({}, "jev-latest", 0, True, 0, 0.0)
     jev.score_route(empty, jev.Did((), True))
@@ -116,33 +123,33 @@ def test_an_unanswered_question_scores_nothing(scores):
 def _shadow(monkeypatch, route="shadow", skill="shadow", decision=None):
     sent = []
 
-    def fake_decide(state, questions, *, name, settings):
+    async def fake_decide(state, questions, *, name, settings):
         sent.append((state, set(questions), name))
         return decision
 
-    monkeypatch.setattr(jev, "decide", fake_decide)
+    monkeypatch.setattr(jev, "adecide", fake_decide)
     settings = Settings(_env_file=None, typesafe_api_key="k", jev_route=route, jev_skill=skill)
     return jev.jev_shadow(settings, jev.skill_catalog(SKILLS_DIR)), sent
 
 
-def test_shadow_asks_after_the_answer_and_scores_both(monkeypatch, scores):
+async def test_shadow_asks_after_the_answer_and_scores_both(monkeypatch, scores):
     hook, sent = _shadow(monkeypatch, decision=_decision())
-    assert hook.after_agent({"messages": KABIL}, None) is None
+    assert await hook.aafter_agent({"messages": KABIL}, None) is None
     assert sent == [({"question": KABIL[0].text, "previous_question": None}, {"route", "skill"}, "jev_route_skill")]
     assert scores == [("jev_route_agree", 1.0), ("jev_skill_agree", 1.0)]
 
 
-def test_shadow_asks_only_the_questions_switched_on(monkeypatch, scores):
+async def test_shadow_asks_only_the_questions_switched_on(monkeypatch, scores):
     hook, sent = _shadow(monkeypatch, route="off", decision=None)
-    hook.after_agent({"messages": KABIL}, None)
+    await hook.aafter_agent({"messages": KABIL}, None)
     assert sent[0][1] == {"skill"}
 
 
-def test_shadow_with_no_question_or_no_answer_scores_nothing(monkeypatch, scores):
+async def test_shadow_with_no_question_or_no_answer_scores_nothing(monkeypatch, scores):
     hook, sent = _shadow(monkeypatch, decision=None)
-    hook.after_agent({"messages": [AIMessage("hi")]}, None)
+    await hook.aafter_agent({"messages": [AIMessage("hi")]}, None)
     assert sent == []
-    hook.after_agent({"messages": KABIL}, None)
+    await hook.aafter_agent({"messages": KABIL}, None)
     assert len(sent) == 1 and scores == []
 
 

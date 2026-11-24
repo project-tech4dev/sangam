@@ -13,7 +13,7 @@ from app.ask.audit import DATA_TOOLS
 from app.ask.middleware import this_turn
 from app.core.config import Settings
 from app.integrations.tracing import score_answer
-from app.integrations.typesafe import Decision, decide
+from app.integrations.typesafe import Decision, adecide
 
 QUESTION_CHARS = 1000
 NO_SKILL = "none"
@@ -83,8 +83,11 @@ def did(messages: list[BaseMessage]) -> Did:
     return Did(tuple(skills), used)
 
 
-def route_agrees(route: str, label: Did) -> bool:
-    """The turn is the label: a catalog question runs a data tool, and the other two do not."""
+def route_agrees(route: str, label: Did, follow_up: bool = False) -> bool | None:
+    """The turn is the label: a catalog question runs a data tool, and the other two do not. None when it cannot
+    tell: a follow-up answered from the chat is catalog too, with no tool."""
+    if route == "catalog" and follow_up and not label.used_data:
+        return None
     return (route == "catalog") == label.used_data
 
 
@@ -93,13 +96,14 @@ def skill_agrees(skill: str, label: Did) -> bool:
     return skill == (label.skills[0] if label.skills else NO_SKILL)
 
 
-def score_route(decision: Decision, label: Did) -> None:
+def score_route(decision: Decision, label: Did, follow_up: bool = False) -> None:
     route, confidence, probabilities = decision.choice("route")
-    if route is None:
+    agrees = route_agrees(route, label, follow_up) if route else None
+    if agrees is None:
         return
     score_answer(
         "jev_route_agree",
-        1.0 if route_agrees(route, label) else 0.0,
+        1.0 if agrees else 0.0,
         comment=f"jev={route} ({confidence:.2f}); data tool ran: {label.used_data}",
         metadata={"probabilities": probabilities, "latency_ms": decision.latency_ms},
     )
@@ -123,15 +127,15 @@ def jev_shadow(settings: Settings, skills: dict[str, str]):
     asking = {k: v for k, v in questions(skills).items() if k in wanted}
 
     @after_agent(name="jev_shadow")
-    def _shadow(state, runtime):
+    async def _shadow(state, runtime):
         state_in = asked(state["messages"])
         if state_in is None:
             return
-        decision = decide(state_in, asking, name="jev_route_skill", settings=settings)
+        decision = await adecide(state_in, asking, name="jev_route_skill", settings=settings)
         if decision is None:
             return
         label = did(state["messages"])
-        score_route(decision, label)
+        score_route(decision, label, follow_up=state_in["previous_question"] is not None)
         score_skill(decision, label)
 
     return _shadow

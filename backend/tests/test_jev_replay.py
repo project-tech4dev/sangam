@@ -39,6 +39,8 @@ ROOTS = [
     obs(traceId="t1", sessionId="s1", startTime="2026-11-20T10:00", input="How well does KABIL fit Axis?"),
     obs(traceId="t3", sessionId="s2", startTime="2026-11-20T11:00", input={"resume": "yes"}),
     obs(traceId="t4", sessionId="s3", startTime="2026-11-20T12:00", input="what is the weather today?"),
+    obs(traceId="t5", startTime="2026-11-20T13:00", input="Which funders support Assam?"),
+    obs(traceId="t6", startTime="2026-11-20T13:01", input="hello"),
 ]
 TOOLS = {
     "t1": [obs(name="compare_fit", startTime="2", input="{}"),
@@ -46,6 +48,8 @@ TOOLS = {
     "t2": [obs(name="read_file", startTime="1", input={"file_path": "/large_tool_results/x"}),
            obs(name="db_query", startTime="2", input="not json")],
     "t4": [],
+    "t5": [],
+    "t6": [],
 }
 API = SimpleNamespace(observations=FakeObservations(ROOTS, TOOLS))
 
@@ -53,7 +57,7 @@ API = SimpleNamespace(observations=FakeObservations(ROOTS, TOOLS))
 def test_turns_skip_resumes_and_carry_the_previous_question():
     turns = replay.turns(API, "production", None)
     assert [(t["trace"], t["previous"]) for t in turns] == [
-        ("t1", None), ("t2", "How well does KABIL fit Axis?"), ("t4", None)]
+        ("t1", None), ("t2", "How well does KABIL fit Axis?"), ("t4", None), ("t5", None), ("t6", None)]
 
 
 def test_labels_come_from_the_tool_observations():
@@ -69,19 +73,20 @@ def _decision(route, skill, latency=100):
 
 
 def test_main_replays_and_reports(monkeypatch, tmp_path, capsys):
-    picks = iter([_decision("catalog", "funder-comparison"), _decision("catalog", "none", 300), None])
+    picks = iter([_decision("catalog", "funder-comparison"), _decision("catalog", "none", 300), None,
+                  _decision("off_topic", "none"), _decision("off_topic", "none")])
     monkeypatch.setattr(replay, "get_settings", lambda: Settings(_env_file=None, typesafe_api_key="k"))
     monkeypatch.setattr(replay, "get_client", lambda: SimpleNamespace(api=API))
     monkeypatch.setattr(replay, "decide", lambda *a, **kw: next(picks))
     out = tmp_path / "jev.jsonl"
     assert replay.main(["--out", str(out)]) == 0
     printed = capsys.readouterr().out
-    assert "3 typed Ask questions" in printed
-    assert "2 decided, 1 failed" in printed
-    assert "route: agrees 2/2 (100%)" in printed
-    assert "skill: agrees 2/2 (100%)" in printed
+    assert "5 typed Ask questions" in printed
+    assert "4 decided, 1 failed" in printed
+    assert "route: agrees 4/4 (100%)" in printed
+    assert "skill: agrees 4/4 (100%)" in printed
     assert "at p>=0.9: 0 decided" in printed  # skill confidence 0.6
-    assert len(out.read_text().splitlines()) == 2
+    assert len(out.read_text().splitlines()) == 4
 
 
 def test_main_without_a_key_stops(monkeypatch, capsys):

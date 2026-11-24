@@ -70,6 +70,31 @@ def test_an_unanswered_or_mistyped_question_reads_as_nothing(settings):
     assert decision.noul("route") is None
 
 
+def test_odd_fields_read_as_nothing_rather_than_raise(settings):
+    body = {"usage": "n/a", "answers": {
+        "route": {"type": "choice", "choice": "catalog", "confidence": "high", "probabilities": {"catalog": "x"}},
+        "skill": {"type": "choice", "choice": 3},
+        "ok": {"type": "noul", "noul": "0.8"},
+    }}
+    decision = _decide(settings, lambda r: httpx.Response(200, json=body))
+    assert decision.estimated is True
+    assert decision.choice("route") == ("catalog", 0.0, {})
+    assert decision.choice("skill") == (None, 0.0, {})
+    assert decision.noul("ok") is None
+
+
+async def test_the_async_call_reads_the_same_and_fails_the_same(settings, generations, caplog):
+    def call(handler):
+        return typesafe.adecide({"question": "q"}, QUESTIONS, name="jev_test", settings=settings,
+                                transport=httpx.MockTransport(handler))
+
+    decision = await call(lambda r: httpx.Response(200, json=ANSWER))
+    assert decision.choice("route")[0] == "catalog" and [n for n, _ in generations] == ["jev_test"]
+    assert await call(lambda r: httpx.Response(500)) is None
+    assert KEY not in caplog.text
+    assert await typesafe.adecide({}, QUESTIONS, name="x", settings=Settings(_env_file=None)) is None
+
+
 def test_missing_usage_is_estimated_from_the_request(settings):
     body = {k: v for k, v in ANSWER.items() if k != "usage"}
     decision = _decide(settings, lambda r: httpx.Response(200, json=body))
@@ -94,6 +119,8 @@ def test_no_key_makes_no_call():
     lambda r: httpx.Response(500),
     lambda r: httpx.Response(200, json={"no": "answers"}),
     lambda r: httpx.Response(200, content=b"not json"),
+    lambda r: httpx.Response(200, json={"answers": ["route"]}),
+    lambda r: httpx.Response(200, json=[1]),
 ])
 def test_a_failure_is_none_and_never_logs_the_key(settings, handler, caplog):
     with caplog.at_level(logging.DEBUG):

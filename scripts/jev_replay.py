@@ -70,7 +70,7 @@ def turns(api, environment: str, since: datetime) -> list[dict]:
     roots = pages(api, name="sangam_ask", is_root_observation=True, environment=environment,
                   from_start_time=since, fields="core,basic,io")
     rows = sorted(
-        ({"trace": _field(r, "traceId") or _field(r, "trace_id"), "session": _field(r, "sessionId") or "",
+        ({"trace": _field(r, "traceId") or _field(r, "trace_id"), "session": _field(r, "sessionId"),
           "at": str(_field(r, "startTime") or _field(r, "start_time")), "question": _field(r, "input")} for r in roots),
         key=lambda r: r["at"],
     )
@@ -80,8 +80,9 @@ def turns(api, environment: str, since: datetime) -> list[dict]:
         question = row["question"]
         if not isinstance(question, str) or not question.strip():
             continue  # a resume or a button answer, not a typed question
-        row["previous"] = last.get(row["session"])
-        last[row["session"]] = question
+        session = row["session"] or row["trace"]  # a trace with no session is a chat of its own
+        row["previous"] = last.get(session)
+        last[session] = question
         out.append(row)
     return out
 
@@ -123,7 +124,7 @@ def main(argv: list[str]) -> int:
         results.append({
             "trace": case["trace"], "question": case["question"][:120],
             "route": route, "route_p": round(route_p, 3), "used_data": did.used_data,
-            "route_agree": route_agrees(route, did) if route else None,
+            "route_agree": route_agrees(route, did, case["previous"] is not None) if route else None,
             "skill": skill, "skill_p": round(skill_p, 3), "model_skill": did.skills[0] if did.skills else NO_SKILL,
             "skill_agree": skill_agrees(skill, did) if skill else None,
             "latency_ms": decision.latency_ms, "tokens": decision.input_tokens,

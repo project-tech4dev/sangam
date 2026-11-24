@@ -81,7 +81,7 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
         # Its verdict is only a Langfuse score, so without Langfuse the call would buy nothing.
         middleware.append(answer_audit(settings.sql_audit_model))
     if settings.typesafe_api_key and settings.langfuse_enabled and "shadow" in (settings.jev_route, settings.jev_skill):
-        # Shadow decisions are only Langfuse scores, after the answer: no wait for the person, no change to the turn.
+        # Shadow decisions are only Langfuse scores, made once the answer has streamed; they never change the turn.
         middleware.append(jev_shadow(settings, skill_catalog(SKILLS_DIR)))
 
     agent = create_deep_agent(
