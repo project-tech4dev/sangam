@@ -36,9 +36,8 @@ async def main(slug: str, until: str) -> None:
     print(baseline.describe(slug, baselines, unrecorded))
     if until == "baseline" or not baselines:
         return
-    # One source at a time: a check is not in a hurry, and a funder's site should not see a burst.
     with tempfile.TemporaryDirectory(prefix="source-check-") as scratch:
-        today = [await fetch_status.fetch_today(b, Path(scratch)) for b in baselines]
+        today = await fetch_status.fetch_all(baselines, Path(scratch))
     print(fetch_status.describe(slug, today))
     if until == "fetch":
         return

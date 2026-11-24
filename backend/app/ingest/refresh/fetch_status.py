@@ -13,6 +13,8 @@ from app.ingest.refresh.baseline import Baseline
 
 OK, UNVERIFIED, DEAD = "ok", "unverified", "dead"
 GONE = (404, 410)
+# A few at once: far quicker than one by one, and still no burst for a funder's site.
+FETCH_AT_ONCE = 3
 
 
 @dataclass(frozen=True)
@@ -39,6 +41,19 @@ async def fetch_today(source: Baseline, scratch: Path) -> Today:
     return replace(today, fingerprint=text_hash(today.text)) if today.status == OK else today
 
 
+async def fetch_all(sources: list[Baseline], scratch: Path) -> list[Today]:
+    """In the baselines' order; each source gets its own folder, so two annual-report.pdf never collide."""
+    gate = asyncio.Semaphore(FETCH_AT_ONCE)
+
+    async def one(index: int, source: Baseline) -> Today:
+        folder = scratch / str(index)
+        folder.mkdir()
+        async with gate:
+            return await fetch_today(source, folder)
+
+    return list(await asyncio.gather(*(one(i, s) for i, s in enumerate(sources))))
+
+
 def classify(got: Fetched, text: str) -> Today:
     """A failure is unverified, never a change; only a 404, a 410 or a fall back to the home page is dead."""
     url = got.url
@@ -56,6 +71,8 @@ def classify(got: Fetched, text: str) -> Today:
         return Today(url, DEAD, f"redirected to the home page {got.final_url}")
     if got.document:
         return Today(url, UNVERIFIED, f"now serves a {got.document}, not a page")
+    if got.path is not None and "html" in got.content_type.lower():
+        return Today(url, UNVERIFIED, "now serves a web page, not a document")
     if not text.strip() and got.path is None:
         return Today(url, UNVERIFIED, "no readable text")
     return Today(url, OK, f"HTTP {got.status}", text=text, path=got.path)

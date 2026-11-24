@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
+import io
 from datetime import date
 from pathlib import Path
 
 import httpx
 import pytest
+from pypdf import PdfWriter
+from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 from app.ingest.reading import fetch
 from app.ingest.reading.fetch import Fetched
-from app.ingest.refresh import fetch_status
+from app.ingest.refresh import compare, fetch_status
 from app.ingest.refresh.baseline import Baseline
 from app.ingest.refresh.fetch_status import DEAD, OK, UNVERIFIED, classify
 
@@ -51,6 +55,12 @@ class TestClassify:
         home = "https://funder.example/"
         assert classify(Fetched(home, final_url=home, status=200), "Welcome").status == OK
 
+    def test_a_document_that_now_serves_a_web_page_is_unverified(self, tmp_path):
+        got = Fetched(URL, final_url="https://funder.example/login", status=200,
+                      content_type="text/html; charset=utf-8", path=tmp_path / "ar-2024.pdf")
+        today = classify(got, "")
+        assert (today.status, today.reason) == (UNVERIFIED, "now serves a web page, not a document")
+
     def test_a_scanned_document_is_ok_by_its_file(self, tmp_path):
         got = Fetched(URL, final_url=URL, status=200, path=tmp_path / "scan.pdf")
         assert classify(got, "").status == OK
@@ -74,6 +84,66 @@ class TestFetchToday:
         monkeypatch.setattr(fetch_status, "document_text", lambda path: "Annual report")
         today = await fetch_status.fetch_today(source(kind="document"), tmp_path)
         assert seen == [tmp_path] and (today.status, today.text) == (OK, "Annual report")
+
+
+    async def test_a_pdf_archived_as_pdf_but_fetched_without_a_suffix_is_unchanged(self, monkeypatch, tmp_path):
+        pdf = _pdf("Annual report 2026")
+        archived = tmp_path / "annual-report.pdf"
+        archived.write_bytes(pdf)
+        url = "https://funder.example/download.php?id=3"
+        was = Baseline(url, 7, "document", fetch.document_hash(archived), "archive/funder/annual-report.pdf", 31,
+                       date(2026, 11, 14))
+
+        async def download(url, filename, directory):
+            (directory / "download.php_id_3").write_bytes(pdf)
+            return Fetched(url, final_url=url, status=200, content_type="application/pdf",
+                           path=directory / "download.php_id_3")
+        monkeypatch.setattr(fetch_status, "download", download)
+        scratch = tmp_path / "scratch"
+        scratch.mkdir()
+        today = await fetch_status.fetch_today(was, scratch)
+        assert [c.status for c in compare.compare([was], [today])] == [compare.UNCHANGED]
+
+    async def test_a_document_url_that_now_serves_html_is_unverified(self, monkeypatch, tmp_path):
+        async def download(url, filename, directory):
+            (directory / "ar-2024.pdf").write_bytes(b"<html><body>Please log in</body></html>")
+            return Fetched(url, final_url="https://funder.example/login", status=200,
+                           content_type="text/html; charset=utf-8", path=directory / "ar-2024.pdf")
+        monkeypatch.setattr(fetch_status, "download", download)
+        today = await fetch_status.fetch_today(source("https://funder.example/reports/ar-2024.pdf", "document"),
+                                               tmp_path)
+        assert today.status == UNVERIFIED and today.fingerprint is None
+
+    async def test_fetch_all_runs_a_few_at_once_and_keeps_the_order(self, monkeypatch, tmp_path):
+        running, peak, folders = 0, 0, []
+
+        async def fetch_today(source, folder):
+            nonlocal running, peak
+            running += 1
+            peak = max(peak, running)
+            folders.append(folder)
+            await asyncio.sleep(0.01)
+            running -= 1
+            return fetch_status.Today(source.url, OK, "HTTP 200")
+        monkeypatch.setattr(fetch_status, "fetch_today", fetch_today)
+        urls = [f"https://funder.example/{n}" for n in range(8)]
+        today = await fetch_status.fetch_all([source(u) for u in urls], tmp_path)
+        assert [t.url for t in today] == urls
+        assert peak == fetch_status.FETCH_AT_ONCE and len(set(folders)) == len(urls)
+
+def _pdf(text: str) -> bytes:
+    writer = PdfWriter()
+    page = writer.add_blank_page(300, 200)
+    font = DictionaryObject({NameObject("/Type"): NameObject("/Font"), NameObject("/Subtype"): NameObject("/Type1"),
+                             NameObject("/BaseFont"): NameObject("/Helvetica")})
+    page[NameObject("/Resources")] = DictionaryObject(
+        {NameObject("/Font"): DictionaryObject({NameObject("/F1"): writer._add_object(font)})})
+    content = DecodedStreamObject()
+    content.set_data(f"BT /F1 12 Tf 20 100 Td ({text}) Tj ET".encode())
+    page[NameObject("/Contents")] = writer._add_object(content)
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
 
 
 class TestFetchingWritesNothing:
