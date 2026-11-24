@@ -330,6 +330,7 @@ class TestFindInADocument:
 
         fake = SimpleNamespace(pages=[SimpleNamespace(extract_text=lambda t=t: t) for t in texts])
         monkeypatch.setattr(extract, "PdfReader", lambda path: fake)
+        extract._pdf_pages.cache_clear()
 
     def find(self, words, **args):
         return research_tools.read_document_pages.invoke({"filename": "ar.pdf", "find": words, **args})
@@ -361,6 +362,16 @@ class TestFindInADocument:
     def test_many_matches_are_capped(self, monkeypatch):
         self.pages(monkeypatch, ["CSR"] * (research_tools.FIND_MAX_HITS + 5))
         assert self.find("csr").splitlines()[-2] == "… and 5 more pages; narrow the words to see them."
+
+    def test_a_second_find_in_the_same_file_extracts_nothing_again(self, monkeypatch):
+        from app.core import extract
+
+        opened = []
+        fake = SimpleNamespace(pages=[SimpleNamespace(extract_text=lambda: "CSR obligation")])
+        monkeypatch.setattr(extract, "PdfReader", lambda path: opened.append(path) or fake)
+        extract._pdf_pages.cache_clear()
+        assert self.find("csr").startswith("[ar.pdf: 1 pages, 1 mention")
+        assert self.find("obligation").startswith("[ar.pdf: 1 pages, 1 mention") and len(opened) == 1
 
     def test_empty_words_are_refused(self):
         assert self.find(" | ").startswith("ERROR: find needs at least one word")

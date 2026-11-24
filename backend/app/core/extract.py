@@ -8,6 +8,7 @@ import io
 import posixpath
 import re
 import zipfile
+from functools import lru_cache
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -157,19 +158,19 @@ def _snippet(text: str, terms: list[str], width: int = 80) -> str | None:
     return ("…" if start else "") + flat[start:end].strip() + ("…" if end < len(flat) else "")
 
 
+@lru_cache(maxsize=4)
+def _pdf_pages(path: str, mtime_ns: int, size: int) -> tuple[str, ...]:
+    """Every page's text, kept per file version, so a second find in the same report extracts nothing again."""
+    pages = (((p.extract_text() or "").strip()) for p in PdfReader(path).pages)
+    return tuple("\n".join(_normalize_line(l) for l in t.splitlines()) for t in pages)
+
+
 def find_in_pdf(source: Path, terms: list[str]) -> tuple[list[tuple[int, str]], int, int]:
     """(page, snippet) for each page naming any term, the page count, and how many pages had no text to search."""
-    reader = PdfReader(str(source))
-    hits: list[tuple[int, str]] = []
-    blank = 0
-    for index, page in enumerate(reader.pages):
-        text = (page.extract_text() or "").strip()
-        if not text:
-            blank += 1
-            continue
-        if (found := _snippet("\n".join(_normalize_line(l) for l in text.splitlines()), terms)) is not None:
-            hits.append((index + 1, found))
-    return hits, len(reader.pages), blank
+    stat = source.stat()
+    pages = _pdf_pages(str(source), stat.st_mtime_ns, stat.st_size)
+    hits = [(n, s) for n, t in enumerate(pages, 1) if t and (s := _snippet(t, terms)) is not None]
+    return hits, len(pages), sum(1 for t in pages if not t)
 
 
 def find_in_docx(data: bytes, terms: list[str]) -> tuple[list[tuple[int, str]], int]:
