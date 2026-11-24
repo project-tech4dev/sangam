@@ -226,8 +226,8 @@ class TestStorage:
 
 
 class TestSupersedes:
-    OLD = {"concept": "contact", "name": "Old office", "email": "old@x.org"}
-    KEY = list(brief.fact_key(OLD))
+    OLD = {"concept": "contact", "name": "Old office", "email": "old@x.org", "source_url": "https://x.org/"}
+    KEY = brief.superseded(OLD)
 
     def test_a_fact_a_newer_row_supersedes_is_gone(self):
         rows = [{"findings": [self.OLD]}, {"findings": [], "supersedes": [self.KEY]}]
@@ -243,6 +243,14 @@ class TestSupersedes:
     def test_it_reaches_back_only(self):
         rows = [{"findings": [], "supersedes": [self.KEY]}, {"findings": [self.OLD]}]
         assert brief.merge_findings(rows) == [self.OLD]
+
+    def test_only_the_copy_from_the_removed_source_goes(self):
+        """The PAN read on the homepage and in the annual report: the footer dropping it leaves the report's."""
+        home = {"concept": "identifier", "id_type": "PAN", "value": "AAATA1234A", "source_url": "https://x.org/"}
+        report = {**home, "source_url": "https://x.org/annual-report.pdf"}
+        assert brief.fact_key(home) == brief.fact_key(report)
+        rows = [{"findings": [home, report]}, {"findings": [], "supersedes": [brief.superseded(home)]}]
+        assert brief.merge_findings(rows) == [report]
 
     def test_a_row_without_the_column_supersedes_nothing(self):
         assert brief.merge_findings([{"findings": [self.OLD]}, {"findings": []}]) == [self.OLD]

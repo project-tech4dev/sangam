@@ -59,7 +59,7 @@ async def test_two_reports_with_the_same_filename_each_archive_their_own_file(mo
     monkeypatch.setattr(save, "archive_document", document)
     baselines = [Baseline(u, n, "document", "0" * 64, None, 31, date(2026, 11, 14)) for n, u in enumerate(urls)]
     today = await fetch_status.fetch_all(baselines, tmp_path)
-    await save.archive_all(compare.compare(baselines, today))
+    await save.archive_all(compare.compare(baselines, today), Discovery())
     assert archived == body
 
 class TestArchive:

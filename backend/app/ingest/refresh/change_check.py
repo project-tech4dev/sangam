@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import logging
 import tempfile
 import uuid
 from collections.abc import AsyncIterator
@@ -17,7 +16,6 @@ import httpx
 from app.agentkit.models import resolve_model
 from app.core.config import get_settings
 from app.db.checkpointer import make_pool
-from app.ingest import brief
 from app.ingest.refresh import (
     baseline,
     compare,
@@ -30,8 +28,6 @@ from app.ingest.refresh import (
     judge,
     save,
 )
-
-logger = logging.getLogger(__name__)
 
 # The stages in the order they run; each new stage of the check is added here as it lands.
 STAGES = ("baseline", "fetch", "hash", "diff", "evidence", "judge", "discover")
@@ -84,12 +80,16 @@ async def main(slug: str, until: str, write: bool = False, refresh: bool = False
 
 async def _refresh(slug: str, checks: list[compare.Check], found: discover.Discovery, context: judge.Context,
                    saved: save.Saved) -> None:
-    """The delta is asked for with no connection held; the row is saved and the brief republished after."""
+    """The delta is asked for with no connection held; the brief waits for the person's save in Review & save."""
     settings = get_settings()
     async with _connection() as conn:
         entity, rows = await delta.load(conn, slug)
+        today = entity is not None and await delta.researched_today(conn, slug)
     if entity is None:
         print(f"{slug}: no refresh: no research row to carry forward")
+        return
+    if today:
+        print(f"{slug}: no refresh: it was already researched today")
         return
     srcs = delta.sources(checks, found, delta.facts_by_url(rows))
     # Sonnet refuses a forced tool call for structured output, so the delta asks for a JSON schema.
@@ -97,19 +97,12 @@ async def _refresh(slug: str, checks: list[compare.Check], found: discover.Disco
     grader = resolve_model(settings.utility_model).with_structured_output(delta.Grade)
     proposed, problems = await delta.propose(model, grader, delta.ask(entity["canonical_name"] or entity["entity_name"],
                                                                        srcs, context))
-    applied = delta.apply(proposed, srcs, context)
+    applied = delta.apply(proposed, srcs)
     read = [s.url for s in srcs if s.status != "dead"]
-    async with _connection() as conn:
-        async with conn.transaction():
-            row_id = await delta.save_row(conn, entity, applied, proposed, context,
-                                          [saved.snapshot_ids[u] for u in read if u in saved.snapshot_ids], read)
-        history = await brief.rows_for(conn, slug) if row_id else []
+    async with _connection() as conn, conn.transaction():
+        row_id = await delta.save_row(conn, entity, applied, proposed, context,
+                                      [saved.snapshot_ids[u] for u in read if u in saved.snapshot_ids], read)
     print(delta.describe(slug, applied, row_id, problems))
-    if history:
-        try:
-            await brief.publish(history)
-        except Exception:  # the row is saved; the brief catches up on the next save
-            logger.warning("brief for %s not republished after the refresh", slug, exc_info=True)
 
 
 @asynccontextmanager

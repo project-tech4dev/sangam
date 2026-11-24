@@ -12,7 +12,7 @@ Answer with a delta, never a whole record:
 
 - `keep`: the ids of facts the change leaves true. Every `intact` fact belongs here unless an added line contradicts it.
 - `update`: a fact the change alters. Give its id and the whole new finding, with the changed value and the new sentence that states it. A `broken` fact is usually an update.
-- `remove`: a fact the source no longer supports and nothing replaces, with one sentence why. A fact from a dead page stays in `keep` unless another given source says it ended: a page moving is not the fact ending.
+- `remove`: a fact the source no longer supports and nothing replaces, with one sentence why. A fact from a dead page always stays in `keep`: a page moving is not the fact ending, and its removal is refused.
 - `add`: a fact Sangam records that a changed or new source now states and no listed fact covers.
 - `gaps_closed`: the missing facts an `add` or `update` supplies, written as they were listed (e.g. `rfp.how_to_apply`).
 - `summary`: two or three sentences on what changed, factual, no judgement.

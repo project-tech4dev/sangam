@@ -60,7 +60,7 @@ def srcs():
 
 class TestFactsByUrl:
     def test_the_merged_facts_by_their_source(self):
-        rows = [{"findings": [OLD, OFFICE]}, {"findings": [], "supersedes": [list(brief.fact_key(OFFICE))]}]
+        rows = [{"findings": [OLD, OFFICE]}, {"findings": [], "supersedes": [brief.superseded(OFFICE)]}]
         assert delta.facts_by_url(rows) == {URL: [OLD]}
 
     def test_a_private_source_is_left_out(self):
@@ -127,33 +127,43 @@ class TestPropose:
 class TestApply:
     def test_keep_update_remove_and_add(self):
         new = json.dumps({**OLD, "email": "grants@funder.example", "evidence": NEW_SENTENCE})
-        proposed = answer(keep=["f2"], update=[Update(id="f1", finding=new)],
-                          remove=[Removal(id="f3", why="the office closed")], add=[json.dumps(CALL)])
-        out = delta.apply(proposed, srcs(), CONTEXT)
+        proposed = answer(keep=["f3"], update=[Update(id="f1", finding=new)],
+                          remove=[Removal(id="f2", why="the grants team is gone")], add=[json.dumps(CALL)])
+        out = delta.apply(proposed, srcs())
         assert (out.kept, out.updated, out.removed, out.added, out.refused) == (1, 1, 1, 1, [])
         assert [f["evidence"] for f in out.findings] == [NEW_SENTENCE, CALL_SENTENCE]
-        assert out.supersedes == [list(brief.fact_key(OLD)), list(brief.fact_key(OFFICE))]
+        assert out.supersedes == [brief.superseded(OLD), brief.superseded(KEPT)]
+
+    def test_a_fact_from_a_page_that_is_gone_is_never_removed(self):
+        out = delta.apply(answer(remove=[Removal(id="f3", why="the page 404s")]), srcs())
+        assert (out.removed, out.supersedes) == (0, [])
+        assert out.refused == ["remove f3: its page is gone, which does not end the fact"]
 
     def test_a_sentence_not_on_its_source_is_refused(self):
         made_up = {**OLD, "email": "x@funder.example", "evidence": "Write to x@funder.example for every query now."}
-        out = delta.apply(answer(update=[Update(id="f1", finding=json.dumps(made_up))]), srcs(), CONTEXT)
+        out = delta.apply(answer(update=[Update(id="f1", finding=json.dumps(made_up))]), srcs())
         assert out.updated == 0 and out.supersedes == [] and "its sentence is not on" in out.refused[0]
 
     def test_a_changed_number_is_refused(self):
         wrong = {**CALL, "evidence": CALL_SENTENCE.replace("2027", "2028"), "title": "Teacher Fellowship 2028"}
-        assert delta.apply(answer(add=[json.dumps(wrong)]), srcs(), CONTEXT).added == 0
+        assert delta.apply(answer(add=[json.dumps(wrong)]), srcs()).added == 0
+
+    def test_a_changed_page_is_quoted_from_what_it_added(self):
+        unchanged = {**OLD, "name": "Grants desk", "email": None, "evidence": KEPT_SENTENCE}
+        out = delta.apply(answer(add=[json.dumps(unchanged)]), srcs())
+        assert out.added == 0 and "its sentence is not on" in out.refused[0]
 
     def test_nothing_may_cite_a_dead_page(self):
-        out = delta.apply(answer(add=[json.dumps(OFFICE)]), srcs(), CONTEXT)
+        out = delta.apply(answer(add=[json.dumps(OFFICE)]), srcs())
         assert out.added == 0 and GONE in out.refused[0]
 
     def test_an_unknown_or_repeated_id_is_refused(self):
-        out = delta.apply(answer(keep=["f9", "f2"], remove=[Removal(id="f2", why="gone now")]), srcs(), CONTEXT)
+        out = delta.apply(answer(keep=["f9", "f2"], remove=[Removal(id="f2", why="gone now")]), srcs())
         assert out.kept == 1 and out.removed == 0 and len(out.refused) == 2
 
     @pytest.mark.parametrize("raw", ["{not json", json.dumps({**CALL, "concept": "horoscope"}), "[]"])
     def test_a_finding_that_is_not_one_is_refused(self, raw):
-        out = delta.apply(answer(update=[Update(id="f1", finding=raw)], add=[raw]), srcs(), CONTEXT)
+        out = delta.apply(answer(update=[Update(id="f1", finding=raw)], add=[raw]), srcs())
         assert (out.updated, out.added, out.supersedes) == (0, 0, [])
         assert [r.split(":")[0] for r in out.refused] == ["update f1", "add"]
         assert all("not a valid finding" in r for r in out.refused)
@@ -172,7 +182,7 @@ class TestSaveRow:
 
     async def test_the_row_carries_the_frame_forward_with_the_delta(self):
         conn = ScriptConn([("INSERT INTO entity_research", {"id": 91})])
-        applied = delta.Applied(findings=[CALL], supersedes=[list(brief.fact_key(OLD))])
+        applied = delta.Applied(findings=[CALL], supersedes=[brief.superseded(OLD)])
         proposed = answer(gaps_closed=["rfp.how_to_apply", "not.a_gap"])
         row_id = await delta.save_row(conn, self.ENTITY, applied, proposed, CONTEXT, [55], [URL, LEAD.url])
         assert row_id == 91
@@ -182,7 +192,14 @@ class TestSaveRow:
             "The CSR mailbox moved to grants@."
         assert json.loads(p[7]) == [CALL] and p[8] == ["csr_year"] and p[9] == [URL, LEAD.url] and p[10] == 1
         assert json.loads(p[11]) == ["find its calls"] and json.loads(p[13]) == [{"concept": "csr_year"}]
-        assert p[14] == ["FY2024-25"] and p[15] == [55] and json.loads(p[16]) == [list(brief.fact_key(OLD))]
+        assert p[14] == ["FY2024-25"] and p[15] == [55] and json.loads(p[16]) == [brief.superseded(OLD)]
+
+    async def test_a_second_refresh_replaces_the_last_refresh_note(self):
+        conn = ScriptConn([("INSERT INTO entity_research", {"id": 92})])
+        entity = {**self.ENTITY, "summary": "A funder in Karnataka.\n\nRefreshed: The office moved."}
+        await delta.save_row(conn, entity, delta.Applied(), answer(), CONTEXT, [], [URL])
+        [(_sql, p)] = conn.sql("INSERT INTO entity_research")
+        assert p[6] == "A funder in Karnataka.\n\nRefreshed: The CSR mailbox moved to grants@."
 
     async def test_a_row_already_saved_today_is_left_alone(self):
         conn = ScriptConn([("researched_on = current_date", {"?column?": 1})])
