@@ -143,13 +143,18 @@ class CompareFitBudget(AgentMiddleware):
         return self._refusal(request) or await handler(request)
 
 
+def canned_stop(messages: list) -> bool:
+    """The turn ended on a fixed stop (gave up, or hit the call cap), not on an answer."""
+    last = messages[-1] if messages else None
+    return isinstance(last, AIMessage) and last.content in (_GIVE_UP, _CAPPED)
+
+
 def answer_audit(model_spec: str):
     """Score each answer with a cheap second opinion; the verdict goes to Langfuse, never into the answer."""
 
     @after_agent(name="answer_audit")
     def _audit(state, runtime):
-        last = state["messages"][-1] if state["messages"] else None
-        if isinstance(last, AIMessage) and last.content in (_GIVE_UP, _CAPPED):
+        if canned_stop(state["messages"]):
             return  # a canned stop, not an answer: scoring it would mix runaway turns into answer quality
         verdict = audit_turn(state["messages"], model_spec)
         if verdict is None:

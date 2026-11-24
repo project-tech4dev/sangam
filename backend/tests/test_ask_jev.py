@@ -345,33 +345,35 @@ def test_the_audit_state_is_what_answer_audit_reads():
     assert state["question"] == KABIL[0].text and state["answer"] == KABIL[-1].text
     assert "[funder:3] score 71" in state["results"] and len(state["today"]) == 10
     assert jev.audit_state(WEATHER) is None  # no data, nothing to check
+    from app.ask import middleware
+    assert jev.audit_state([*KABIL[:-1], AIMessage(middleware._CAPPED)]) is None  # answer_audit skips it too
 
 
 def _audit(monkeypatch, decision):
     sent = []
 
-    def fake_decide(state, questions, *, name, settings):
+    async def fake_decide(state, questions, *, name, settings):
         sent.append((set(questions), name))
         return decision
 
-    monkeypatch.setattr(jev, "decide", fake_decide)
+    monkeypatch.setattr(jev, "adecide", fake_decide)
     return jev.jev_audit(Settings(_env_file=None, typesafe_api_key="k", jev_audit="shadow")), sent
 
 
-def test_the_score_is_the_weakest_check(monkeypatch, scores):
+async def test_the_score_is_the_weakest_check(monkeypatch, scores):
     nouls = {"supported": 0.9, "grain": 0.95, "filters": 0.4, "false_zero": 0.99, "numbers": 0.8}
     decision = Decision({k: {"type": "noul", "noul": v} for k, v in nouls.items()}, "jev-latest", 900, False, 200, 0.0)
     hook, sent = _audit(monkeypatch, decision)
-    hook.after_agent({"messages": KABIL}, None)
+    await hook.aafter_agent({"messages": KABIL}, None)
     assert sent == [(set(jev.CHECKS), "jev_audit")]
     assert scores == [("jev_audit", 0.4)]
 
 
-def test_no_data_or_no_answer_scores_nothing(monkeypatch, scores):
+async def test_no_data_or_no_answer_scores_nothing(monkeypatch, scores):
     hook, sent = _audit(monkeypatch, None)
-    hook.after_agent({"messages": WEATHER}, None)
+    await hook.aafter_agent({"messages": WEATHER}, None)
     assert sent == []
-    hook.after_agent({"messages": KABIL}, None)
+    await hook.aafter_agent({"messages": KABIL}, None)
     assert len(sent) == 1 and scores == []
 
 

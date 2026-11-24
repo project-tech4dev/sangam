@@ -12,7 +12,7 @@ from langchain.agents.middleware import AgentMiddleware, AgentState, after_agent
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
 from app.ask.audit import CITE, DATA_TOOLS, IST, collect_turn, newest
-from app.ask.middleware import this_turn
+from app.ask.middleware import canned_stop, this_turn
 from app.core.config import Settings
 from app.integrations.tracing import score_answer
 from app.integrations.typesafe import Decision, adecide
@@ -159,7 +159,7 @@ def jev_shadow(settings: Settings, skills: dict[str, str]):
 def audit_state(messages: list[BaseMessage]) -> dict[str, str] | None:
     """What answer_audit reads, as Jev's state; None when it would not audit either."""
     turn = collect_turn(messages)
-    if not turn.has_data or turn.refused or not turn.answer:
+    if canned_stop(messages) or not turn.has_data or turn.refused or not turn.answer:
         return None
     return {
         "today": datetime.now(IST).date().isoformat(),
@@ -174,9 +174,9 @@ def jev_audit(settings: Settings):
     asking = {name: {"type": "noul", "instructions": text} for name, text in CHECKS.items()}
 
     @after_agent(name="jev_audit")
-    def _audit(state, runtime):
+    async def _audit(state, runtime):
         state_in = audit_state(state["messages"])
-        decision = decide(state_in, asking, name="jev_audit", settings=settings) if state_in else None
+        decision = await adecide(state_in, asking, name="jev_audit", settings=settings) if state_in else None
         nouls = {name: p for name in CHECKS if (p := decision.noul(name)) is not None} if decision else {}
         if not nouls:
             return
