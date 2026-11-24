@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import NotRequired
 
 from langchain.agents.middleware import AgentMiddleware, AgentState, after_agent, hook_config
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
-from app.ask.audit import DATA_TOOLS
+from app.ask.audit import CITE, DATA_TOOLS, IST, collect_turn, newest
 from app.ask.middleware import this_turn
 from app.core.config import Settings
 from app.integrations.tracing import score_answer
@@ -30,6 +31,15 @@ OFF_TOPIC_REPLY = (
     "I answer questions about Indian NGOs, funders, grants, CSR spending and funder fit, from Sangam's records. "
     "That question is outside them. You could ask, for example, which funders support education in Assam."
 )
+# answer_audit's checks as statements, each a probability that it holds.
+CHECKS = {
+    "supported": "Every fact in the answer is supported by at least one of the results.",
+    "grain": "When the question asks how many of something, the SQL counts that thing and not rows of another "
+    "(true when no db_query ran or nothing is counted).",
+    "filters": "Every condition in the question (place, status, date range) is in the SQL (true when no db_query ran).",
+    "false_zero": "An empty or zero result is not caused by a wrong filter value (true when nothing came back empty).",
+    "numbers": "The figures stated in the answer match the results.",
+}
 _SKILL_PATH = re.compile(r"/skills/([^/]+)/SKILL\.md$")
 _FIELD = re.compile(r"^(name|description):\s*(.+)$", re.MULTILINE)
 
@@ -144,6 +154,37 @@ def jev_shadow(settings: Settings, skills: dict[str, str]):
         score_skill(decision, label)
 
     return _shadow
+
+
+def audit_state(messages: list[BaseMessage]) -> dict[str, str] | None:
+    """What answer_audit reads, as Jev's state; None when it would not audit either."""
+    turn = collect_turn(messages)
+    if not turn.has_data or turn.refused or not turn.answer:
+        return None
+    return {
+        "today": datetime.now(IST).date().isoformat(),
+        "question": turn.question[:QUESTION_CHARS],
+        "results": newest(turn.evidence, set(CITE.findall(turn.answer))),
+        "answer": turn.answer[:3000],
+    }
+
+
+def jev_audit(settings: Settings):
+    """After the answer, Jev's probability for each of answer_audit's checks; the score is the weakest one."""
+    asking = {name: {"type": "noul", "instructions": text} for name, text in CHECKS.items()}
+
+    @after_agent(name="jev_audit")
+    def _audit(state, runtime):
+        state_in = audit_state(state["messages"])
+        decision = decide(state_in, asking, name="jev_audit", settings=settings) if state_in else None
+        nouls = {name: p for name in CHECKS if (p := decision.noul(name)) is not None} if decision else {}
+        if not nouls:
+            return
+        weakest = min(nouls, key=nouls.get)
+        score_answer("jev_audit", nouls[weakest], comment=f"weakest: {weakest}",
+                     metadata={"checks": nouls, "latency_ms": decision.latency_ms})
+
+    return _audit
 
 
 def preload(messages: list[BaseMessage], name: str, text: str) -> list[BaseMessage]:

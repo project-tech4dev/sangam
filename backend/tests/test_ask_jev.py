@@ -336,3 +336,52 @@ async def test_the_graph_ends_on_the_fixed_reply_without_a_model_call(monkeypatc
     out = await graph.ainvoke({"messages": [HumanMessage("what is the weather today?")]},
                               {"configurable": {"thread_id": "t"}})
     assert out["messages"][-1].text == jev.OFF_TOPIC_REPLY and called == []
+
+
+# --- M3: the answer check in shadow ------------------------------------------
+
+def test_the_audit_state_is_what_answer_audit_reads():
+    state = jev.audit_state(KABIL)
+    assert state["question"] == KABIL[0].text and state["answer"] == KABIL[-1].text
+    assert "[funder:3] score 71" in state["results"] and len(state["today"]) == 10
+    assert jev.audit_state(WEATHER) is None  # no data, nothing to check
+
+
+def _audit(monkeypatch, decision):
+    sent = []
+
+    def fake_decide(state, questions, *, name, settings):
+        sent.append((set(questions), name))
+        return decision
+
+    monkeypatch.setattr(jev, "decide", fake_decide)
+    return jev.jev_audit(Settings(_env_file=None, typesafe_api_key="k", jev_audit="shadow")), sent
+
+
+def test_the_score_is_the_weakest_check(monkeypatch, scores):
+    nouls = {"supported": 0.9, "grain": 0.95, "filters": 0.4, "false_zero": 0.99, "numbers": 0.8}
+    decision = Decision({k: {"type": "noul", "noul": v} for k, v in nouls.items()}, "jev-latest", 900, False, 200, 0.0)
+    hook, sent = _audit(monkeypatch, decision)
+    hook.after_agent({"messages": KABIL}, None)
+    assert sent == [(set(jev.CHECKS), "jev_audit")]
+    assert scores == [("jev_audit", 0.4)]
+
+
+def test_no_data_or_no_answer_scores_nothing(monkeypatch, scores):
+    hook, sent = _audit(monkeypatch, None)
+    hook.after_agent({"messages": WEATHER}, None)
+    assert sent == []
+    hook.after_agent({"messages": KABIL}, None)
+    assert len(sent) == 1 and scores == []
+
+
+def test_the_audit_is_wired_only_with_a_key_and_langfuse():
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.ask.agent import build_agent
+
+    lf = {"langfuse_public_key": "pk", "langfuse_secret_key": "sk"}
+    graph = build_agent(Settings(_env_file=None, typesafe_api_key="k", jev_audit="shadow", **lf), InMemorySaver())
+    assert "jev_audit.after_agent" in graph.nodes
+    graph = build_agent(Settings(_env_file=None, jev_audit="shadow", **lf), InMemorySaver())
+    assert "jev_audit.after_agent" not in graph.nodes
