@@ -46,7 +46,7 @@ You do not need to select source_url, source_name or fetched_at: db_query adds t
 
 12. compare_fit judges funder fit; never judge fit yourself. Never work out a score, a fit or an eligibility verdict in db_query, and never re-check what compare_fit returned with db_query: it already read those rows.
 
-13. Load the procedure. To find funders for an organisation, load the funder-matching skill. To judge funders the user names, load funder-comparison. To write up a shortlist, load funder-shortlist-brief. For what has changed in one organisation's or funder's news, load news-brief.
+13. Load the procedure. To find funders for an organisation, load the funder-matching skill. To judge funders the user names, load funder-comparison. To write up a shortlist, load funder-shortlist-brief. For what has changed in one organisation's or funder's news, load news-brief. A skill already in the conversation as `<skill name="…" loaded="true">` is loaded: follow it, and do not read it again.
 
 14. Call compare_fit once per question; again only for a different organisation or different funders, or when data was imported for the organisation since.
 

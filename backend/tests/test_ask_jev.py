@@ -166,3 +166,99 @@ def test_shadow_is_wired_only_with_a_key_langfuse_and_a_mode(keys, wired):
 
     graph = build_agent(Settings(_env_file=None, **keys), InMemorySaver())
     assert ("jev_shadow.after_agent" in graph.nodes) is wired
+
+
+# --- M1: act on the skill ----------------------------------------------------
+
+def test_the_skill_goes_right_after_the_question():
+    chat = [HumanMessage("earlier"), AIMessage("answer"), HumanMessage("How well does KABIL fit Axis?"),
+            AIMessage(content="", tool_calls=[{"name": "compare_fit", "args": {}, "id": "c"}])]
+    out = jev.preload(chat, "funder-comparison", "STEPS")
+    assert out[:3] == chat[:3] and out[4] is chat[3]
+    assert out[3].text.startswith('<skill name="funder-comparison" loaded="true">\nSTEPS\n</skill>')
+    assert jev.preload([AIMessage("hi")], "x", "y") == [AIMessage("hi")]
+
+
+def _act(monkeypatch, decision, threshold=0.8):
+    monkeypatch.setattr(jev, "decide", lambda state, questions, *, name, settings: decision)
+    settings = Settings(_env_file=None, typesafe_api_key="k", jev_skill="act", jev_skill_threshold=threshold)
+    return jev.JevAct(settings, SKILLS_DIR)
+
+
+@pytest.mark.parametrize("skill, threshold, kept", [
+    ("funder-comparison", 0.8, "funder-comparison"),  # confidence 0.8 meets it
+    ("funder-comparison", 0.9, None),
+    ("none", 0.5, None),
+    ("not-a-skill", 0.5, None),
+])
+def test_a_skill_is_kept_only_when_sure_and_real(monkeypatch, skill, threshold, kept):
+    mw = _act(monkeypatch, _decision(skill=skill), threshold)
+    assert mw.before_agent({"messages": KABIL[:1]}, None) == {"jev_skill": kept}
+
+
+def test_no_decision_or_no_question_keeps_nothing(monkeypatch):
+    mw = _act(monkeypatch, None)
+    assert mw.before_agent({"messages": KABIL[:1]}, None) == {"jev_skill": None}
+    assert mw.before_agent({"messages": []}, None) == {"jev_skill": None}
+    assert mw.name == "jev_act"
+
+
+class _Request:
+    def __init__(self, state, messages):
+        self.state, self.messages = state, messages
+
+    def override(self, **kw):
+        return _Request(self.state, kw["messages"])
+
+
+async def test_the_model_request_carries_the_skill_and_the_state_does_not(monkeypatch):
+    mw = _act(monkeypatch, None)
+    seen = []
+    request = _Request({"jev_skill": "funder-comparison"}, KABIL[:1])
+    mw.wrap_model_call(request, seen.append)
+    assert len(seen[0].messages) == 2 and "funder-comparison" in seen[0].messages[1].text
+    assert request.messages == KABIL[:1]
+
+    async def handler(r):
+        seen.append(r)
+
+    await mw.awrap_model_call(_Request({"jev_skill": None}, KABIL[:1]), handler)
+    assert seen[1].messages == KABIL[:1]
+
+
+def test_after_the_answer_a_preload_is_scored(monkeypatch, scores):
+    mw = _act(monkeypatch, None)
+    mw.after_agent({"messages": KABIL[:1] + KABIL[3:], "jev_skill": "funder-comparison"}, None)
+    mw.after_agent({"messages": KABIL, "jev_skill": "funder-comparison"}, None)  # the model read it anyway
+    mw.after_agent({"messages": KABIL, "jev_skill": None}, None)
+    assert scores == [("jev_skill_preloaded", 1.0), ("jev_skill_preloaded", 0.0)]
+
+
+async def test_the_first_model_call_sees_the_skill_after_the_question(monkeypatch):
+    from langchain.agents import create_agent
+    from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+
+    seen = []
+
+    class Recording(GenericFakeChatModel):
+        def _generate(self, messages, *a, **kw):
+            seen.append(messages)
+            return super()._generate(messages, *a, **kw)
+
+    mw = _act(monkeypatch, _decision(skill="funder-comparison"))
+    agent = create_agent(Recording(messages=iter([AIMessage("done")])), middleware=[mw])
+    out = await agent.ainvoke({"messages": [HumanMessage("How well does KABIL fit Axis?")]})
+    assert [m.type for m in seen[0]] == ["human", "human"]
+    assert seen[0][1].text.startswith('<skill name="funder-comparison" loaded="true">')
+    assert [m.text for m in out["messages"]] == ["How well does KABIL fit Axis?", "done"]  # the chat never holds it
+
+
+def test_act_is_wired_innermost_with_a_key():
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.ask.agent import build_agent
+
+    graph = build_agent(Settings(_env_file=None, typesafe_api_key="k", jev_skill="act"), InMemorySaver())
+    assert {"jev_act.before_agent", "jev_act.after_agent"} <= set(graph.nodes)
+    graph = build_agent(Settings(_env_file=None, jev_skill="act"), InMemorySaver())
+    assert "jev_act.before_agent" not in graph.nodes
