@@ -55,6 +55,9 @@ services:
       MODEL: ${MODEL:-}
       RESEARCH_MODEL: ${RESEARCH_MODEL:-}
       UTILITY_MODEL: ${UTILITY_MODEL:-}
+      # The OpenAI-compatible endpoint a "compat:<model>" tier calls.
+      COMPAT_BASE_URL: ${COMPAT_BASE_URL:-}
+      COMPAT_API_KEY: ${COMPAT_API_KEY:-}
       DEV_AUTH: ${DEV_AUTH:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
