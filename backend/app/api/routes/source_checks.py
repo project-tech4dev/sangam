@@ -34,7 +34,8 @@ async def check_baseline(slug: str, pool: OwnerPoolDep) -> BaselineOut:
 
     async with pool.connection() as conn:
         sources, unrecorded = await baseline_view(conn, slug)
-    return BaselineOut(slug=slug, unrecorded=unrecorded,
+        name = await repo.entity_name(conn, slug)
+    return BaselineOut(slug=slug, name=name, unrecorded=unrecorded,
                        sources=[BaselineSourceOut.model_validate(s, from_attributes=True) for s in sources])
 
 

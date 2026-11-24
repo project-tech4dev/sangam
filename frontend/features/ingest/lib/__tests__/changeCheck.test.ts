@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { statusOf, stepsOf, summaryOf, verdictOf, type CheckRun, type SourceCheck } from "../changeCheck";
+import { runState, statusOf, stepsOf, summaryOf, verdictOf, type CheckRun, type SourceCheck } from "../changeCheck";
 
 const run = (over: Partial<CheckRun> = {}): CheckRun => ({
   run_id: "r1",
@@ -84,5 +84,19 @@ describe("summaryOf", () => {
   it("counts how far the sources went", () => {
     const run = { ...({} as CheckRun), checks: [source(), source({ status: "unverified" })] };
     expect(summaryOf(run as never)).toBe("2 sources · 1 opened · 1 same fingerprint · 0 text compared · 0 judged");
+  });
+});
+
+describe("runState", () => {
+  const started = "2026-11-19T08:00:00Z";
+  const at = (minutes: number) => new Date(started).getTime() + minutes * 60_000;
+  it("a run still inside the backend's window is running; past it, stopped", () => {
+    const open = run({ decision: null, finished_at: null, started_at: started });
+    expect(runState(open, at(10))).toBe("running");
+    expect(runState(open, at(31))).toBe("stopped");
+  });
+  it("a failed run is failed, a finished one says its decision", () => {
+    expect(runState(run({ error: "boom", finished_at: started }))).toBe("failed");
+    expect(runState(run({ decision: "refresh", finished_at: started }))).toBe("refresh");
   });
 });

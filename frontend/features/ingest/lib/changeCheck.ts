@@ -1,6 +1,4 @@
-import { authHeaders } from "@/lib/api/auth-headers";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8010";
+import { call } from "@/lib/api/rest";
 
 export type BaselineSource = {
   url: string;
@@ -11,7 +9,8 @@ export type BaselineSource = {
   facts: number;
 };
 
-export type Baseline = { slug: string; sources: BaselineSource[]; unrecorded: number };
+/** `name` is the entity's name from its newest research; null when none is left. */
+export type Baseline = { slug: string; name: string | null; sources: BaselineSource[]; unrecorded: number };
 
 export type Evidence = { verdict: "intact" | "broken" | "unanchored"; sentence: string };
 
@@ -49,16 +48,6 @@ export type CheckRun = {
 
 export type CheckRunDetail = CheckRun & { checks: SourceCheck[] };
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    ...init,
-    headers: { ...(await authHeaders()), ...(init?.body ? { "Content-Type": "application/json" } : {}) },
-  });
-  const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.detail ?? `${init?.method ?? "GET"} ${path} failed: ${res.status}`);
-  return body as T;
-}
-
 const research = (slug: string) => `/api/ingest/research/${encodeURIComponent(slug)}`;
 
 export const fetchBaseline = (slug: string) => call<Baseline>(`${research(slug)}/baseline`);
@@ -67,7 +56,7 @@ export const fetchCheck = (runId: string) => call<CheckRunDetail>(`/api/ingest/c
 
 /** Runs the check and waits for it: about a minute for a few sources, longer with the update. */
 export const runCheck = (slug: string, depth: "free" | "full", refresh = false) =>
-  call<CheckRunDetail>(`${research(slug)}/checks`, { method: "POST", body: JSON.stringify({ depth, refresh }) });
+  call<CheckRunDetail>(`${research(slug)}/checks`, "POST", { depth, refresh });
 
 /** One source's result in words, and the tag colour it shows in. */
 export function statusOf(status: string): { label: string; tag: string } {
@@ -89,6 +78,16 @@ export function statusOf(status: string): { label: string; tag: string } {
     default:
       return { label: status, tag: "tag-outline" };
   }
+}
+
+// The backend's STALE_MINUTES: a run unfinished after this long died with its request.
+const STALE_MINUTES = 30;
+
+/** A past run in one word; one that never finished and is past the backend's window has stopped. */
+export function runState(run: CheckRun, now = Date.now()): string {
+  if (run.error) return "failed";
+  if (run.finished_at) return run.decision ?? "done";
+  return now - new Date(run.started_at).getTime() > STALE_MINUTES * 60_000 ? "stopped" : "running";
 }
 
 export type Verdict = { title: string; text: string; next: "none" | "judge" | "update" | "research" };

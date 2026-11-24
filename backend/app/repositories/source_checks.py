@@ -30,18 +30,44 @@ ROWS_SQL = """
                             WHEN 'minor' THEN 4 WHEN 'unverified' THEN 5 ELSE 6 END, c.url
 """
 
-# Every entity a change check can run on: the sources its research kept a version of, and its last check.
+# Every saved entity a change check can run on, by the catalog row research was saved to: a research slug and a
+# Registry slug are made apart (pratham vs pratham-2), so only the id names the same organisation.
 TRACKED_SQL = """
-    SELECT r.slug, (array_agg(r.entity_kind ORDER BY r.researched_at DESC))[1] AS kind,
-           count(DISTINCT s.url) AS sources,
-           (SELECT max(c.finished_at) FROM source_check_runs c WHERE c.slug = r.slug AND c.error IS NULL)
-               AS last_checked
-      FROM entity_research r
-     CROSS JOIN LATERAL unnest(r.snapshot_ids) AS sid
-      JOIN source_snapshots s ON s.id = sid
-     WHERE r.status <> 'wrong_entity'
-     GROUP BY r.slug
+    SELECT slug, kind, id, sources, last_checked FROM (
+        SELECT r.slug, (array_agg(r.entity_kind ORDER BY r.researched_at DESC))[1] AS kind,
+               count(DISTINCT s.url) AS sources,
+               (SELECT max(c.finished_at) FROM source_check_runs c WHERE c.slug = r.slug AND c.error IS NULL)
+                   AS last_checked
+          FROM entity_research r
+         CROSS JOIN LATERAL unnest(r.snapshot_ids) AS sid
+          JOIN source_snapshots s ON s.id = sid
+         WHERE r.status <> 'wrong_entity'
+         GROUP BY r.slug
+    ) t
+    CROSS JOIN LATERAL (
+        -- A refresh row is not saved yet, so the id comes from the newest row that was.
+        SELECT CASE t.kind WHEN 'funder' THEN x.resolved_funder_id ELSE x.resolved_org_id END AS id
+          FROM entity_research x
+         WHERE x.slug = t.slug AND x.status <> 'wrong_entity'
+           AND CASE t.kind WHEN 'funder' THEN x.resolved_funder_id ELSE x.resolved_org_id END IS NOT NULL
+         ORDER BY x.researched_at DESC
+         LIMIT 1
+    ) saved
 """
+
+
+NAME_SQL = """
+    SELECT coalesce(canonical_name, entity_name) AS name FROM entity_research
+     WHERE slug = %s AND status <> 'wrong_entity'
+     ORDER BY researched_on DESC, id DESC
+     LIMIT 1
+"""
+
+
+async def entity_name(conn: Any, slug: str) -> str | None:
+    """The name the newest research gave the entity, for the screen's heading."""
+    row = await (await conn.execute(NAME_SQL, (slug,))).fetchone()
+    return row["name"] if row else None
 
 
 async def list_tracked(conn: Any) -> list[dict[str, Any]]:
