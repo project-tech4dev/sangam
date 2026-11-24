@@ -14,7 +14,7 @@ from app.db.pool import get_pool
 from app.ingest.refresh import service
 from app.repositories import source_checks as repo
 from tests.conftest import TEST_USER, make_app
-from tests.cov_ingest_fakes import ScriptPool
+from tests.cov_ingest_fakes import ScriptConn, ScriptPool
 
 SLUG = "azim-premji-foundation"
 RUN = UUID("11111111-1111-1111-1111-111111111111")
@@ -51,10 +51,11 @@ async def test_only_staff_may_check(who):
 async def test_the_baseline_lists_each_source(monkeypatch):
     src = service.Source("https://a.org", "page", 1, "2026-11-19", True, 79)
     monkeypatch.setattr(service, "baseline_view", lambda conn, slug: _value(([src], 0)))
+    monkeypatch.setattr(repo, "entity_name", lambda conn, slug: _value("Azim Premji Foundation"))
     async with client() as c:
         r = await c.get(f"/api/ingest/research/{SLUG}/baseline")
     assert r.status_code == 200
-    assert r.json() == {"slug": SLUG, "unrecorded": 0, "sources": [
+    assert r.json() == {"slug": SLUG, "name": "Azim Premji Foundation", "unrecorded": 0, "sources": [
         {"url": "https://a.org", "kind": "page", "snapshot_id": 1, "read_on": "2026-11-19", "archived": True,
          "facts": 79}]}
 
@@ -105,7 +106,7 @@ async def test_history_and_one_run(monkeypatch):
 
 
 async def test_tracked_lists_what_a_check_can_run_on(monkeypatch):
-    row = {"slug": SLUG, "kind": "funder", "sources": 4, "last_checked": None}
+    row = {"slug": SLUG, "kind": "funder", "id": 12, "sources": 4, "last_checked": None}
     monkeypatch.setattr(repo, "list_tracked", lambda conn: _value([row]))
     async with client() as c:
         r = await c.get("/api/ingest/tracked")
@@ -116,3 +117,10 @@ async def test_tracked_is_staff_only():
     async with client(CurrentUser(id=TEST_USER, is_staff=False)) as c:
         r = await c.get("/api/ingest/tracked")
     assert r.status_code == 403
+
+
+async def test_the_name_is_the_newest_researchs():
+    conn = ScriptConn([("coalesce(canonical_name, entity_name)", {"name": "Pratham Education Foundation"})])
+    assert await repo.entity_name(conn, SLUG) == "Pratham Education Foundation"
+    assert "ORDER BY researched_on DESC" in conn.calls[0][0] and conn.calls[0][1] == (SLUG,)
+    assert await repo.entity_name(ScriptConn(), SLUG) is None

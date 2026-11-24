@@ -10,6 +10,7 @@ import { ChangeCheck, SourceResult, stepOf } from "../ChangeCheck";
 
 const BASELINE = {
   slug: "apf",
+  name: "Azim Premji Foundation",
   unrecorded: 0,
   sources: [{ url: "https://a.org/report.pdf", kind: "document", snapshot_id: 1, read_on: "2026-11-19", archived: true, facts: 79 }],
 };
@@ -63,7 +64,7 @@ describe("ChangeCheck", () => {
       }
       return reply(ran ? [detail()] : []);
     }));
-    render(<ChangeCheck slug="apf" name="Azim Premji Foundation" />);
+    render(<ChangeCheck slug="apf" />);
     expect(await screen.findByText(/79 facts/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Check for changes" }));
     expect(await screen.findByText("A change found")).toBeInTheDocument();
@@ -74,7 +75,7 @@ describe("ChangeCheck", () => {
   it("asks before an update that costs money, and does nothing on no", async () => {
     vi.stubGlobal("confirm", vi.fn(() => false));
     const fetchMock = stubFetch({ "/baseline": BASELINE, "/research/apf/checks": [detail()], "/checks/r1": detail() });
-    render(<ChangeCheck slug="apf" name="APF" />);
+    render(<ChangeCheck slug="apf" />);
     await userEvent.click(await screen.findByRole("button", { name: /Update what changed/ }));
     const posts = fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === "POST");
     expect(posts).toHaveLength(0);
@@ -82,14 +83,46 @@ describe("ChangeCheck", () => {
 
   it("says there is nothing to compare when no research records its versions", async () => {
     stubFetch({ "/baseline": { ...BASELINE, sources: [] }, "/research/apf/checks": [] });
-    render(<ChangeCheck slug="apf" name="APF" />);
+    render(<ChangeCheck slug="apf" />);
     expect(await screen.findByText(/nothing to compare/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Check for changes" })).toBeDisabled();
   });
 
+  it("names the organisation from its research, and falls back to the slug", async () => {
+    stubFetch({ "/baseline": BASELINE, "/research/apf/checks": [] });
+    const { unmount } = render(<ChangeCheck slug="apf" />);
+    expect(await screen.findByRole("heading", { name: "Check Azim Premji Foundation for changes" })).toBeInTheDocument();
+    unmount();
+    stubFetch({ "/baseline": { ...BASELINE, name: null }, "/research/apf/checks": [] });
+    render(<ChangeCheck slug="apf" />);
+    expect(await screen.findByRole("heading", { name: "Check apf for changes" })).toBeInTheDocument();
+  });
+
+  it("says a check is already running when the backend answers 409", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      const reply = (code: number, body: unknown) => ({ ok: code < 400, status: code, json: async () => body }) as Response;
+      if (url.includes("/baseline")) return reply(200, BASELINE);
+      if (init?.method === "POST") return reply(409, { detail: "a check of apf is already running" });
+      return reply(200, []);
+    }));
+    render(<ChangeCheck slug="apf" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Check for changes" }));
+    expect(await screen.findByText(/already running\. Try again when it finishes/)).toBeInTheDocument();
+  });
+
+  it("lists a run that never finished as stopped once it is past the backend's window", async () => {
+    const stuck = detail({ run_id: "r2", decision: null, finished_at: null, started_at: "2026-11-18T08:00:00Z" });
+    const failed = detail({ run_id: "r3", decision: null, error: "RuntimeError: site down" });
+    stubFetch({ "/baseline": BASELINE, "/research/apf/checks": [detail(), stuck, failed], "/checks/r1": detail() });
+    render(<ChangeCheck slug="apf" />);
+    expect(await screen.findByText(/Free · stopped/)).toBeInTheDocument();
+    expect(screen.getByText(/Free · failed/)).toBeInTheDocument();
+    expect(screen.queryByText(/running/)).not.toBeInTheDocument();
+  });
+
   it("shows the backend's reason when it refuses", async () => {
     stubFetch({ "/baseline": status(403, { detail: "Staff only" }), "/research/apf/checks": [] });
-    render(<ChangeCheck slug="apf" name="APF" />);
+    render(<ChangeCheck slug="apf" />);
     await waitFor(() => expect(screen.getByText("Staff only")).toBeInTheDocument());
   });
 });
@@ -112,5 +145,9 @@ describe("stepOf", () => {
     expect(stepOf(detail())).toBe(2);
     expect(stepOf(detail({ refresh_row_id: 91 }))).toBe(3);
     expect(stepOf(detail({ decision: "nothing to do" }))).toBe(4);
+  });
+
+  it("a failed run is not a finished one: no step past the first is ticked", () => {
+    expect(stepOf(detail({ decision: null, error: "RuntimeError: site down" }))).toBe(1);
   });
 });

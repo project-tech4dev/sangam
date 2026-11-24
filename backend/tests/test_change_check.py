@@ -7,19 +7,17 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.ingest import brief
 from app.ingest.refresh import (
     baseline,
     change_check,
-    compare,
     decision,
-    delta,
     diff,
     discover,
     evidence,
     fetch_status,
     judge,
     save,
+    service,
 )
 from tests.cov_ingest_fakes import ScriptConn, ScriptPool
 
@@ -119,7 +117,7 @@ class TestStages:
 
     async def test_until_evidence_builds_no_model(self, run, monkeypatch):
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
-        monkeypatch.setattr(change_check, "resolve_model", lambda spec: pytest.fail("built a model"))
+        monkeypatch.setattr(service, "resolve_model", lambda spec: pytest.fail("built a model"))
         await change_check.main(SLUG, "evidence")
 
     async def test_until_judge_asks_the_model_once_per_page_that_differs(self, run, monkeypatch, capsys):
@@ -130,7 +128,7 @@ class TestStages:
             return judge.Judgement(meaningful=False, confidence="high", reason="only the wording")
         model = SimpleNamespace(ainvoke=ainvoke)
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
-        monkeypatch.setattr(change_check, "resolve_model",
+        monkeypatch.setattr(service, "resolve_model",
                             lambda spec: SimpleNamespace(with_structured_output=lambda schema: model))
         await change_check.main(SLUG, "judge")
         out = capsys.readouterr().out
@@ -146,7 +144,7 @@ class TestStages:
             seen.update(urls=known_urls, hashes=known_hashes)
             return discover.Discovery(searched=3)
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
-        monkeypatch.setattr(change_check, "resolve_model", lambda spec: SimpleNamespace(
+        monkeypatch.setattr(service, "resolve_model", lambda spec: SimpleNamespace(
             with_structured_output=lambda schema: SimpleNamespace(ainvoke=ainvoke)))
         monkeypatch.setattr(discover, "run", search)
         # A row saved before snapshots cites a page that has no baseline; it was read all the same.
@@ -173,7 +171,7 @@ class TestStages:
             calls.append(("write", slug, keys, found.searched))
             return save.Saved(rows=1, snapshots=1, archive_failed=0)
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
-        monkeypatch.setattr(change_check, "resolve_model", lambda spec: SimpleNamespace(
+        monkeypatch.setattr(service, "resolve_model", lambda spec: SimpleNamespace(
             with_structured_output=lambda schema: SimpleNamespace(ainvoke=ainvoke)))
         monkeypatch.setattr(discover, "run", lambda *a: _value(discover.Discovery(searched=3)))
         monkeypatch.setattr(save, "archive_all", archive_all)
@@ -189,7 +187,7 @@ class TestStages:
         async def ainvoke(messages):
             return judge.Judgement(meaningful=False, confidence="high", reason="only the wording")
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
-        monkeypatch.setattr(change_check, "resolve_model", lambda spec: SimpleNamespace(
+        monkeypatch.setattr(service, "resolve_model", lambda spec: SimpleNamespace(
             with_structured_output=lambda schema: SimpleNamespace(ainvoke=ainvoke)))
         monkeypatch.setattr(discover, "run", lambda *a: _value(discover.Discovery(searched=3)))
         await change_check.main(SLUG, "discover")
@@ -201,7 +199,7 @@ class TestStages:
             return [baseline.Baseline(**row(f"https://a.org/{n}")) for n in range(4)], 0
         monkeypatch.setattr(baseline, "load", load)
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
-        monkeypatch.setattr(change_check, "resolve_model", lambda spec: pytest.fail("built a model"))
+        monkeypatch.setattr(service, "resolve_model", lambda spec: pytest.fail("built a model"))
         monkeypatch.setattr(discover, "run", lambda *a: pytest.fail("searched"))
         await change_check.main(SLUG, "discover")
         out = capsys.readouterr().out
@@ -213,18 +211,18 @@ class TestStages:
         async def ainvoke(messages):
             return judge.Judgement(meaningful=True, confidence="high", reason="a new programme")
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
-        monkeypatch.setattr(change_check, "resolve_model", lambda spec: SimpleNamespace(
+        monkeypatch.setattr(service, "resolve_model", lambda spec: SimpleNamespace(
             with_structured_output=lambda schema, **kw: SimpleNamespace(ainvoke=ainvoke)))
         monkeypatch.setattr(discover, "run", lambda *a: _value(discover.Discovery(searched=3)))
         monkeypatch.setattr(save, "archive_all", lambda checks, found: _value({}))
         monkeypatch.setattr(save, "write", lambda *a: _value(save.Saved(2, 1, 0, {"https://a.org/about": 55})))
         refreshed: list = []
-        monkeypatch.setattr(change_check, "_refresh", lambda *a: _value(refreshed.append(a)))
+        monkeypatch.setattr(service, "_refresh", lambda *a: _value(refreshed.append(a)))
         return refreshed
 
     async def test_refresh_runs_only_when_the_decision_is_refresh(self, run, written, monkeypatch, capsys):
         await change_check.main(SLUG, "discover", write=True, refresh=True)
-        assert len(written) == 1 and written[0][4].snapshot_ids == {"https://a.org/about": 55}
+        assert len(written) == 1 and written[0][5].snapshot_ids == {"https://a.org/about": 55}
         monkeypatch.setattr(decision, "decide", lambda *a: decision.NOTHING)
         await change_check.main(SLUG, "discover", write=True, refresh=True)
         assert len(written) == 1 and f"{SLUG}: no refresh: the decision is nothing to do" in capsys.readouterr().out
@@ -232,6 +230,22 @@ class TestStages:
     async def test_without_refresh_no_delta(self, run, written):
         await change_check.main(SLUG, "discover", write=True)
         assert written == []
+
+    async def test_write_is_a_recorded_run_like_the_screens(self, run, monkeypatch):
+        seen: list = []
+
+        async def recorded(pool, slug, depth, refresh, user_id, say):
+            seen.append((slug, depth, refresh, user_id, say))
+        monkeypatch.setattr(service, "run", recorded)
+        await change_check.main(SLUG, "discover", write=True, refresh=True)
+        assert seen == [(SLUG, service.FULL, True, None, print)]
+
+    async def test_write_waits_for_a_check_already_running(self, run, monkeypatch, capsys):
+        async def busy(*a, **kw):
+            raise service.Busy(SLUG)
+        monkeypatch.setattr(service, "run", busy)
+        await change_check.main(SLUG, "discover", write=True)
+        assert f"{SLUG}: a check is already running" in capsys.readouterr().out
 
     async def test_nothing_to_check_stops_before_fetching(self, run, monkeypatch, capsys):
         monkeypatch.setattr(baseline, "load", lambda conn, slug: _empty())
@@ -274,93 +288,3 @@ class TestDescribe:
         out = baseline.describe(SLUG, [], 3)
         assert "nothing to check" in out and "Run a full pull first" in out
         assert "(3 research rows predate snapshots" in out
-
-
-def _changed(url: str = "https://a.org/about", status: str = compare.CHANGED) -> compare.Check:
-    base = baseline.Baseline(url, 7, "page", "a" * 64, "k", 31, date(2026, 11, 14))
-    return compare.Check(base, fetch_status.Today(url, fetch_status.OK, "HTTP 200", text="Grants of 500."), status)
-
-
-class TestRefresh:
-    @pytest.fixture
-    def refresh(self, monkeypatch):
-        state = SimpleNamespace(models=[], saved=[], reread=[], entity={"id": 5, "slug": SLUG, "entity_name": "Funder",
-                                                                        "canonical_name": None, "summary": "s"})
-        monkeypatch.setattr(change_check, "make_pool", lambda url, max_size: _Pool())
-        monkeypatch.setattr(delta, "load", lambda conn, slug: _value((state.entity, [])))
-
-        def resolve(spec):
-            state.models.append(spec)
-            return SimpleNamespace(with_structured_output=lambda schema, **kw: (schema, kw))
-        monkeypatch.setattr(change_check, "resolve_model", resolve)
-
-        async def propose(model, grader, question):
-            state.question, state.model, state.grader = question, model, grader
-            return delta.Delta(summary="The CSR mailbox moved."), ["f1 should be an update"]
-        monkeypatch.setattr(delta, "propose", propose)
-        monkeypatch.setattr(delta, "apply", lambda proposed, srcs, kind: delta.Applied(added=1, findings=[{"x": 1}]))
-
-        async def save_row(conn, entity, applied, proposed, context, snapshot_ids, read):
-            state.saved.append(read)
-            return 91
-        monkeypatch.setattr(delta, "save_row", save_row)
-        monkeypatch.setattr(delta, "note_reread", lambda conn, row_id, ids: _value(state.reread.append((row_id, ids))))
-        monkeypatch.setattr(brief, "publish", lambda *a, **kw: pytest.fail("published the brief before review"))
-        return state
-
-    async def test_the_delta_is_asked_of_the_research_model_and_saved(self, refresh, capsys):
-        await change_check._refresh(SLUG, [_changed()], discover.Discovery(), judge.Context((), ()),
-                                    save.Saved(0, 0, 0))
-        settings = change_check.get_settings()
-        assert refresh.models == [settings.research_model, settings.utility_model]
-        assert refresh.model == (delta.Delta, {"method": "json_schema"}) and refresh.grader == (delta.Grade, {})
-        assert refresh.question.startswith("Organisation: Funder")
-        out = capsys.readouterr().out
-        assert "refresh saved as entity_research #91" in out and "reviewer: f1 should be an update" in out
-
-    async def test_researched_today_asks_no_model(self, refresh, monkeypatch, capsys):
-        monkeypatch.setattr(delta, "researched_today", lambda conn, slug: _value(True))
-        await change_check._refresh(SLUG, [], discover.Discovery(), judge.Context((), ()), save.Saved(0, 0, 0))
-        assert refresh.models == [] and "already researched today" in capsys.readouterr().out
-
-    @pytest.mark.parametrize("entity, why", [
-        ({"status": "not_found"}, "found nothing"), ({"entity_kind": "unknown"}, "funder or an NGO")])
-    async def test_research_with_nothing_to_carry_is_not_refreshed(self, refresh, capsys, entity, why):
-        refresh.entity = {**refresh.entity, **entity}
-        await change_check._refresh(SLUG, [_changed()], discover.Discovery(), judge.Context((), ()),
-                                    save.Saved(0, 0, 0))
-        assert refresh.models == [] and why in capsys.readouterr().out
-
-    async def test_only_gone_pages_ask_no_model(self, refresh, capsys):
-        await change_check._refresh(SLUG, [_changed(status=fetch_status.DEAD)], discover.Discovery(),
-                                    judge.Context((), ()), save.Saved(0, 0, 0))
-        assert refresh.models == [] and "only gone pages changed" in capsys.readouterr().out
-
-    async def test_a_model_failure_saves_nothing_and_says_so(self, refresh, monkeypatch, capsys):
-        async def propose(model, grader, question):
-            raise ValueError("summary too short")
-        monkeypatch.setattr(delta, "propose", propose)
-        await change_check._refresh(SLUG, [_changed()], discover.Discovery(), judge.Context((), ()),
-                                    save.Saved(0, 0, 0))
-        assert refresh.saved == [] and "no usable delta (ValueError)" in capsys.readouterr().out
-
-    async def test_a_delta_that_changes_nothing_saves_no_row_but_moves_the_baseline(self, refresh, monkeypatch,
-                                                                                      capsys):
-        monkeypatch.setattr(delta, "apply", lambda proposed, srcs, kind: delta.Applied(kept=2))
-        await change_check._refresh(SLUG, [_changed()], discover.Discovery(), judge.Context((), ()),
-                                    save.Saved(0, 0, 0, {"https://a.org/about": 77}))
-        assert refresh.saved == [] and refresh.reread == [(5, [77])]
-        assert "the delta changes nothing" in capsys.readouterr().out
-
-    async def test_a_page_with_an_unsettled_broken_fact_keeps_its_baseline(self, refresh, monkeypatch):
-        stale = "https://a.org/stale"
-        monkeypatch.setattr(delta, "apply", lambda proposed, srcs, kind: delta.Applied(
-            added=1, findings=[{"x": 1}], unhandled=["f2"], stale={stale}))
-        await change_check._refresh(SLUG, [_changed(), _changed(stale)], discover.Discovery(),
-                                    judge.Context((), ()), save.Saved(0, 0, 0))
-        assert refresh.saved == [["https://a.org/about"]]
-
-    async def test_no_row_to_carry_forward_asks_nothing(self, refresh, capsys):
-        refresh.entity = None
-        await change_check._refresh(SLUG, [], discover.Discovery(), judge.Context((), ()), save.Saved(0, 0, 0))
-        assert refresh.models == [] and "no research row to carry forward" in capsys.readouterr().out

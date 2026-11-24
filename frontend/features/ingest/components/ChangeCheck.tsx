@@ -7,6 +7,7 @@ import {
   fetchCheck,
   fetchChecks,
   runCheck,
+  runState,
   statusOf,
   stepsOf,
   summaryOf,
@@ -16,6 +17,7 @@ import {
   type CheckRunDetail,
   type SourceCheck,
 } from "../lib/changeCheck";
+import { ApiError } from "@/lib/api/rest";
 import { StepBar } from "./StepBar";
 
 const STEPS = ["Baseline", "Compare", "Decide", "Review"];
@@ -25,13 +27,13 @@ const host = (url: string) => url.replace(/^https?:\/\/(www\.)?/, "");
 
 /** Which step the person is on: nothing checked yet, a decision to act on, or an update waiting in review. */
 export function stepOf(run: CheckRunDetail | null): number {
-  if (!run || !run.finished_at) return run ? 1 : 0;
+  if (!run || !run.finished_at || run.error) return run ? 1 : 0;
   if (run.refresh_row_id) return 3;
   return verdictOf(run).next === "none" ? STEPS.length : 2;
 }
 
 /** One organisation's change check: what Sangam holds, what changed on each source, and what to do about it. */
-export function ChangeCheck({ slug, name }: { slug: string; name: string }) {
+export function ChangeCheck({ slug }: { slug: string }) {
   const [baseline, setBaseline] = useState<Baseline | null>(null);
   const [runs, setRuns] = useState<CheckRun[]>([]);
   const [run, setRun] = useState<CheckRunDetail | null>(null);
@@ -62,7 +64,9 @@ export function ChangeCheck({ slug, name }: { slug: string; name: string }) {
       setRun(await runCheck(slug, depth, refresh));
       setRuns(await fetchChecks(slug));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(e instanceof ApiError && e.status === 409
+        ? "A check of this organisation is already running. Try again when it finishes."
+        : e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
@@ -75,7 +79,7 @@ export function ChangeCheck({ slug, name }: { slug: string; name: string }) {
         ← Scout
       </Link>
       <header className="import-head">
-        <h1 className="import-h1">Check {name} for changes</h1>
+        <h1 className="import-h1">Check {baseline?.name ?? slug} for changes</h1>
         <p className="import-lede muted">
           Sangam fetches each source again and compares it with the copy the research read. Only what changed is
           updated, and nothing reaches the profile until you save it.
@@ -196,7 +200,7 @@ export function ChangeCheck({ slug, name }: { slug: string; name: string }) {
               >
                 <span>{when(r.started_at)}</span>
                 <span className="import-hint">
-                  {r.depth === "full" ? "Full" : "Free"} · {r.error ? "failed" : (r.decision ?? "running")} ·{" "}
+                  {r.depth === "full" ? "Full" : "Free"} · {runState(r)} ·{" "}
                   {r.sources} sources
                 </span>
               </button>

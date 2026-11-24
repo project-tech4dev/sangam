@@ -5,29 +5,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import tempfile
-import uuid
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
 
-import httpx
-
-from app.agentkit.models import resolve_model
 from app.core.config import get_settings
 from app.db.checkpointer import make_pool
-from app.ingest.refresh import (
-    baseline,
-    compare,
-    decision,
-    delta,
-    diff,
-    discover,
-    evidence,
-    fetch_status,
-    judge,
-    save,
-)
+from app.ingest.refresh import baseline, service
 
 # The stages in the order they run; each new stage of the check is added here as it lands.
 STAGES = ("baseline", "fetch", "hash", "diff", "evidence", "judge", "discover")
@@ -51,133 +33,28 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 async def main(slug: str, until: str, write: bool = False, refresh: bool = False) -> None:
-    """Each stage prints what it found; the check stops after `until`, or when nothing is left to check.
-    The database is held only to read at the start and, with write, to save at the end, never while fetching."""
-    async with _connection() as conn:
-        baselines, unrecorded = await baseline.load(conn, slug)
-        findings = await evidence.load_findings(conn, slug)
-        context = await judge.load_context(conn, slug)
-        subject = await discover.load_subject(conn, slug)
-    print(baseline.describe(slug, baselines, unrecorded))
-    if until == "baseline" or not baselines:
-        return
-    # One folder for the run: a document that differed is archived from it at the end.
-    with tempfile.TemporaryDirectory(prefix="source-check-") as scratch:
-        ended = await _stages(slug, until, Path(scratch), baselines, findings, context, subject)
-        if not write or ended is None:
-            return
-        checks, found, verdict = ended
-        keys = await save.archive_all(checks, found)
-        run_id = uuid.uuid4()
-        async with _connection() as conn:
-            saved = await save.write(conn, run_id, slug, checks, found, keys)
-        print(save.describe(slug, run_id, saved))
-        if refresh and verdict == decision.REFRESH:
-            await _refresh(slug, checks, found, context, saved)
-        elif refresh:
-            print(f"{slug}: no refresh: the decision is {verdict}")
-
-
-async def _refresh(slug: str, checks: list[compare.Check], found: discover.Discovery, context: judge.Context,
-                   saved: save.Saved) -> None:
-    """The delta is asked for with no connection held; the brief waits for the person's save in Review & save."""
-    settings = get_settings()
-    async with _connection() as conn:
-        entity, rows = await delta.load(conn, slug)
-        today = entity is not None and await delta.researched_today(conn, slug)
-    if entity is None:
-        print(f"{slug}: no refresh: no research row to carry forward")
-        return
-    if today:
-        print(f"{slug}: no refresh: it was already researched today")
-        return
-    if why := delta.cannot_refresh(entity):
-        print(f"{slug}: no refresh: {why}")
-        return
-    name, kind = entity["canonical_name"] or entity["entity_name"], entity.get("entity_kind")
-    srcs = delta.fit(name, delta.sources(checks, found, delta.facts_by_url(rows)), context, kind)
-    if not any(s.status != "dead" for s in srcs):
-        # A dead page's facts are never removed by a refresh, so a model would be paid to change nothing.
-        print(f"{slug}: no refresh: only gone pages changed, and a person decides whether their facts still hold")
-        return
-    # Sonnet refuses a forced tool call for structured output, so the delta asks for a JSON schema.
-    model = resolve_model(settings.research_model).with_structured_output(delta.Delta, method="json_schema")
-    grader = resolve_model(settings.utility_model).with_structured_output(delta.Grade)
-    try:
-        proposed, problems = await delta.propose(model, grader, delta.ask(name, srcs, context, kind))
-    except Exception as exc:  # noqa: BLE001 — a reply that is no delta saves nothing, and says so
-        print(f"{slug}: refresh not saved: the update model gave no usable delta ({type(exc).__name__})")
-        return
-    applied = delta.apply(proposed, srcs, kind)
-    read = [s.url for s in srcs if s.status != "dead" and s.url not in applied.stale]
-    ids = [saved.snapshot_ids[u] for u in read if u in saved.snapshot_ids]
-    if not applied.findings and not applied.supersedes:
-        async with _connection() as conn:
-            await delta.note_reread(conn, entity["id"], ids)
-        print(delta.describe(slug, applied, None, problems, nothing=True))
-        return
-    async with _connection() as conn, conn.transaction():
-        row_id = await delta.save_row(conn, entity, applied, proposed, context, ids, read)
-    print(delta.describe(slug, applied, row_id, problems))
-
-
-@asynccontextmanager
-async def _connection() -> AsyncIterator[Any]:
+    """The screen's pipeline, printed stage by stage. WRITE=1 is a recorded run like the screen's: it shows in the
+    screen's history and waits for a check already running."""
     pool = make_pool(get_settings().database_url, max_size=1)
     await pool.open()
     try:
+        if write:
+            try:
+                await service.run(pool, slug, service.FULL, refresh, None, say=print)
+            except service.NoBaseline:
+                pass  # the baseline's own line already said there is nothing to check
+            except service.Busy:
+                print(f"{slug}: a check is already running; try again when it finishes")
+            return
         async with pool.connection() as conn:
-            yield conn
+            given = await service.load_inputs(conn, slug)
+        print(baseline.describe(slug, given.baselines, given.unrecorded))
+        if until == "baseline" or not given.baselines:
+            return
+        with tempfile.TemporaryDirectory(prefix="source-check-") as scratch:
+            await service.stages(slug, service.FULL, Path(scratch), given, until=until, say=print)
     finally:
         await pool.close()
-
-
-async def _stages(slug: str, until: str, scratch: Path, baselines: list[baseline.Baseline],
-                  findings: dict[str, list[str]], context: judge.Context,
-                  subject: discover.Subject | None) -> tuple[list[compare.Check], discover.Discovery, str] | None:
-    """The stages after the baseline; the checks and the discovery when every stage ran, else None."""
-    settings = get_settings()
-    today = await fetch_status.fetch_all(baselines, scratch)
-    print(fetch_status.describe(slug, today))
-    if until == "fetch":
-        return None
-    checks = compare.compare(baselines, today)
-    print(compare.describe(slug, checks))
-    if until == "hash":
-        return None
-    checks = await diff.run(checks)
-    print(diff.describe(slug, checks))
-    redesign = decision.redesigned(checks)
-    if until == "diff":
-        return None
-    checks = evidence.run(checks, findings)
-    print(evidence.describe(slug, checks))
-    if until == "evidence":
-        return None
-    if redesign:
-        # A full pull rereads everything, so neither the judge nor the search is worth paying for.
-        checks = decision.settle(checks)
-        found = discover.Discovery(skipped=decision.REDESIGN_REASON)
-        print(f"{slug}: judge and discovery skipped: {decision.REDESIGN_REASON}")
-        if until == "judge":
-            return None
-    else:
-        model = resolve_model(settings.source_check_judge_model)
-        checks = await judge.run(checks, findings, context, model.with_structured_output(judge.Judgement))
-        print(judge.describe(slug, checks))
-        if until == "judge":
-            return None
-        # Rows saved before snapshots have no baseline, but their cited URLs were read all the same.
-        known_urls = {b.url for b in baselines} | set(findings)
-        known_hashes = {b.text_hash for b in baselines} | {t.fingerprint for t in today if t.fingerprint}
-        async with httpx.AsyncClient() as client:
-            found = await discover.run(subject, known_urls, known_hashes, context,
-                                       model.with_structured_output(discover.Picks), settings.tavily_api_key,
-                                       client, scratch)
-        print(discover.describe(slug, found))
-    verdict = decision.decide(checks, found, redesign)
-    print(decision.describe(slug, checks, found, verdict))
-    return checks, found, verdict
 
 
 if __name__ == "__main__":

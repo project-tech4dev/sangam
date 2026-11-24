@@ -18,6 +18,7 @@ class BaselineSourceOut(BaseModel):
 
 class BaselineOut(BaseModel):
     slug: str
+    name: str | None = Field(None, description="the entity's name from its newest research")
     sources: list[BaselineSourceOut]
     unrecorded: int = Field(description="research rows saved before snapshots existed; their sources are not checked")
 
@@ -70,7 +71,8 @@ class CheckRunDetailOut(CheckRunOut):
 
 
 class TrackedOut(BaseModel):
-    slug: str
+    slug: str = Field(description="the research slug, which the change check runs on")
     kind: str
+    id: int = Field(description="the org or funder row the research was saved to, as the Registry lists it")
     sources: int
     last_checked: datetime | None

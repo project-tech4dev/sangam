@@ -76,7 +76,7 @@ function Row({ r, f, tracked }: { r: RegistryRow; f: Filters; tracked?: Tracked 
   return (
     <div className="reg-row-wrap">
       {row}
-      <Link href={`/import/check/${encodeURIComponent(r.slug)}`} className="reg-check">
+      <Link href={`/import/check/${encodeURIComponent(tracked.slug)}`} className="reg-check">
         Check for changes · {tracked.sources} {tracked.sources === 1 ? "source" : "sources"} tracked
         {tracked.last_checked && ` · last checked ${new Date(tracked.last_checked).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`}
       </Link>
@@ -84,7 +84,8 @@ function Row({ r, f, tracked }: { r: RegistryRow; f: Filters; tracked?: Tracked 
   );
 }
 
-export function RegistryClient({ first }: { first: RegistryPage }) {
+/** `staff` decides whether the change-check links are asked for at all: no one else may see them. */
+export function RegistryClient({ first, staff = false }: { first: RegistryPage; staff?: boolean }) {
   const fromUrl = filtersFrom(useSearchParams());
   // Typed text stays local so the caret never waits on the address; the address gets a copy.
   const [q, setQ] = useState(fromUrl.q);
@@ -92,12 +93,14 @@ export function RegistryClient({ first }: { first: RegistryPage }) {
   const [asked, setAsked] = useState<Filters>(fromUrl);
   const [tracked, setTracked] = useState<Map<string, Tracked>>(new Map());
   useEffect(() => {
+    if (!staff) return;
     let live = true;
-    fetchTracked().then((list) => live && setTracked(new Map(list.map((t) => [`${t.kind}-${t.slug}`, t]))));
+    // By the row research was saved to: a research slug and a Registry slug can differ.
+    fetchTracked().then((list) => live && setTracked(new Map(list.map((t) => [`${t.kind}-${t.id}`, t]))));
     return () => {
       live = false;
     };
-  }, []);
+  }, [staff]);
   // A replace: Back leaves the Registry, it does not undo each filter. A pick or a Clear is asked at once.
   const set = (patch: Partial<Filters>) => {
     if (patch.q !== undefined) setQ(patch.q);
@@ -211,7 +214,7 @@ export function RegistryClient({ first }: { first: RegistryPage }) {
       </div>
 
       <div className="reg-list">
-        {list.items.map((r) => <Row key={`${r.kind}-${r.id}`} r={r} f={f} tracked={tracked.get(`${r.kind}-${r.slug}`)} />)}
+        {list.items.map((r) => <Row key={`${r.kind}-${r.id}`} r={r} f={f} tracked={tracked.get(`${r.kind}-${r.id}`)} />)}
         {!list.busy && list.total === 0 && <div className="muted reg-none">No entries match these filters.</div>}
         {list.error && <div className="muted reg-none" role="alert">{list.error}</div>}
         <ListMore shown={list.fetched} total={list.total} onMore={() => list.more?.()} page={PAGE} busy={list.busy} />
