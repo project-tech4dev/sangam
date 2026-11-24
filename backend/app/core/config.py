@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 from urllib.parse import urlparse
 
 from psycopg.conninfo import conninfo_to_dict
@@ -98,6 +99,15 @@ class Settings(BaseSettings):
     # it is a real extra model call per SQL turn, so it runs on the cheapest tier.
     sql_audit_model: str = "anthropic:claude-haiku-5-5"
 
+    # TypeSafe's Jev decides small things in Ask (docs/features/2026-11-24-jev-ask-decisions.md). No key, no call.
+    # `shadow` asks it after the answer and scores agreement with what the model did; nothing changes for the user.
+    typesafe_api_key: str = ""
+    jev_model: str = "jev-latest"
+    jev_route: Literal["off", "shadow"] = "off"
+    jev_skill: Literal["off", "shadow"] = "off"
+    # Input price per million tokens, for the cost Langfuse shows: it has no price of its own for jev-*.
+    jev_usd_per_mtok: float = 0.042
+
     # Graph steps per turn, not tool calls: every middleware hook is its own node, so one model-then-tool
     # cycle costs several. Bound in build_agent(); LangGraph's own default is 25, which a SQL turn exceeds.
     # Each subagent gets its OWN budget of this many steps — the counter is per graph invocation, not
@@ -138,6 +148,7 @@ class Settings(BaseSettings):
         "research_model",
         "utility_model",
         "sql_audit_model",
+        "jev_model", "jev_route", "jev_skill", "jev_usd_per_mtok",
         "max_parallel_research", "research_page_limit", "research_model_call_limit", "ask_model_call_limit",
         "free_questions",
         "db_pool_max_size", "db_pool_timeout_s", "db_connect_timeout_s", "db_statement_timeout_ms",

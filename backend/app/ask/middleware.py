@@ -72,7 +72,7 @@ _CAPPED = (
 )
 
 
-def _this_turn(messages: list[BaseMessage]) -> list[BaseMessage]:
+def this_turn(messages: list[BaseMessage]) -> list[BaseMessage]:
     """The messages since the user's most recent one."""
     for i in range(len(messages) - 1, -1, -1):
         if isinstance(messages[i], HumanMessage):
@@ -85,7 +85,7 @@ def model_call_cap(limit: int):
 
     @before_model(can_jump_to=["end"], name="ModelCallCap")
     def _cap(state, runtime):
-        calls = sum(isinstance(m, AIMessage) for m in _this_turn(state["messages"]))
+        calls = sum(isinstance(m, AIMessage) for m in this_turn(state["messages"]))
         if calls < limit:
             return None
         logger.info("model call cap reached after %d calls", calls)
@@ -107,7 +107,7 @@ def _fit_key(args: dict) -> tuple:
 def compare_fit_refusal(messages: list[BaseMessage], call: dict) -> str | None:
     """Why this compare_fit call is refused: the same arguments again this turn, or one call too many."""
     seen: list[tuple] = []
-    for message in _this_turn(messages):
+    for message in this_turn(messages):
         for tc in getattr(message, "tool_calls", None) or []:
             if tc["name"] != COMPARE_FIT:
                 continue

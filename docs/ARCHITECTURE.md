@@ -82,6 +82,10 @@ Generated detail (tools, skills, middleware order, prompt rules): [ask-sangam](.
   changes only when a question starts, so every model call within a question shares one cached prefix. Edits apply to the
   request, never to state, so the answer audit still reads every result. Pitch and Import keep the 60k stepped clearing alone:
   their later steps read earlier results.
+- **Jev decides only where code acts on a probability, and is measured before it acts** (#315,
+  `docs/features/2026-11-24-jev-ask-decisions.md`). `shadow` asks TypeSafe after the answer and scores agreement with what
+  the model did, so it adds no wait; nothing acts until those scores say it agrees. Its cost is a `generation` with
+  explicit `cost_details`, since Langfuse has no price for `jev-*`. Tool gating, escalation and goal loops stay rules in code.
 - **Someone outside every organisation gets `FREE_QUESTIONS` (10) Ask questions in all, no reset** (#314). `threads.questions`
   counts their turns in `claim_thread`; `ask_access` sums every chat they have, under a lock on their `users` row, and
   answers 429 before the agent runs. Every chat counts whatever its id, since the browser picks the id, and the count can't

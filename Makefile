@@ -1,4 +1,4 @@
-.PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs jev-replay wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url checkpoint-sizes prune-checkpoints audit-review \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -286,6 +286,11 @@ audit-review:  ## Check the answer audit against a person's labels in Langfuse: 
 	@test "$(ENV)" = local || { echo 'audit-review reads the local checkpoints: ENV=local only.'; exit 2; }
 	@test -n "$(CMD)" || { echo 'usage: make audit-review CMD=setup|rerun [SINCE=YYYY-MM-DD]'; exit 2; }
 	$(COMPOSE) exec -T -e PYTHONPATH=/srv backend python - $(CMD) $(if $(SINCE),--since $(SINCE)) < scripts/audit_review.py
+
+# Sends recorded questions to TypeSafe; prints counts and rates, never keys. Costs a fraction of a cent.
+jev-replay:  ## Replay recorded Ask questions through Jev: agreement, latency, cost [JEV_ENV=production SINCE= LIMIT= OUT=]
+	$(COMPOSE) exec -T -e PYTHONPATH=/srv backend python - $(if $(JEV_ENV),--env $(JEV_ENV)) $(if $(SINCE),--since $(SINCE)) \
+	  $(if $(LIMIT),--limit $(LIMIT)) $(if $(OUT),--out $(OUT)) < scripts/jev_replay.py
 
 checkpoint-sizes:  ## Checkpoint bytes by table, thread and channel; THREAD=<id> for one
 	$(COMPOSE) run --rm --no-deps -T -v $(CURDIR)/scripts/sql:/sql:ro --entrypoint psql postgres "$(DB_URL)" \

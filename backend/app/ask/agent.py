@@ -16,6 +16,7 @@ from app.agentkit.harness import filesystem as filesystem_tools
 from app.agentkit.harness import install as install_harness
 from app.agentkit.middleware import cheap_summarizer, clear_old_tool_results, fallback, tool_errors
 from app.agentkit.models import resolve_model
+from app.ask.jev import jev_shadow, skill_catalog
 from app.ask.middleware import CompareFitBudget, answer_audit, model_call_cap, sql_retry_limiter
 from app.ask.prompt import render_prompt
 from app.ask.tools.graph_tools import search_graph
@@ -79,6 +80,9 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     if settings.sql_audit_model and settings.langfuse_enabled:
         # Its verdict is only a Langfuse score, so without Langfuse the call would buy nothing.
         middleware.append(answer_audit(settings.sql_audit_model))
+    if settings.typesafe_api_key and settings.langfuse_enabled and "shadow" in (settings.jev_route, settings.jev_skill):
+        # Shadow decisions are only Langfuse scores, after the answer: no wait for the person, no change to the turn.
+        middleware.append(jev_shadow(settings, skill_catalog(SKILLS_DIR)))
 
     agent = create_deep_agent(
         model=strong,
