@@ -171,9 +171,9 @@ class JevAct(AgentMiddleware):
     def name(self) -> str:
         return "jev_act"
 
-    def before_agent(self, state, runtime):
+    async def abefore_agent(self, state, runtime):
         state_in = asked(state["messages"])
-        decision = decide(state_in, self.asking, name="jev_route_skill", settings=self.settings) if state_in else None
+        decision = await adecide(state_in, self.asking, name="jev_route_skill", settings=self.settings) if state_in else None
         skill, confidence, _ = decision.choice("skill") if decision else (None, 0.0, {})
         sure = skill in self.texts and confidence >= self.settings.jev_skill_threshold
         return {"jev_skill": skill if sure else None}

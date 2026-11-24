@@ -180,7 +180,10 @@ def test_the_skill_goes_right_after_the_question():
 
 
 def _act(monkeypatch, decision, threshold=0.8):
-    monkeypatch.setattr(jev, "decide", lambda state, questions, *, name, settings: decision)
+    async def fake_decide(state, questions, *, name, settings):
+        return decision
+
+    monkeypatch.setattr(jev, "adecide", fake_decide)
     settings = Settings(_env_file=None, typesafe_api_key="k", jev_skill="act", jev_skill_threshold=threshold)
     return jev.JevAct(settings, SKILLS_DIR)
 
@@ -191,15 +194,15 @@ def _act(monkeypatch, decision, threshold=0.8):
     ("none", 0.5, None),
     ("not-a-skill", 0.5, None),
 ])
-def test_a_skill_is_kept_only_when_sure_and_real(monkeypatch, skill, threshold, kept):
+async def test_a_skill_is_kept_only_when_sure_and_real(monkeypatch, skill, threshold, kept):
     mw = _act(monkeypatch, _decision(skill=skill), threshold)
-    assert mw.before_agent({"messages": KABIL[:1]}, None) == {"jev_skill": kept}
+    assert await mw.abefore_agent({"messages": KABIL[:1]}, None) == {"jev_skill": kept}
 
 
-def test_no_decision_or_no_question_keeps_nothing(monkeypatch):
+async def test_no_decision_or_no_question_keeps_nothing(monkeypatch):
     mw = _act(monkeypatch, None)
-    assert mw.before_agent({"messages": KABIL[:1]}, None) == {"jev_skill": None}
-    assert mw.before_agent({"messages": []}, None) == {"jev_skill": None}
+    assert await mw.abefore_agent({"messages": KABIL[:1]}, None) == {"jev_skill": None}
+    assert await mw.abefore_agent({"messages": []}, None) == {"jev_skill": None}
     assert mw.name == "jev_act"
 
 
