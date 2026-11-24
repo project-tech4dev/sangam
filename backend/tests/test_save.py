@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import date
 from uuid import UUID
 
 import pytest
 from psycopg.types.json import Jsonb
 
-from app.ingest.refresh import save
+from app.ingest.reading.fetch import Fetched
+from app.ingest.refresh import compare, fetch_status, save
+from app.ingest.refresh.baseline import Baseline
 from app.ingest.refresh.compare import CHANGED, MINOR, UNCHANGED
 from app.ingest.refresh.discover import Discovery
 from app.ingest.refresh.evidence import BROKEN, INTACT, UNANCHORED
@@ -36,6 +39,28 @@ class TestDiffered:
         assert not save.differed(same()) and not save.differed(blocked())
         assert not save.differed(replace(check(), today=Today(URL, OK, "HTTP 200", text="", fingerprint=None)))
 
+
+
+async def test_two_reports_with_the_same_filename_each_archive_their_own_file(monkeypatch, tmp_path):
+    urls = ["https://funder.example/2023/annual-report.pdf", "https://funder.example/2024/annual-report.pdf"]
+    body = {urls[0]: b"%PDF-1.4 report 2023", urls[1]: b"%PDF-1.4 report 2024"}
+
+    async def download(url, filename, directory):
+        path = directory / "annual-report.pdf"
+        path.write_bytes(body[url])
+        return Fetched(url, final_url=url, status=200, content_type="application/pdf", path=path)
+
+    archived: dict[str, bytes] = {}
+
+    async def document(url, path, content_type):
+        archived[url] = path.read_bytes()
+        return f"key/{len(archived)}.pdf"
+    monkeypatch.setattr(fetch_status, "download", download)
+    monkeypatch.setattr(save, "archive_document", document)
+    baselines = [Baseline(u, n, "document", "0" * 64, None, 31, date(2026, 11, 14)) for n, u in enumerate(urls)]
+    today = await fetch_status.fetch_all(baselines, tmp_path)
+    await save.archive_all(compare.compare(baselines, today))
+    assert archived == body
 
 class TestArchive:
     @pytest.fixture

@@ -89,11 +89,11 @@ async def _stages(slug: str, until: str, scratch: Path, baselines: list[baseline
         return None
     checks = compare.compare(baselines, today)
     print(compare.describe(slug, checks))
-    redesign = decision.redesigned(checks)
     if until == "hash":
         return None
     checks = await diff.run(checks)
     print(diff.describe(slug, checks))
+    redesign = decision.redesigned(checks)
     if until == "diff":
         return None
     checks = evidence.run(checks, findings)

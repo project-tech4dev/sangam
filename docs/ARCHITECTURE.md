@@ -125,6 +125,11 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
 - **Tools run on the owner pool**, so each checks `chat_scope` itself; private findings are stripped for non-staff.
 - **Scout is for staff and stewards only.** `require_scout` refuses everyone else (403) on the `/ingest` agent route
   and every `/api/ingest` route, before a thread is claimed; the sidebar link and `/import` are hidden from them too.
+- **A redesign means a full pull.** When a funder has at least four sources and more than half of them lost most of
+  their old text at once (`REDESIGN` in `refresh/decision.py`, counted after the diff stage), the site was rebuilt,
+  not updated; a new footer year on every page, or one edit on a one-page funder, is not a redesign: the judge is
+  skipped, every source that differs counts as changed, and the decision is a full pull rather than a partial refresh.
+  Judging page by page would cost a model call each to learn what the full pull rereads anyway.
 
 ## 5. Funder Match
 

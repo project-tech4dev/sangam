@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Protocol
@@ -10,7 +11,6 @@ from urllib.parse import urlsplit
 
 from app.ingest.reading.fetch import Fetched, document_hash, document_text, download, fetch_page
 from app.ingest.reading.fingerprint import text_hash
-from app.ingest.refresh.baseline import Baseline
 
 OK, UNVERIFIED, DEAD = "ok", "unverified", "dead"
 GONE = (404, 410)
@@ -36,9 +36,9 @@ class Today:
 
 
 async def fetch_today(source: Source, scratch: Path) -> Today:
-    """Today's text for one source; a document is downloaded into scratch, never the researchers' folder."""
+    """Today's text for one source; a document gets its own folder under scratch, so two annual-report.pdf never collide."""
     if source.kind == "document":
-        got = await download(source.url, None, scratch)
+        got = await download(source.url, None, Path(tempfile.mkdtemp(dir=scratch)))
         text = await asyncio.to_thread(document_text, got.path) if got.path else ""
         today = classify(got, text, source.text_hash)
         if today.status != OK or today.path is None:
@@ -51,16 +51,14 @@ async def fetch_today(source: Source, scratch: Path) -> Today:
 
 
 async def fetch_all(sources: list[Source], scratch: Path) -> list[Today]:
-    """In the baselines' order; each source gets its own folder, so two annual-report.pdf never collide."""
+    """In the sources' order, a few at a time."""
     gate = asyncio.Semaphore(FETCH_AT_ONCE)
 
-    async def one(index: int, source: Source) -> Today:
-        folder = scratch / str(index)
-        folder.mkdir()
+    async def one(source: Source) -> Today:
         async with gate:
-            return await fetch_today(source, folder)
+            return await fetch_today(source, scratch)
 
-    return list(await asyncio.gather(*(one(i, s) for i, s in enumerate(sources))))
+    return list(await asyncio.gather(*(one(s) for s in sources)))
 
 
 def classify(got: Fetched, text: str, known: str | None = None) -> Today:

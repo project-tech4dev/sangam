@@ -35,14 +35,27 @@ def test_a_redesign_is_a_full_pull_whatever_else_it_found():
     assert decision.decide(checks(UNCHANGED), FOUND, redesign=True) == decision.FULL_PULL
 
 
-@pytest.mark.parametrize(("statuses", "redesign"), [
-    ((DIFFERS, DIFFERS, UNCHANGED), True),
-    ((DIFFERS, UNCHANGED), False),  # exactly half is not more than half
-    ((DIFFERS, "unverified", "unverified"), False),  # a failed fetch is not a change
-    ((), False),
-])
-def test_more_than_half_differing_is_a_redesign(statuses, redesign):
-    assert decision.redesigned(checks(*statuses)) is redesign
+OLD = "Old home\nOld about\n© 2025"
+REBUILT = replace(check(status=DIFFERS, old=OLD), removed=("Old home", "Old about", "© 2025"))
+FOOTER = replace(check(status=DIFFERS, old=OLD), removed=("© 2025",))
+
+
+@pytest.mark.parametrize(("sources", "redesign"), [
+    ([REBUILT] * 3 + checks(UNCHANGED), True),
+    ([REBUILT] * 2 + checks(UNCHANGED, UNCHANGED), False),  # exactly half is not more than half
+    ([REBUILT] + checks("unverified", "unverified", "unverified"), False),  # a failed fetch is not a change
+    ([FOOTER] * 4, False),  # 1 January: every page differs by one line
+    (checks(MINOR, MINOR, MINOR, UNCHANGED), False),
+    ([], False),
+], ids=["most-rebuilt", "half", "unverified", "new-footer-year", "minor", "none"])
+def test_more_than_half_rebuilt_is_a_redesign(sources, redesign):
+    assert decision.redesigned(sources) is redesign
+
+
+@pytest.mark.parametrize("count", [1, 2, 3])
+def test_a_funder_with_few_sources_is_never_a_redesign(count):
+    """One page edit on a one-page funder is a refresh, not a full pull."""
+    assert not decision.redesigned([REBUILT] * count)
 
 
 def test_settle_takes_what_still_differs_as_changed():

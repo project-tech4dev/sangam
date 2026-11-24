@@ -175,14 +175,14 @@ class TestStages:
 
     async def test_a_redesign_skips_the_judge_and_the_search(self, run, monkeypatch, capsys):
         async def load(conn, slug):
-            return [baseline.Baseline(**row("https://a.org/about"))], 0
+            return [baseline.Baseline(**row(f"https://a.org/{n}")) for n in range(4)], 0
         monkeypatch.setattr(baseline, "load", load)
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
         monkeypatch.setattr(change_check, "resolve_model", lambda spec: pytest.fail("built a model"))
         monkeypatch.setattr(discover, "run", lambda *a: pytest.fail("searched"))
         await change_check.main(SLUG, "discover")
         out = capsys.readouterr().out
-        assert "judge and discovery skipped" in out and out.strip().endswith("1 changed → full pull")
+        assert "judge and discovery skipped" in out and out.strip().endswith("4 changed → full pull")
 
     async def test_nothing_to_check_stops_before_fetching(self, run, monkeypatch, capsys):
         monkeypatch.setattr(baseline, "load", lambda conn, slug: _empty())

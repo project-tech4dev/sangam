@@ -7,7 +7,7 @@ import json
 import httpx
 import pytest
 
-from app.ingest.refresh import discover, fetch_status
+from app.ingest.refresh import decision, discover, fetch_status
 from app.ingest.refresh.discover import Lead, Pick, Picks, Subject
 from app.ingest.refresh.judge import Context
 from tests.cov_ingest_fakes import ScriptConn
@@ -77,10 +77,12 @@ class TestRun:
         found = await run(Model(picks(0, 1, 7)), client)
         assert len(fetched) == 1 and [why for _, why in found.new] == ["programme: pick 1"]
 
-    async def test_a_failed_judge_keeps_every_unread_lead(self, fetched):
+    async def test_a_failed_judge_keeps_no_lead_and_says_so(self, fetched):
         client, _ = tavily()
         found = await run(Model(RuntimeError("overloaded")), client)
-        assert len(found.new) == 1 and "judge failed (RuntimeError)" in found.new[0][1] and len(found.dropped) == 1
+        assert found.new == [] and found.dropped == [] and fetched == []
+        assert found.failed == ["lead judge (RuntimeError), 2 leads not judged"]
+        assert decision.decide([], found, redesign=False) == decision.NOTHING
 
     async def test_nothing_unread_asks_no_model(self, fetched):
         client, _ = tavily(results=RESULTS[:2])
@@ -93,18 +95,25 @@ class TestRun:
         found = await run(Model(picks()), client)
         assert found.searched == 0 and len(found.failed) == 3 and "HTTPStatusError" in found.failed[0]
 
-    async def test_a_lead_that_cannot_be_fetched_is_still_new_with_why(self, monkeypatch):
+    @pytest.mark.parametrize(("status", "reason"), [
+        (fetch_status.DEAD, "HTTP 404"),
+        (fetch_status.UNVERIFIED, "HTTP 403"),
+    ])
+    async def test_a_lead_not_fetched_ok_is_dropped_with_its_reason(self, monkeypatch, status, reason):
         async def fetch_today(source, scratch):
-            return fetch_status.Today(source.url, fetch_status.UNVERIFIED, "HTTP 403")
+            return fetch_status.Today(source.url, status, reason)
         monkeypatch.setattr(fetch_status, "fetch_today", fetch_today)
         client, _ = tavily()
         found = await run(Model(picks(1)), client)
-        assert found.new[0][1] == "programme: pick 1 (unverified: HTTP 403)"
+        assert found.new == [] and [why for _, why in found.dropped] == [f"{status}: {reason}"]
+        assert decision.decide([], found, redesign=False) == decision.NOTHING
 
     @pytest.mark.parametrize(("api_key", "subject", "why"), [
         ("", SUBJECT, "no TAVILY_API_KEY"),
         ("key", None, "no website recorded"),
         ("key", Subject("X", None), "no website recorded"),
+        ("key", Subject("X", "facebook.com"), "shared host (facebook.com)"),
+        ("key", Subject("X", "sites.google.com"), "shared host (sites.google.com)"),
     ])
     async def test_without_a_key_or_a_site_nothing_is_searched(self, api_key, subject, why):
         client, sent = tavily()
@@ -123,6 +132,14 @@ class TestPieces:
         ("https://other.org/a", False)])
     def test_on_site(self, url, inside):
         assert discover.on_site(url, SITE) is inside
+
+    @pytest.mark.parametrize(("website", "is_shared"), [
+        ("facebook.com/xyzfoundation", True), ("https://m.facebook.com/xyz", True),
+        ("sites.google.com/view/xyz", True), ("linkedin.com/company/xyz", True), ("instagram.com/xyz", True),
+        ("wordpress.com/xyz", True), ("xyz.wordpress.com", False), ("xyz.blogspot.com", False),
+        (f"https://www.{SITE}", False), ("notfacebook.com", False)])
+    def test_a_shared_host_is_not_the_organisations_own_site(self, website, is_shared):
+        assert discover.shared(discover.domain_of(website)) is is_shared
 
     def test_a_pdf_lead_is_read_as_a_document(self):
         assert Lead.of(RESULTS[3]).kind == "document" and Lead.of(RESULTS[2]).kind == "page"
@@ -149,11 +166,11 @@ class TestDescribe:
         found = discover.Discovery(searched=3, on_site=3, already_read=1,
                                    new=[(Lead.of(RESULTS[2]), "programme: a fellowship")],
                                    dropped=[(Lead.of(RESULTS[3]), "the same text as a source already read")],
-                                   failed=["q (ReadTimeout)"])
+                                   failed=["search q (ReadTimeout)"])
         out = discover.describe(SLUG, found).splitlines()
         assert out[0] == f"{SLUG}: 3 searches · 3 results on its site · 1 already read · 1 new"
         assert out[1] == f"  new         https://www.{SITE}/fellowship  (programme: a fellowship)"
-        assert out[2].startswith("  dropped ") and out[3] == "  search failed: q (ReadTimeout)"
+        assert out[2].startswith("  dropped ") and out[3] == "  failed: search q (ReadTimeout)"
 
     def test_skipped(self):
         assert discover.describe(SLUG, discover.Discovery(skipped="no TAVILY_API_KEY")).endswith("skipped: no TAVILY_API_KEY")
