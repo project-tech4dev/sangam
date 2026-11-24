@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NotRequired
 
-from langchain.agents.middleware import AgentMiddleware, AgentState, after_agent
+from langchain.agents.middleware import AgentMiddleware, AgentState, after_agent, hook_config
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
 from app.ask.audit import DATA_TOOLS
@@ -26,6 +26,10 @@ ROUTES = {
     "off_topic": "Not about NGOs, funders or funding in India: small talk, general knowledge, the weather, or current "
     "affairs unrelated to them.",
 }
+OFF_TOPIC_REPLY = (
+    "I answer questions about Indian NGOs, funders, grants, CSR spending and funder fit, from Sangam's records. "
+    "That question is outside them. You could ask, for example, which funders support education in Assam."
+)
 _SKILL_PATH = re.compile(r"/skills/([^/]+)/SKILL\.md$")
 _FIELD = re.compile(r"^(name|description):\s*(.+)$", re.MULTILINE)
 
@@ -130,8 +134,8 @@ def jev_shadow(settings: Settings, skills: dict[str, str]):
     @after_agent(name="jev_shadow")
     async def _shadow(state, runtime):
         state_in = asked(state["messages"])
-        if state_in is None:
-            return
+        if state_in is None or state.get("jev_off_topic"):
+            return  # a fixed reply ran no model, so there is nothing to compare with
         decision = await adecide(state_in, asking, name="jev_route_skill", settings=settings)
         if decision is None:
             return
@@ -154,29 +158,37 @@ def preload(messages: list[BaseMessage], name: str, text: str) -> list[BaseMessa
 
 class JevState(AgentState):
     jev_skill: NotRequired[str | None]
+    jev_off_topic: NotRequired[bool]
 
 
 class JevAct(AgentMiddleware):
-    """Before the agent, one Jev call; a skill named above the threshold goes into this turn's model requests."""
+    """Before the agent, one Jev call: an off-topic question gets a fixed reply, and a named skill is preloaded."""
 
     state_schema = JevState
 
     def __init__(self, settings: Settings, skills_dir: Path):
         super().__init__()
         self.settings = settings
-        self.texts = {name: (skills_dir / name / "SKILL.md").read_text() for name in skill_catalog(skills_dir)}
-        self.asking = {k: v for k, v in questions(skill_catalog(skills_dir)).items() if k == "skill"}
+        skills = skill_catalog(skills_dir)
+        self.texts = {name: (skills_dir / name / "SKILL.md").read_text() for name in skills}
+        acting = {name for name, mode in (("route", settings.jev_route), ("skill", settings.jev_skill)) if mode == "act"}
+        self.asking = {k: v for k, v in questions(skills).items() if k in acting}
 
     @property
     def name(self) -> str:
         return "jev_act"
 
+    @hook_config(can_jump_to=["end"])
     async def abefore_agent(self, state, runtime):
         state_in = asked(state["messages"])
         decision = await adecide(state_in, self.asking, name="jev_route_skill", settings=self.settings) if state_in else None
+        route, route_p, _ = decision.choice("route") if decision else (None, 0.0, {})
+        if route == "off_topic" and route_p >= self.settings.jev_route_threshold:
+            return {"messages": [AIMessage(OFF_TOPIC_REPLY)], "jev_off_topic": True, "jev_skill": None,
+                    "jump_to": "end"}
         skill, confidence, _ = decision.choice("skill") if decision else (None, 0.0, {})
         sure = skill in self.texts and confidence >= self.settings.jev_skill_threshold
-        return {"jev_skill": skill if sure else None}
+        return {"jev_skill": skill if sure else None, "jev_off_topic": False}
 
     def _request(self, request):
         name = request.state.get("jev_skill")
@@ -191,6 +203,8 @@ class JevAct(AgentMiddleware):
         return await handler(self._request(request))
 
     def after_agent(self, state, runtime):
+        if state.get("jev_off_topic"):
+            score_answer("jev_route_acted", 1.0, comment="off_topic: fixed reply, no model call")
         name = state.get("jev_skill")
         if name:
             reread = name in did(state["messages"]).skills

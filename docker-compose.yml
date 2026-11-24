@@ -69,6 +69,7 @@ services:
       TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
       JEV_MODEL: ${JEV_MODEL:-}
       JEV_ROUTE: ${JEV_ROUTE:-}
+      JEV_ROUTE_THRESHOLD: ${JEV_ROUTE_THRESHOLD:-}
       JEV_SKILL: ${JEV_SKILL:-}
       JEV_SKILL_THRESHOLD: ${JEV_SKILL_THRESHOLD:-}
       # Research fan-out and the pool it is bounded by. Raise them together.

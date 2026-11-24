@@ -179,12 +179,13 @@ def test_the_skill_goes_right_after_the_question():
     assert jev.preload([AIMessage("hi")], "x", "y") == [AIMessage("hi")]
 
 
-def _act(monkeypatch, decision, threshold=0.8):
+def _act(monkeypatch, decision, threshold=0.8, route="off"):
     async def fake_decide(state, questions, *, name, settings):
         return decision
 
     monkeypatch.setattr(jev, "adecide", fake_decide)
-    settings = Settings(_env_file=None, typesafe_api_key="k", jev_skill="act", jev_skill_threshold=threshold)
+    settings = Settings(_env_file=None, typesafe_api_key="k", jev_skill="act", jev_skill_threshold=threshold,
+                        jev_route=route)
     return jev.JevAct(settings, SKILLS_DIR)
 
 
@@ -196,13 +197,13 @@ def _act(monkeypatch, decision, threshold=0.8):
 ])
 async def test_a_skill_is_kept_only_when_sure_and_real(monkeypatch, skill, threshold, kept):
     mw = _act(monkeypatch, _decision(skill=skill), threshold)
-    assert await mw.abefore_agent({"messages": KABIL[:1]}, None) == {"jev_skill": kept}
+    assert await mw.abefore_agent({"messages": KABIL[:1]}, None) == {"jev_skill": kept, "jev_off_topic": False}
 
 
 async def test_no_decision_or_no_question_keeps_nothing(monkeypatch):
     mw = _act(monkeypatch, None)
-    assert await mw.abefore_agent({"messages": KABIL[:1]}, None) == {"jev_skill": None}
-    assert await mw.abefore_agent({"messages": []}, None) == {"jev_skill": None}
+    assert await mw.abefore_agent({"messages": KABIL[:1]}, None) == {"jev_skill": None, "jev_off_topic": False}
+    assert await mw.abefore_agent({"messages": []}, None) == {"jev_skill": None, "jev_off_topic": False}
     assert mw.name == "jev_act"
 
 
@@ -265,3 +266,73 @@ def test_act_is_wired_innermost_with_a_key():
     assert {"jev_act.before_agent", "jev_act.after_agent"} <= set(graph.nodes)
     graph = build_agent(Settings(_env_file=None, jev_skill="act"), InMemorySaver())
     assert "jev_act.before_agent" not in graph.nodes
+
+
+# --- M2: act on an off-topic question ----------------------------------------
+
+def _sure(route, p):
+    decision = _decision(route=route)
+    decision.answers["route"]["confidence"] = p
+    return decision
+
+
+def test_only_the_decisions_set_to_act_are_asked(monkeypatch):
+    assert set(_act(monkeypatch, None).asking) == {"skill"}
+    assert set(_act(monkeypatch, None, route="act").asking) == {"route", "skill"}
+    settings = Settings(_env_file=None, typesafe_api_key="k", jev_route="act")
+    assert set(jev.JevAct(settings, SKILLS_DIR).asking) == {"route"}
+
+
+async def test_a_sure_off_topic_question_gets_the_fixed_reply_and_ends(monkeypatch):
+    out = await _act(monkeypatch, _sure("off_topic", 0.95), route="act").abefore_agent({"messages": WEATHER[:1]}, None)
+    assert out["jump_to"] == "end" and out["jev_off_topic"] is True and out["jev_skill"] is None
+    assert out["messages"][0].text == jev.OFF_TOPIC_REPLY
+
+
+@pytest.mark.parametrize("route, p", [("off_topic", 0.85), ("research", 0.99), ("catalog", 0.99)])
+async def test_anything_else_goes_to_the_model(monkeypatch, route, p):
+    out = await _act(monkeypatch, _sure(route, p), route="act").abefore_agent({"messages": WEATHER[:1]}, None)
+    assert "jump_to" not in out and out["jev_off_topic"] is False
+
+
+def test_the_before_hook_may_jump_to_the_end():
+    assert jev.JevAct.abefore_agent.__can_jump_to__ == ["end"]
+
+
+async def test_shadow_skips_a_turn_that_got_the_fixed_reply(monkeypatch, scores):
+    hook, sent = _shadow(monkeypatch, route="act", decision=_decision())
+    await hook.aafter_agent({"messages": WEATHER, "jev_off_topic": True}, None)
+    assert sent == [] and scores == []
+
+
+def test_an_acted_route_is_scored(monkeypatch, scores):
+    mw = _act(monkeypatch, None, route="act")
+    mw.after_agent({"messages": [*WEATHER[:1], AIMessage(jev.OFF_TOPIC_REPLY)], "jev_off_topic": True}, None)
+    mw.after_agent({"messages": WEATHER, "jev_off_topic": False}, None)
+    assert scores == [("jev_route_acted", 1.0)]
+
+
+def test_route_act_alone_wires_the_middleware():
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.ask.agent import build_agent
+
+    graph = build_agent(Settings(_env_file=None, typesafe_api_key="k", jev_route="act"), InMemorySaver())
+    assert "jev_act.before_agent" in graph.nodes
+
+
+async def test_the_graph_ends_on_the_fixed_reply_without_a_model_call(monkeypatch):
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.ask.agent import build_agent
+
+    async def fake_decide(state, questions, *, name, settings):
+        return _sure("off_topic", 0.95)
+
+    monkeypatch.setattr(jev, "adecide", fake_decide)
+    graph = build_agent(Settings(_env_file=None, typesafe_api_key="k", jev_route="act"), InMemorySaver())
+    called = []
+    monkeypatch.setattr(graph.nodes["model"].bound, "ainvoke", lambda *a, **kw: called.append(1))
+    out = await graph.ainvoke({"messages": [HumanMessage("what is the weather today?")]},
+                              {"configurable": {"thread_id": "t"}})
+    assert out["messages"][-1].text == jev.OFF_TOPIC_REPLY and called == []

@@ -83,7 +83,7 @@ def build_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     if settings.typesafe_api_key and settings.langfuse_enabled and "shadow" in (settings.jev_route, settings.jev_skill):
         # Shadow decisions are only Langfuse scores, made once the answer has streamed; they never change the turn.
         middleware.append(jev_shadow(settings, skill_catalog(SKILLS_DIR)))
-    if settings.typesafe_api_key and settings.jev_skill == "act":
+    if settings.typesafe_api_key and "act" in (settings.jev_route, settings.jev_skill):
         # Last, so it is innermost: the other request edits see the chat as stored, without the preloaded skill.
         middleware.append(JevAct(settings, SKILLS_DIR))
 
