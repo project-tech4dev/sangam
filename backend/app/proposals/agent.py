@@ -64,7 +64,7 @@ def build_proposal_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             nothing_to_answer,
             clear_old_tool_results(),
             *fallback(settings.model, settings.research_model),
-            cheap_summarizer(strong, utility, backend),
+            cheap_summarizer(utility, backend),
             ProposalContext(),
         ],
         system_prompt=_INSTRUCTIONS,

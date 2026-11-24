@@ -8,7 +8,7 @@ import pytest
 from langchain.agents.middleware import ModelCallLimitMiddleware, ModelFallbackMiddleware
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from app.agentkit.middleware import SUMMARY_INPUT_TOKENS
+from app.agentkit.middleware import SUMMARY_INPUT_TOKENS, SUMMARY_PROMPT, cheap_summarizer
 from app.ingest import middleware as mw
 
 TIERS = {"model": "m:strong", "research_model": "m:mid", "utility_model": "m:cheap"}
@@ -194,9 +194,30 @@ class TestSummariesAreWrittenByTheUtilityTier:
         for stack in (built.main, built.researcher):
             (summary,) = of(stack, SummarizationMiddleware)
             assert summary.model.name == "m:cheap"
-            # The fakes have no profile, as Opus 5.5 and Sonnet 5.5 have none: the fixed thresholds stand.
             assert summary._lc_helper.trigger == ("tokens", 170000)
+            assert summary._lc_helper.keep == ("tokens", 20000)
             assert summary._lc_helper.trim_tokens_to_summarize == SUMMARY_INPUT_TOKENS
+
+    def test_a_1m_window_does_not_move_the_thresholds(self, tmp_path):
+        # Sonnet 5.5's profile says 1M; read as 85% of it, the trigger was 850k.
+        from deepagents.backends import FilesystemBackend
+        from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+
+        model = GenericFakeChatModel(messages=iter([]), profile={"max_input_tokens": 1_000_000})
+        summary = cheap_summarizer(model, FilesystemBackend(root_dir=tmp_path))
+        assert summary._lc_helper.trigger == ("tokens", 170000)
+        assert summary._lc_helper.keep == ("tokens", 20000)
+        assert summary._truncate_args_trigger == ("tokens", 170000)
+
+    def test_the_summary_keeps_each_source_by_its_full_url(self, tmp_path):
+        from deepagents.backends import FilesystemBackend
+        from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
+
+        # If deepagents renames its </instructions> tag, the replace finds nothing and this fails.
+        assert SUMMARY_PROMPT.count("## SOURCES") == 1
+        assert SUMMARY_PROMPT.index("## SOURCES") < SUMMARY_PROMPT.index("</instructions>")
+        summary = cheap_summarizer(GenericFakeChatModel(messages=iter([])), FilesystemBackend(root_dir=tmp_path))
+        assert summary._lc_helper.summary_prompt == SUMMARY_PROMPT
 
     def test_ours_replaces_the_one_deepagents_adds(self, monkeypatch):
         # Every create_agent call deepagents makes, so the stacks it actually compiles can be checked.

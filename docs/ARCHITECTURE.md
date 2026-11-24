@@ -299,6 +299,9 @@ Generated detail (every setting and default): [platform](../openwiki/architectur
   no fallback or escalation quietly reaches Claude and the trial measures one model. The graph keeps its OpenAI key.
 - **`MAX_PARALLEL_RESEARCH` is the only placeholder substituted into a prompt**, because a number frozen in prose made the
   setting decorative. The pool size moves with it; Supabase allows 60 connections across every instance.
+- **Every agent summarises at a fixed 170k tokens and keeps the last 20k**, never a share of the window. Read off the
+  model's profile, a 1M window meant 850k (a researcher reached 421k, at $1 a call) and a model with no profile kept 6
+  messages. The summary lists each source by its full URL: without that, facts saved after a summary cited a homepage.
 
 ## 11. Deploy, tracing, performance
 

@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from typing import Any, NotRequired
 
 from deepagents.backends.protocol import BackendProtocol
-from deepagents.middleware.summarization import SummarizationMiddleware, compute_summarization_defaults
+from deepagents.middleware.summarization import DEEPAGENTS_DEFAULT_SUMMARY_PROMPT, SummarizationMiddleware
 from langchain.agents.middleware import (
     AgentState,
     ClearToolUsesEdit,
@@ -106,6 +106,19 @@ def clear_old_tool_results(*, answered_turns: bool = False) -> ContextEditingMid
 
 # Haiku's window is 200k; the summary prompt and its answer need the rest.
 SUMMARY_INPUT_TOKENS = 150_000
+# Fixed sizes, not a share of the window: a 1M profile put the trigger at 850k, and a model with no profile kept 6 messages.
+SUMMARY_TRIGGER = ("tokens", 170_000)
+SUMMARY_KEEP = ("tokens", 20_000)
+# A fact must still name its page after a summary; the default prompt kept "thecsrjournal.in" and lost the page.
+SOURCES_SECTION = """## SOURCES
+
+List every page or document read, by its full URL (never just the site), with the facts and exact quotes taken from \
+each and the page number for a PDF. Copy every URL character for character. Write "None" if nothing was read.
+
+</instructions>"""
+SUMMARY_PROMPT = DEEPAGENTS_DEFAULT_SUMMARY_PROMPT.replace("</instructions>", SOURCES_SECTION, 1)
+if "## SOURCES" not in SUMMARY_PROMPT:
+    raise RuntimeError("deepagents' summary prompt has no </instructions> tag; the SOURCES section has nowhere to go")
 
 
 def fallback(primary: str, *candidates: str) -> list[ModelFallbackMiddleware]:
@@ -122,14 +135,14 @@ class AgUiState(AgentState):
 AgUiState.__annotations__["ag-ui"] = NotRequired[dict[str, Any]]
 
 
-def cheap_summarizer(own: BaseChatModel, summarizer: BaseChatModel, backend: BackendProtocol) -> SummarizationMiddleware:
-    """Replaces the agent's own summarizer by name: same thresholds as `own` gets today, written by `summarizer`."""
-    defaults = compute_summarization_defaults(own)
+def cheap_summarizer(summarizer: BaseChatModel, backend: BackendProtocol) -> SummarizationMiddleware:
+    """Replaces the agent's own summarizer by name: the same token thresholds for every model, written by `summarizer`."""
     return SummarizationMiddleware(
         model=summarizer,
         backend=backend,
-        trigger=defaults["trigger"],
-        keep=defaults["keep"],
-        truncate_args_settings=defaults["truncate_args_settings"],
+        trigger=SUMMARY_TRIGGER,
+        keep=SUMMARY_KEEP,
+        truncate_args_settings={"trigger": SUMMARY_TRIGGER, "keep": SUMMARY_KEEP},
         trim_tokens_to_summarize=SUMMARY_INPUT_TOKENS,
+        summary_prompt=SUMMARY_PROMPT,
     )
