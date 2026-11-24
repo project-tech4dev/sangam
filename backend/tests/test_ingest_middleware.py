@@ -77,6 +77,16 @@ class TestTheResearcherReadsToABudget:
         assert isinstance(refused, ToolMessage) and mw.READING_LIMIT in refused.content
         assert refused.tool_call_id == "c2"
 
+    def test_a_find_inside_a_document_spends_no_read(self):
+        limit = mw.ReadingLimit(1)
+        calls = [{"name": "read_document_pages", "id": "f", "args": {"filename": "ar.pdf", "find": "CSR"}},
+                 {"name": "read_document_pages", "id": "r", "args": {"filename": "ar.pdf", "start_page": 211}}]
+
+        def request(call):
+            return SimpleNamespace(tool_call=call, state={"messages": [AIMessage("", tool_calls=calls)]})
+
+        assert [limit.wrap_tool_call(request(c), lambda r: "read") for c in calls] == ["read", "read"]
+
     def test_other_tools_are_never_counted(self):
         limit = mw.ReadingLimit(0)
         calls = [{"name": "save_research", "id": "s", "args": {}}]

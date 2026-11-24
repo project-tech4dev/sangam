@@ -291,18 +291,57 @@ async def _fetch_document(url: str, filename: str | None) -> str:
     return f"Saved {name} ({size:,} bytes). Read it with read_document_pages('{name}')."
 
 
+FIND_MAX_HITS = 30
+
+
+def _find_pages(filename: str, destination: Path, find: str) -> str:
+    """Pages (or Word paragraphs) naming any of the |-separated terms, one line each, so a report is read where it says it."""
+    terms = [t for t in (" ".join(t.split()).lower() for t in find.split("|")) if t]
+    if not terms:
+        return "ERROR: find needs at least one word, e.g. find='CSR obligation|Annexure II'."
+    word = destination.suffix.lower() == ".docx"
+    try:
+        if word:
+            (hits, total), blank, unit = extract.find_in_docx(destination.read_bytes(), terms), 0, "paragraph"
+        else:
+            hits, total, blank = extract.find_in_pdf(destination, terms)
+            unit = "page"
+    except Exception as exc:  # noqa: BLE001 - a damaged file raises many types
+        return f"ERROR: {filename} could not be searched ({type(exc).__name__}: {exc})."
+    if total and blank == total:
+        return (f"{filename} has {total} pages and none has text: it is scanned and cannot be searched. "
+                f"Save a gap with reason 'blocked' (scanned PDF); do not report the figure as not stated.")
+    scanned = f"\n{blank} of {total} pages have no text (scanned) and were not searched." if blank else ""
+    if not hits:
+        return f"No {unit} of {filename} ({total} {unit}s) mentions {find!r}. Try other words.{scanned}"
+    lines = [f"{unit} {n}: {snippet}" for n, snippet in hits[:FIND_MAX_HITS]]
+    if len(hits) > FIND_MAX_HITS:
+        lines.append(f"… and {len(hits) - FIND_MAX_HITS} more {unit}s; narrow the words to see them.")
+    return (f"[{filename}: {total} {unit}s, {len(hits)} mention {find!r}]\n" + "\n".join(lines)
+            + f"\nRead the {unit}s you need with start_page and end_page; a snippet is not a quote.{scanned}")
+
+
 @tool
-def read_document_pages(filename: str, start_page: int = 1, end_page: int | None = None) -> str:
+def read_document_pages(
+    filename: str, start_page: int = 1, end_page: int | None = None, find: str | None = None
+) -> str:
     """Read text from a downloaded PDF, a page range at a time, or a Word (.docx) file by paragraphs.
 
     Pages are 1-indexed, and in a Word file start_page and end_page count paragraphs; omit end_page to read to the end. A long result is saved
     to a file you page through with read_file. A scanned PDF has
     no text layer and returns nothing: say so rather than guessing at its contents.
+
+    In a long report, search before reading: find="CSR obligation|Annexure II|Form CSR-2" returns
+    only the page numbers whose text names any of the |-separated words (case does not matter), one
+    line each, and ignores start_page and end_page. Then read those pages. Quote only from a page you
+    read, never from a find line.
     """
     destination = downloads_dir() / _safe_name(filename)
     if not destination.exists():
         available = ", ".join(sorted(p.name for p in downloads_dir().iterdir())) or "(none)"
         return f"ERROR: {filename} is not in the downloads folder. Available: {available}"
+    if find is not None:
+        return _find_pages(filename, destination, find)
     if destination.suffix.lower() == ".docx":
         try:
             text, total = extract.docx_range(destination.read_bytes(), start_page, end_page)

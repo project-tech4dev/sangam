@@ -146,6 +146,38 @@ def _normalize_line(line: str) -> str:
     return line
 
 
+def _snippet(text: str, terms: list[str], width: int = 80) -> str | None:
+    """The text around the first term found, on one line; None when no term is there."""
+    flat = " ".join(text.split())
+    low = flat.lower()
+    at = min((i for i in (low.find(t) for t in terms) if i >= 0), default=-1)
+    if at < 0:
+        return None
+    start, end = max(at - width, 0), at + width * 2
+    return ("…" if start else "") + flat[start:end].strip() + ("…" if end < len(flat) else "")
+
+
+def find_in_pdf(source: Path, terms: list[str]) -> tuple[list[tuple[int, str]], int, int]:
+    """(page, snippet) for each page naming any term, the page count, and how many pages had no text to search."""
+    reader = PdfReader(str(source))
+    hits: list[tuple[int, str]] = []
+    blank = 0
+    for index, page in enumerate(reader.pages):
+        text = (page.extract_text() or "").strip()
+        if not text:
+            blank += 1
+            continue
+        if (found := _snippet("\n".join(_normalize_line(l) for l in text.splitlines()), terms)) is not None:
+            hits.append((index + 1, found))
+    return hits, len(reader.pages), blank
+
+
+def find_in_docx(data: bytes, terms: list[str]) -> tuple[list[tuple[int, str]], int]:
+    """(paragraph, snippet) for each paragraph naming any term, and the paragraph count."""
+    paras = docx_paragraphs(data)
+    return [(n, s) for n, p in enumerate(paras, 1) if (s := _snippet(p, terms)) is not None], len(paras)
+
+
 def extract_pdf_text(source: Path, start_page: int = 1, end_page: int | None = None) -> tuple[str, int]:
     """Return (extracted_text, total_pages) for a PDF file. Text may be empty
     if the PDF has no embedded text layer (scanned/image-only documents)."""

@@ -314,6 +314,68 @@ class TestReadDocumentPages:
         assert out == "[ar.pdf: 7 pages]\n\nCSR spend" and seen == [("ar.pdf", 2, 3)]
 
 
+class TestFindInADocument:
+    """A long report is searched for its page numbers before any range is read."""
+
+    PAGES = ["Chairman's letter", "", "Annexure II  Annual Report on CSR Activities", "Form CSR-2 spend: Rs 445.2 crore"]
+
+    @pytest.fixture(autouse=True)
+    def downloads(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(research_tools, "downloads_dir", lambda: tmp_path)
+        (tmp_path / "ar.pdf").write_bytes(b"%PDF")
+        return tmp_path
+
+    def pages(self, monkeypatch, texts):
+        from app.core import extract
+
+        fake = SimpleNamespace(pages=[SimpleNamespace(extract_text=lambda t=t: t) for t in texts])
+        monkeypatch.setattr(extract, "PdfReader", lambda path: fake)
+
+    def find(self, words, **args):
+        return research_tools.read_document_pages.invoke({"filename": "ar.pdf", "find": words, **args})
+
+    def test_it_returns_only_the_pages_that_name_a_word(self, monkeypatch):
+        self.pages(monkeypatch, self.PAGES)
+        out = self.find("annexure ii|FORM CSR-2", start_page=1, end_page=1)
+        assert out.splitlines()[:3] == [
+            "[ar.pdf: 4 pages, 2 mention 'annexure ii|FORM CSR-2']",
+            "page 3: Annexure II Annual Report on CSR Activities",
+            "page 4: Form CSR-2 spend: Rs 445.2 crore",
+        ]
+        assert "1 of 4 pages have no text (scanned)" in out
+
+    def test_a_snippet_is_cut_around_the_word(self, monkeypatch):
+        self.pages(monkeypatch, ["x" * 300 + " CSR obligation " + "y" * 300])
+        line = self.find("csr obligation").splitlines()[1]
+        assert line.startswith("page 1: …") and line.endswith("…") and "CSR obligation" in line
+
+    def test_no_match_says_so(self, monkeypatch):
+        self.pages(monkeypatch, self.PAGES)
+        assert self.find("Schedule VII").startswith("No page of ar.pdf (4 pages) mentions 'Schedule VII'.")
+
+    def test_a_scanned_report_is_a_blocked_gap_not_an_absence(self, monkeypatch):
+        self.pages(monkeypatch, ["", " "])
+        out = self.find("CSR")
+        assert "none has text: it is scanned" in out and "'blocked'" in out
+
+    def test_many_matches_are_capped(self, monkeypatch):
+        self.pages(monkeypatch, ["CSR"] * (research_tools.FIND_MAX_HITS + 5))
+        assert self.find("csr").splitlines()[-2] == "… and 5 more pages; narrow the words to see them."
+
+    def test_empty_words_are_refused(self):
+        assert self.find(" | ").startswith("ERROR: find needs at least one word")
+
+    def test_a_damaged_pdf(self):
+        assert self.find("CSR").startswith("ERROR: ar.pdf could not be searched (")
+
+    def test_a_word_file_is_searched_by_paragraph(self, downloads):
+        from tests.test_cov_pipeline_vault_office_docs import docx_bytes
+
+        (downloads / "form.docx").write_bytes(docx_bytes(["1. Problem statement", "2. Budget in INR"]))
+        out = research_tools.read_document_pages.invoke({"filename": "form.docx", "find": "budget"})
+        assert out.splitlines()[:2] == ["[form.docx: 2 paragraphs, 1 mention 'budget']", "paragraph 2: 2. Budget in INR"]
+
+
 def spend(**over) -> dict:
     return {"concept": "csr_spend", "fiscal_year": "FY2023-24", "project_name": "Sports scholarships",
             "amount": {"value": 6.74, "unit": "crore", "text": "Rs 6.74 crore"}, "domain": "others",
