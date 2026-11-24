@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from app.ingest import brief
 from app.ingest.refresh import (
     baseline,
     change_check,
@@ -277,7 +278,7 @@ class TestDescribe:
 class TestRefresh:
     @pytest.fixture
     def refresh(self, monkeypatch):
-        state = SimpleNamespace(models=[], published=[], entity={"slug": SLUG, "entity_name": "Funder",
+        state = SimpleNamespace(models=[], entity={"slug": SLUG, "entity_name": "Funder",
                                                                  "canonical_name": None, "summary": "s"})
         monkeypatch.setattr(change_check, "make_pool", lambda url, max_size: _Pool())
         monkeypatch.setattr(delta, "load", lambda conn, slug: _value((state.entity, [])))
@@ -292,8 +293,7 @@ class TestRefresh:
             return delta.Delta(summary="The CSR mailbox moved."), ["f1 should be an update"]
         monkeypatch.setattr(delta, "propose", propose)
         monkeypatch.setattr(delta, "save_row", lambda conn, *a: _value(91))
-        monkeypatch.setattr(change_check.brief, "rows_for", lambda conn, slug: _value([{"slug": slug}]))
-        monkeypatch.setattr(change_check.brief, "publish", lambda rows: _value(state.published.append(rows)))
+        monkeypatch.setattr(brief, "publish", lambda *a, **kw: pytest.fail("published the brief before review"))
         return state
 
     async def test_the_delta_is_asked_of_the_research_model_and_saved(self, refresh, capsys):
@@ -301,9 +301,14 @@ class TestRefresh:
         settings = change_check.get_settings()
         assert refresh.models == [settings.research_model, settings.utility_model]
         assert refresh.model == (delta.Delta, {"method": "json_schema"}) and refresh.grader == (delta.Grade, {})
-        assert refresh.question.startswith("Organisation: Funder") and refresh.published == [[{"slug": SLUG}]]
+        assert refresh.question.startswith("Organisation: Funder")
         out = capsys.readouterr().out
         assert "refresh saved as entity_research #91" in out and "reviewer: f1 should be an update" in out
+
+    async def test_researched_today_asks_no_model(self, refresh, monkeypatch, capsys):
+        monkeypatch.setattr(delta, "researched_today", lambda conn, slug: _value(True))
+        await change_check._refresh(SLUG, [], discover.Discovery(), judge.Context((), ()), save.Saved(0, 0, 0))
+        assert refresh.models == [] and "already researched today" in capsys.readouterr().out
 
     async def test_no_row_to_carry_forward_asks_nothing(self, refresh, capsys):
         refresh.entity = None

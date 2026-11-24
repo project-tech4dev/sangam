@@ -22,7 +22,7 @@ from app.core import extract
 from app.core.config import get_settings
 from app.core.extract import extract_pdf_text
 from app.db.pool import get_pool
-from app.ingest.brief import publish, rows_for
+from app.ingest.brief import merge_findings, publish, rows_for
 from app.ingest.caller import scope, staff_only
 from app.ingest.catalog.promote import org_match
 from app.ingest.catalog.promote_records import MERGEABLE
@@ -31,6 +31,7 @@ from app.ingest.reading import snapshots
 from app.ingest.reading.access import check_url
 from app.ingest.reading.fetch import downloads_dir, fetch_document_file, read_page_text
 from app.ingest.reading.staff_sources import is_staff_source_url
+from app.ingest.refresh.delta import REFRESH_REASON
 from app.ingest.research.contract import quoted_only, unanswered
 from app.ingest.research.finding_types import SCHEMA_VERSION
 from app.ingest.research.findings import EntityResearch
@@ -264,18 +265,22 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                 return _NGO_REFUSAL
             prior = await (
                 await conn.execute(
-                    "SELECT fact_count, researched_by FROM entity_research "
+                    "SELECT fact_count, researched_by, stopped_reason FROM entity_research "
                     "WHERE slug = %s AND researched_on = current_date",
                     (slug,),
                 )
             ).fetchone()
+            held = prior["fact_count"] if prior else 0
+            if prior and (prior["stopped_reason"] or "").startswith(REFRESH_REASON):
+                # A refresh row holds only its delta; what it stands for is the whole merged record.
+                held = len(merge_findings(await rows_for(conn, slug)))
         # One row per entity per day is shared, so only staff replace what someone else saved.
         if prior and not caller.is_staff and prior["researched_by"] != caller.user_id:
             return (f"REFUSED: {slug} was already researched and saved today. Report back with "
                     f"slug={slug!r} and saved=true, and say the research on file is today's.")
-        if prior and prior["fact_count"] > len(findings.findings) and not replace:
+        if prior and held > len(findings.findings) and not replace:
             return (
-                f"REFUSED: {slug} already has {prior['fact_count']} findings saved today and "
+                f"REFUSED: {slug} already has {held} findings saved today and "
                 f"you are offering {len(findings.findings)}. Saving would replace the fuller "
                 f"result. If you meant to, call again with replace=true; otherwise report what "
                 f"you found and say the earlier research is already on file."
@@ -307,6 +312,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         gaps = EXCLUDED.gaps,
                         years = EXCLUDED.years,
                         snapshot_ids = EXCLUDED.snapshot_ids,
+                        supersedes = '[]'::jsonb,
                         researched_by = EXCLUDED.researched_by,
                         researched_at = now()
                     RETURNING *

@@ -29,6 +29,9 @@ PROMPT = ((files("app.ingest") / "prompts" / "research_delta.md").read_text(enco
           "\n\nEach finding, as JSON Schema (`concept` picks the kind):\n" +
           json.dumps(FINDING.json_schema(), separators=(",", ":")))
 RUBRIC = (files("app.ingest") / "prompts" / "delta_rubric.md").read_text(encoding="utf-8")
+PAGE_GONE = "page gone"
+REFRESHED = "\n\nRefreshed: "
+REFRESH_REASON = "A refresh"  # how a refresh row's stopped_reason starts
 NEW_TEXT = 30_000  # a new source's text shown in full up to here; the evidence check still reads all of it
 
 ENTITY_SQL = """
@@ -96,7 +99,7 @@ class Source:
 @dataclass
 class Applied:
     findings: list[dict[str, Any]] = field(default_factory=list)
-    supersedes: list[list[str]] = field(default_factory=list)
+    supersedes: list[dict[str, Any]] = field(default_factory=list)  # brief.superseded of each replaced fact
     refused: list[str] = field(default_factory=list)
     kept: int = 0
     updated: int = 0
@@ -108,6 +111,10 @@ async def load(conn: Any, slug: str) -> tuple[dict[str, Any] | None, list[dict[s
     """The newest research row, which the refresh carries forward, and every row, merged as the brief merges them."""
     row = await (await conn.execute(ENTITY_SQL, (slug,))).fetchone()
     return (dict(row) if row else None), await brief.rows_for(conn, slug)
+
+
+async def researched_today(conn: Any, slug: str) -> bool:
+    return await (await conn.execute(TODAY_SQL, (slug,))).fetchone() is not None
 
 
 def facts_by_url(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -131,7 +138,7 @@ def sources(checks: list[Check], found: Discovery, facts: dict[str, list[dict[st
         numbered = []
         for f in facts.get(c.baseline.url, []):
             n += 1
-            verdict = "page gone" if c.status == DEAD else verdicts.get((f.get("evidence") or "").strip(), UNANCHORED)
+            verdict = PAGE_GONE if c.status == DEAD else verdicts.get((f.get("evidence") or "").strip(), UNANCHORED)
             numbered.append(Fact(f"f{n}", f, verdict))
         out.append(Source(c.baseline.url, "dead" if c.status == DEAD else "changed",
                           "" if c.status == DEAD else c.today.text, tuple(numbered), c.removed, c.added, c.judgement))
@@ -176,10 +183,11 @@ async def propose(model: Any, grader: Any, question: str) -> tuple[Delta, list[s
     return revised, grade.problems
 
 
-def apply(delta: Delta, srcs: list[Source], context: Context) -> Applied:
+def apply(delta: Delta, srcs: list[Source]) -> Applied:
     """The delta as findings and the facts they replace; anything citing a sentence not on its source is refused."""
     facts = {f.id: f for s in srcs for f in s.facts}
-    texts = {s.url: s.text for s in srcs if s.text}
+    # A changed page is quoted from what it added, so an old, unchanged sentence cannot pass as new.
+    texts = {s.url: "\n".join(s.added) if s.status == "changed" and s.added else s.text for s in srcs if s.text}
     out, seen = Applied(), set()
 
     def known(fact_id: str, verb: str) -> Fact | None:
@@ -208,12 +216,15 @@ def apply(delta: Delta, srcs: list[Source], context: Context) -> Applied:
     for u in delta.update:
         if ((old := known(u.id, "update")) and (new := parsed(u.finding, f"update {u.id}"))
                 and quoted(new, f"update {u.id} →")):
-            out.supersedes.append(list(brief.fact_key(old.finding)))
+            out.supersedes.append(brief.superseded(old.finding))
             out.findings.append(new)
             out.updated += 1
     for r in delta.remove:
-        if old := known(r.id, "remove"):
-            out.supersedes.append(list(brief.fact_key(old.finding)))
+        if (old := known(r.id, "remove")) and old.verdict == PAGE_GONE:
+            # A page moving is not the fact ending; a person decides that in Review & save.
+            out.refused.append(f"remove {r.id}: its page is gone, which does not end the fact")
+        elif old:
+            out.supersedes.append(brief.superseded(old.finding))
             out.removed += 1
     for a in delta.add:
         if (new := parsed(a, "add")) and quoted(new, "add"):
@@ -225,13 +236,14 @@ def apply(delta: Delta, srcs: list[Source], context: Context) -> Applied:
 async def save_row(conn: Any, entity: dict[str, Any], applied: Applied, delta: Delta, context: Context,
                    snapshot_ids: list[int], sources_read: list[str]) -> int | None:
     """Today's row, carrying the newest row's frame forward; None when the entity was already researched today."""
-    if await (await conn.execute(TODAY_SQL, (entity["slug"],))).fetchone():
+    if await researched_today(conn, entity["slug"]):  # the race guard; _refresh asked before paying for a model
         return None
     closed = set(delta.gaps_closed) & set(context.gaps)
     gaps = [g for g in _list(entity.get("gaps")) if g.get("concept") and gap_name(g) not in closed]
     found = {f.get("concept") for f in applied.findings}
-    summary = f"{entity['summary']}\n\nRefreshed: {delta.summary}"
-    reason = f"A refresh: {len(sources_read)} changed or new sources reread; the rest stand from earlier research."
+    base = (entity["summary"] or "").split(REFRESHED)[0]  # one refresh note, not one per refresh
+    summary = f"{base}{REFRESHED}{delta.summary}"
+    reason = f"{REFRESH_REASON}: {len(sources_read)} changed or new sources reread; the rest stand from earlier research."
     row = await (await conn.execute(INSERT_SQL, (
         entity["entity_name"], entity.get("canonical_name"), entity["entity_kind"], entity["slug"],
         entity.get("website"), reason, summary, json.dumps(applied.findings),

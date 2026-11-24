@@ -108,7 +108,7 @@ class TestSavingResearch:
         assert out.startswith("REFUSED")
 
     async def test_a_member_does_not_overwrite_someone_elses_research_today(self, monkeypatch):
-        pool = _Pool([{"fact_count": 0, "researched_by": UUID(int=9)}])
+        pool = _Pool([{"fact_count": 0, "researched_by": UUID(int=9), "stopped_reason": None}])
         monkeypatch.setattr(research_tools, "get_pool", lambda: pool)
         with running_as(MEMBER):
             out = await research_tools.save_research.ainvoke({"findings": self.FUNDER, "replace": True})

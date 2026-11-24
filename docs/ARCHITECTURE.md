@@ -130,6 +130,13 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   not updated; a new footer year on every page, or one edit on a one-page funder, is not a redesign: the judge is
   skipped, every source that differs counts as changed, and the decision is a full pull rather than a partial refresh.
   Judging page by page would cost a model call each to learn what the full pull rereads anyway.
+- **A refresh is a draft until a person saves it.** `REFRESH=1` saves the delta as a new `entity_research` row and
+  never writes the catalog itself; it reaches the catalog only when someone saves it in Review & save, like any other
+  research.
+- **A superseded fact stays out of the brief.** A refresh that removes a fact lists it in `supersedes` (`0060`) by its
+  key and source, and `brief.merge_findings` drops that source's copy from every older row, so a later merge cannot
+  bring it back; a copy cited from another source was not rechecked and stays. This holds for the brief only: a fact
+  already saved to the catalog stays there until someone removes it.
 
 ## 5. Funder Match
 
