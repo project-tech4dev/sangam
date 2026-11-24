@@ -16,7 +16,7 @@ from app.ingest.refresh.delta import Delta, Grade, Removal, Source, Update
 from app.ingest.refresh.discover import Discovery
 from app.ingest.refresh.evidence import BROKEN, INTACT
 from app.ingest.refresh.fetch_status import DEAD, OK, Today
-from app.ingest.refresh.judge import Context
+from app.ingest.refresh.judge import Context, OpenGap
 from tests.cov_ingest_fakes import ScriptConn
 from tests.test_change_check import SLUG
 from tests.test_diff_evidence import URL, check
@@ -229,14 +229,23 @@ class TestPropose:
 
 
 class TestApply:
-    def test_keep_update_remove_and_add(self):
+    def test_keep_update_and_add(self):
         new = json.dumps({**OLD, "email": "grants@funder.example", "evidence": NEW_SENTENCE})
-        proposed = answer(keep=["f3"], update=[Update(id="f1", finding=new)],
-                          remove=[Removal(id="f2", why="the grants team is gone")], add=[json.dumps(CALL)])
+        proposed = answer(keep=["f2", "f3"], update=[Update(id="f1", finding=new)], add=[json.dumps(CALL)])
         out = delta.apply(proposed, srcs())
-        assert (out.kept, out.updated, out.removed, out.added, out.refused) == (1, 1, 1, 1, [])
+        assert (out.kept, out.updated, out.removed, out.added, out.refused) == (2, 1, 0, 1, [])
         assert [f["evidence"] for f in out.findings] == [NEW_SENTENCE, CALL_SENTENCE]
-        assert out.supersedes == [brief.superseded(OLD, updated=True), brief.superseded(KEPT)]
+        assert out.supersedes == [brief.superseded(OLD, updated=True)]
+
+    def test_a_fact_whose_sentence_is_gone_may_be_removed(self):
+        out = delta.apply(answer(keep=["f2", "f3"], remove=[Removal(id="f1", why="the mailbox is gone")]), srcs())
+        assert (out.removed, out.supersedes, out.refused) == (1, [brief.superseded(OLD)], [])
+
+    def test_a_fact_whose_sentence_is_still_on_its_page_is_never_removed(self):
+        """A gap page, or anything else, cannot end a fact its own page still states."""
+        out = delta.apply(answer(remove=[Removal(id="f2", why="a partner's report says it ended")]), srcs())
+        assert (out.removed, out.supersedes) == (0, [])
+        assert out.refused == ["remove f2: its sentence is still on its page"]
 
     def test_a_fact_from_a_page_that_is_gone_is_never_removed(self):
         out = delta.apply(answer(remove=[Removal(id="f3", why="the page 404s")]), srcs())
@@ -268,9 +277,9 @@ class TestApply:
     def test_an_org_finding_research_would_refuse_is_refused(self):
         programme = {"concept": "program", "name": "Teacher Fellowship", "evidence": CALL_SENTENCE,
                      "source_url": LEAD.url, "confidence": "high"}
-        out = delta.apply(answer(add=[json.dumps(programme)]), srcs(), "org")
+        out = delta.apply(answer(add=[json.dumps(programme)]), srcs(), kind="org")
         assert out.added == 0 and "needs source_type and evidence_tier" in out.refused[0]
-        assert delta.apply(answer(add=[json.dumps(programme)]), srcs(), "funder").added == 1
+        assert delta.apply(answer(add=[json.dumps(programme)]), srcs(), kind="funder").added == 1
 
     def test_a_broken_fact_left_unsettled_is_named_and_its_page_held_back(self):
         out = delta.apply(answer(keep=["f2", "f3"]), srcs())
@@ -325,7 +334,7 @@ class TestSaveRow:
 
     async def test_a_gap_the_model_names_but_no_accepted_finding_fills_stays_open(self):
         conn = ScriptConn([("INSERT INTO entity_research", {"id": 93})])
-        applied = delta.Applied(findings=[CALL])  # an rfp, but with no how_to_apply
+        applied = delta.Applied(findings=[{**CALL, "how_to_apply": None}])  # an rfp that left it empty
         await delta.save_row(conn, self.ENTITY, applied, answer(gaps_closed=["rfp.how_to_apply"]), CONTEXT, [], [])
         [(_sql, p)] = conn.sql("INSERT INTO entity_research")
         assert json.loads(p[14]) == self.ENTITY["gaps"]
@@ -422,6 +431,35 @@ class TestGapSource:
 
     def test_the_prompts_say_so(self):
         assert "`gap` source only fills" in delta.PROMPT and "`gap` source" in delta.RUBRIC
+
+
+class TestFills:
+    """A gap is filled by its concept, and by its year and field where it has them."""
+
+    SPEND = OpenGap("csr_spend", "csr_spend", None, "FY2023-24", "not_stated", "")
+
+    def test_the_year_must_match(self):
+        assert delta.fills({"concept": "csr_spend", "fiscal_year": "FY2023-24"}, "csr_spend", (self.SPEND,))
+        assert not delta.fills({"concept": "csr_spend", "fiscal_year": "FY2020-21"}, "csr_spend", (self.SPEND,))
+
+    def test_a_field_the_finding_has_must_be_filled(self):
+        assert not delta.fills({"concept": "rfp", "deadline": None}, "rfp.deadline")
+        assert delta.fills({"concept": "rfp", "deadline": "2027-03-31"}, "rfp.deadline")
+
+    def test_a_field_that_names_a_topic_checks_the_concept(self):
+        assert delta.fills({"concept": "rfp", "title": "Fellowship"}, "rfp.how_to_apply")
+        assert not delta.fills({"concept": "contact"}, "rfp.how_to_apply")
+
+
+async def test_a_gap_stays_open_when_the_saved_finding_is_another_years():
+    entity = {**TestSaveRow.ENTITY, "gaps": [{"concept": "csr_spend", "fiscal_year": "FY2023-24"}]}
+    context = Context(("csr_spend",), ("csr_spend",))
+    for year, still_open in (("FY2020-21", True), ("FY2023-24", False)):
+        applied = delta.Applied(findings=[{"concept": "csr_spend", "fiscal_year": year}])
+        conn = ScriptConn([("INSERT INTO entity_research", {"id": 93})])
+        await delta.save_row(conn, entity, applied, answer(gaps_closed=["csr_spend"]), context, [], [])
+        [(_sql, p)] = conn.sql("INSERT INTO entity_research")
+        assert (json.loads(p[14]) != []) is still_open
 
 
 async def test_a_gap_closes_only_when_an_accepted_finding_fills_it():

@@ -88,14 +88,27 @@ class TestRun:
         found = await run(Model(RuntimeError("overloaded")), client)
         assert found.leads == [] and fetched == []
 
-    async def test_a_lead_that_cannot_be_fetched_is_kept_with_why_but_not_read(self, monkeypatch):
+    async def test_a_lead_that_cannot_be_fetched_is_dropped_with_why(self, monkeypatch):
         async def fetch_today(source, scratch):
             return fetch_status.Today(source.url, fetch_status.UNVERIFIED, "HTTP 403")
         monkeypatch.setattr(fetch_status, "fetch_today", fetch_today)
         monkeypatch.setattr(gap_search, "rule_for_url", lambda url: None)
         client, _ = tavily()
         found = await run(Model(picks((1, CSR.name))), client)
-        assert found.leads[0][2] == "pick 1 (unverified: HTTP 403)" and found.fetched == {}
+        assert found.leads == [] and found.fetched == {}
+        assert [why for _, why in found.dropped] == ["unverified: HTTP 403"]
+
+    async def test_picks_are_capped_so_one_update_never_reads_dozens_of_pages(self, fetched):
+        many = [{"url": f"https://partner{n}.org/report", "title": f"Report {n}", "content": "grant"} for n in range(9)]
+        client, _ = tavily(results=many)
+        found = await run(Model(picks(*((n, CSR.name) for n in range(1, 10)))), client)
+        assert len(fetched) == gap_search.MAX_PICKS and len(found.leads) == gap_search.MAX_PICKS
+
+    async def test_without_a_website_nothing_is_searched(self, fetched):
+        """Its own page could come back as someone else's, with nothing to leave out."""
+        client, sent = tavily()
+        found = await run(Model(picks((1, CSR.name))), client, subject=SUBJECT.__class__("Azim", None))
+        assert found.skipped == "no website recorded for it" and sent == [] and fetched == []
 
     async def test_a_failed_search_leaves_the_others(self, fetched):
         client, _ = tavily(status=500)

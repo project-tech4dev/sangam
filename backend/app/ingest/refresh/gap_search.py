@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 CHASE = ("not_stated", "blocked")  # not_reached: the run stopped before the funder's own site was read for it
 MAX_GAPS = 5  # one Tavily search each
 RESULTS = 5
+# Pages read off the funder's site per check: each is fetched and sent whole to the update model, up to 30,000
+# characters each, so an uncapped pick list could make one Sonnet call of 600k characters.
+MAX_PICKS = 5
 # The skill never cites these for a fact; the registry marks the aggregators and media it knows.
 NEVER = ("linkedin.com", "facebook.com", "instagram.com", "twitter.com", "x.com", "youtube.com", "wikipedia.org")
 
@@ -108,6 +111,9 @@ async def run(subject: Subject | None, known_urls: set[str], known_hashes: set[s
         return GapSearch(skipped="no TAVILY_API_KEY")
     if subject is None:
         return GapSearch(skipped="no research row to name it")
+    if not subject.domain:
+        # Without its own site to leave out, a result could be its own page, read as someone else's.
+        return GapSearch(skipped="no website recorded for it")
     gaps = chosen(context)
     if not gaps:
         return GapSearch(skipped="no open gap a page elsewhere could fill")
@@ -139,7 +145,7 @@ async def run(subject: Subject | None, known_urls: set[str], known_hashes: set[s
             found.leads.append((lead, gap, why))
             found.fetched[lead.url] = today
         else:
-            found.leads.append((lead, gap, f"{why} ({today.status}: {today.reason})"))
+            found.dropped.append((lead, f"{today.status}: {today.reason}"))
     return found
 
 
@@ -156,7 +162,7 @@ async def _pick(listed: list[tuple[str, Lead]], subject: Subject, gaps: list[Ope
     names = {g.name for g in gaps}
     picked = {p.number: p for p in answer.picks if 1 <= p.number <= len(listed)}
     out = []
-    for n, p in sorted(picked.items()):
+    for n, p in sorted(picked.items())[:MAX_PICKS]:
         gap, lead = listed[n - 1]
         out.append((lead, p.gap if p.gap in names else gap, p.reason))
     return out

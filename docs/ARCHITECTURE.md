@@ -137,11 +137,14 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   key and source, and `brief.merge_findings` drops that source's copy from every older row, so a later merge cannot
   bring it back; a copy cited from another source was not rechecked and stays. This holds for the brief only: a fact
   already saved to the catalog stays there until someone removes it.
-- **A partial update reads off the funder's site only for an open gap.** A full change check searches the web for
-  each `not_stated` or `blocked` gap (at most five; `not_reached` waits for a full run), skipping its own site,
-  social media and the registry's aggregators and media. A page read that way (`source_checks.status = 'gap'`) may
-  only `add` a fact of that gap's concept: `delta.apply` refuses any other add and any update from it. A gap closes
-  only when a finding of its concept was saved, never on the model's word alone.
+- **A partial update reads off the funder's site only for an open gap.** A full change check searches the web for each
+  `not_stated` or `blocked` gap (at most five; `not_reached` waits for a full run), skipping its own site, social
+  media and the registry's aggregators and media, and not at all when no website is recorded. At most five picks are
+  read (`MAX_PICKS`). A page read that way (`source_checks.status = 'gap'`) may only `add` a fact that fills its gap,
+  year and field included: `delta.apply` refuses any other add and any update from it. A gap closes only when a saved
+  finding fills it, never on the model's word alone. Gap pages never join the baseline, so a partner's page is never
+  rechecked as if it were the funder's own, and a later check skips the ones read before. A fact whose sentence is
+  still on its own page is never removed, whatever a gap page says.
 
 ## 5. Funder Match
 

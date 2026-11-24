@@ -77,12 +77,18 @@ class Inputs:
     findings: dict[str, list[str]]
     context: judge.Context
     subject: discover.Subject | None
+    gap_urls: frozenset[str] = frozenset()  # pages an earlier check read off the funder's site for a gap
+
+
+# A gap page stays out of the baseline, so this is how the next check knows it was read already.
+GAP_URLS_SQL = "SELECT DISTINCT url FROM source_checks WHERE slug = %s AND status = 'gap'"
 
 
 async def load_inputs(conn: Any, slug: str) -> Inputs:
     baselines, unrecorded = await baseline.load(conn, slug)
+    gap_urls = frozenset(r["url"] for r in await (await conn.execute(GAP_URLS_SQL, (slug,))).fetchall())
     return Inputs(baselines, unrecorded, await evidence.load_findings(conn, slug),
-                  await judge.load_context(conn, slug), await discover.load_subject(conn, slug))
+                  await judge.load_context(conn, slug), await discover.load_subject(conn, slug), gap_urls)
 
 
 @dataclass(frozen=True)
@@ -233,12 +239,12 @@ async def stages(slug: str, depth: str, scratch: Path, given: Inputs, until: str
             if until == "discover":
                 return None
             # What discovery just found is known too, so the gap search never reads it twice.
-            known_urls |= {lead.url for lead, _why in found.new}
+            known_urls |= {lead.url for lead, _why in found.new} | given.gap_urls
             known_hashes |= {t.fingerprint for t in found.fetched.values() if t.fingerprint}
+            picker = resolve_model(settings.source_check_gap_model)
             gaps = await gap_search.run(given.subject, known_urls, known_hashes, given.context,
-                                        named(model.with_structured_output(gap_search.GapPicks), "gaps"),
-                                        settings.tavily_api_key,
-                                        client, scratch)
+                                        named(picker.with_structured_output(gap_search.GapPicks), "gaps"),
+                                        settings.tavily_api_key, client, scratch)
         say(gap_search.describe(slug, gaps))
         found = gap_search.merge(found, gaps)
         verdict = decision.decide(checks, found, redesign)
@@ -285,9 +291,11 @@ async def _refresh(pool: Any, slug: str, checks: list[compare.Check], found: dis
         proposed, problems = await delta.propose(model, grader, delta.ask(name, srcs, context, kind))
     except Exception as exc:  # noqa: BLE001 — a reply that is no delta saves nothing, and says so
         return None, f"{slug}: refresh not saved: the update model gave no usable delta ({type(exc).__name__})"
-    applied = delta.apply(proposed, srcs, kind)
+    applied = delta.apply(proposed, srcs, context.open_gaps, kind)
     read = [s.url for s in srcs if s.status != "dead" and s.url not in applied.stale]
-    ids = [saved.snapshot_ids[u] for u in read if u in saved.snapshot_ids]
+    # A gap page joins the sources read, not the baseline: rechecked as an ordinary page, it could change own facts.
+    tracked = [u for u in read if u not in {s.url for s in srcs if s.status == discover.GAP}]
+    ids = [saved.snapshot_ids[u] for u in tracked if u in saved.snapshot_ids]
     if not applied.findings and not applied.supersedes:
         async with pool.connection() as conn:
             await delta.note_reread(conn, entity["id"], ids)

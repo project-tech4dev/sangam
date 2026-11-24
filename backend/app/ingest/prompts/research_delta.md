@@ -11,7 +11,7 @@ Also given: the facts Sangam is still missing, and the fields it records for thi
 
 Answer with a delta, never a whole record:
 
-- `keep`: the ids of facts the change leaves true. Every `intact` fact belongs here unless an added line contradicts it.
+- `keep`: the ids of facts the change leaves true. Every `intact` fact belongs here, or in `update` when an added line contradicts it; removing an `intact` fact is refused, since the page still states it.
 - `update`: a fact the change alters. Give its id and the whole new finding, with the changed value and the new sentence that states it. A `broken` fact is usually an update.
 - `remove`: a fact the source no longer supports and nothing replaces, with one sentence why. A fact from a dead page always stays in `keep`: a page moving is not the fact ending, and its removal is refused.
 - `add`: a fact Sangam records that a changed, new or gap source now states and no listed fact covers.

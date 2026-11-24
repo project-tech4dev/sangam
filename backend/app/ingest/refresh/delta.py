@@ -15,9 +15,9 @@ from app.ingest import brief
 from app.ingest.reading.access import canonical_url
 from app.ingest.refresh.compare import CHANGED, Check
 from app.ingest.refresh.discover import GAP, Discovery
-from app.ingest.refresh.evidence import BROKEN, UNANCHORED, on_page
+from app.ingest.refresh.evidence import BROKEN, INTACT, UNANCHORED, on_page
 from app.ingest.refresh.fetch_status import DEAD
-from app.ingest.refresh.judge import DIFF_CHARS, Context, gap_name
+from app.ingest.refresh.judge import DIFF_CHARS, Context, OpenGap, gap_name
 from app.ingest.research import source_guards
 from app.ingest.research.finding_types import SCHEMA_VERSION, Finding
 from app.ingest.research.findings import untiered_org_fact
@@ -257,23 +257,41 @@ async def propose(model: Any, grader: Any, question: str) -> tuple[Delta, list[s
     return revised, grade.problems
 
 
-def apply(delta: Delta, srcs: list[Source], kind: str | None = None) -> Applied:
+def fills(finding: dict[str, Any], name: str, open_gaps: tuple[OpenGap, ...] = ()) -> bool:
+    """A finding fills the gap `name` when its concept matches, and its year and field too where the gap has them.
+    A gap's field that is no field of the finding (rfp.how_to_apply) names a topic, so only the concept is checked."""
+    wanted = [(g.concept, g.field, g.fiscal_year) for g in open_gaps if g.name == name]
+    if not wanted:
+        concept, _, field = name.partition(".")
+        wanted = [(concept, field or None, None)]
+    return any(_fills(finding, *w) for w in wanted)
+
+
+def _fills(finding: dict[str, Any], concept: str, field: str | None, fiscal_year: str | None) -> bool:
+    if finding.get("concept") != concept:
+        return False
+    if field and field in finding and finding[field] in (None, "", [], {}):
+        return False
+    return not fiscal_year or finding.get("fiscal_year") == fiscal_year
+
+
+def apply(delta: Delta, srcs: list[Source], open_gaps: tuple[OpenGap, ...] = (), kind: str | None = None) -> Applied:
     """The delta as findings and the facts they replace; anything citing a sentence not on its source, or that a
     research save would refuse for this kind of organisation, is refused."""
     facts = {f.id: f for s in srcs for f in s.facts}
     # A changed page is quoted from what it added, so an old, unchanged sentence cannot pass as new.
     texts = {s.url: "\n".join(s.added) if s.status == "changed" and s.added else s.text for s in srcs if s.text}
-    fills = {s.url: str((s.hint or {}).get("fills", "")) for s in srcs if s.status == GAP}
+    gaps_of = {s.url: str((s.hint or {}).get("fills", "")) for s in srcs if s.status == GAP}
     out, seen = Applied(), set()
 
     def own_gap(finding: dict[str, Any], verb: str) -> bool:
         """A page off the funder's site may only add a fact for the gap it was read for."""
         url = canonical_url(finding["source_url"])
-        if url not in fills:
+        if url not in gaps_of:
             return True
-        if verb == "add" and finding.get("concept") == fills[url].split(".")[0]:
+        if verb == "add" and fills(finding, gaps_of[url], open_gaps):
             return True
-        out.refused.append(f"{verb} {finding.get('concept')}: {url} was read only for {fills[url]}")
+        out.refused.append(f"{verb} {finding.get('concept')}: {url} was read only for {gaps_of[url]}")
         return False
 
     def known(fact_id: str, verb: str) -> Fact | None:
@@ -321,6 +339,9 @@ def apply(delta: Delta, srcs: list[Source], kind: str | None = None) -> Applied:
         if (old := known(r.id, "remove")) and old.verdict == PAGE_GONE:
             # A page moving is not the fact ending; a person decides that in Review & save.
             out.refused.append(f"remove {r.id}: its page is gone, which does not end the fact")
+        elif old and old.verdict == INTACT:
+            # Its sentence is still on its page, so the page still says it: nothing, a gap page least, ends it.
+            out.refused.append(f"remove {r.id}: its sentence is still on its page")
         elif old:
             out.supersedes.append(brief.superseded(old.finding))
             out.removed += 1
@@ -343,11 +364,12 @@ async def save_row(conn: Any, entity: dict[str, Any], applied: Applied, delta: D
     """Today's row, carrying the newest row's frame forward; None when the entity was already researched today."""
     if await researched_today(conn, entity["slug"]):  # the race guard; _refresh asked before paying for a model
         return None
-    # The model's word closes nothing: a gap closes only when an accepted finding fills it.
-    closed = set(delta.gaps_closed) & set(context.gaps)
-    gaps = [g for g in _list(entity.get("gaps"))
-            if g.get("concept") and not (gap_name(g) in closed and _fills(g, applied.findings))]
     found = {f.get("concept") for f in applied.findings}
+    # A gap closes only when a saved finding fills it, its year and field included, not on the model's word alone.
+    claimed = set(delta.gaps_closed) & set(context.gaps)
+    gaps = [g for g in _list(entity.get("gaps")) if g.get("concept") and not (
+        gap_name(g) in claimed and any(_fills(f, g["concept"], g.get("field"), g.get("fiscal_year"))
+                                       for f in applied.findings))]
     base = (entity["summary"] or "").split(REFRESHED)[0]  # one refresh note, not one per refresh
     summary = f"{base}{REFRESHED}{delta.summary}"
     reason = f"{REFRESH_REASON}: {len(sources_read)} changed or new sources reread; the rest stand from earlier research."
@@ -366,13 +388,6 @@ async def save_row(conn: Any, entity: dict[str, Any], applied: Applied, delta: D
     ))).fetchone()
     return row["id"]
 
-
-def _fills(gap: dict[str, Any], findings: list[dict[str, Any]]) -> bool:
-    """Its concept, its field when it names one, and its year when it names one."""
-    return any(f.get("concept") == gap["concept"]
-               and (not gap.get("field") or f.get(gap["field"]) not in (None, "", [], {}))
-               and (not gap.get("fiscal_year") or f.get("fiscal_year") == gap["fiscal_year"])
-               for f in findings)
 
 
 def _list(value: Any) -> list[Any]:
