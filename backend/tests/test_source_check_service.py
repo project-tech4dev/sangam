@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 from datetime import date
+from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
 
+from app.ingest import brief
 from app.ingest.refresh import (
     baseline,
     compare,
     decision,
+    delta,
     discover,
     evidence,
     fetch_status,
@@ -142,6 +145,46 @@ async def test_the_baseline_view_counts_the_facts_each_source_holds(monkeypatch)
     assert [(s.url, s.facts, s.archived, s.read_on) for s in sources] == [
         (URL, 2, True, "2026-11-14"), ("https://a.org/x", 0, True, "2026-11-14")]
     assert unrecorded == 2
+
+
+async def _value(v):
+    return v
+
+
+class TestRefresh:
+    @pytest.fixture
+    def refresh(self, monkeypatch):
+        state = SimpleNamespace(asked=0, today=False)
+
+        async def load(conn, slug):
+            return {"slug": slug, "entity_name": "Funder", "canonical_name": None, "summary": "s"}, []
+
+        async def researched_today(conn, slug):
+            return state.today
+
+        async def propose(model, grader, question):
+            state.asked += 1
+            return delta.Delta(summary="The CSR mailbox moved."), []
+        monkeypatch.setattr(delta, "load", load)
+        monkeypatch.setattr(delta, "researched_today", researched_today)
+        monkeypatch.setattr(delta, "propose", propose)
+        monkeypatch.setattr(delta, "save_row", lambda conn, *a: _value(91))
+        monkeypatch.setattr(service, "resolve_model",
+                            lambda spec: SimpleNamespace(with_structured_output=lambda schema, **kw: None))
+        monkeypatch.setattr(brief, "publish", lambda *a, **kw: pytest.fail("published the brief before review"))
+        return state
+
+    async def run(self):
+        return await service._refresh(ScriptPool(ScriptConn()), SLUG, [], discover.Discovery(),
+                                      judge.Context((), ()), save.Saved(0, 0, 0))
+
+    async def test_the_row_waits_in_review_and_the_brief_is_left_alone(self, refresh):
+        row_id, summary = await self.run()
+        assert row_id == 91 and "waits in Review & save" in summary and refresh.asked == 1
+
+    async def test_researched_today_asks_no_model(self, refresh):
+        refresh.today = True
+        assert await self.run() == (None, "it was already researched today") and refresh.asked == 0
 
 
 async def _value(v):
