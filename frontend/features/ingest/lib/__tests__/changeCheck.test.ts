@@ -31,6 +31,10 @@ describe("verdictOf", () => {
     expect(v).toEqual({ title: "Update saved for review", text: "1 updated", next: "none" });
   });
 
+  it("a run with no decision yet is still checking", () => {
+    expect(verdictOf(run({ decision: null, finished_at: null }))).toEqual({ title: "Checking…", text: "", next: "none" });
+  });
+
   it("a failed run says why and offers nothing", () => {
     expect(verdictOf(run({ error: "RuntimeError: site down" }))).toMatchObject({ next: "none", text: "RuntimeError: site down" });
   });
@@ -41,6 +45,16 @@ describe("statusOf", () => {
     expect(statusOf("unverified").label).toBe("Couldn't open");
     expect(statusOf("dead").label).toBe("Page gone");
     expect(statusOf("something-else").label).toBe("something-else");
+  });
+
+  it.each([
+    ["unchanged", "Unchanged", "tag-neutral"],
+    ["minor", "Minor edit", "tag-neutral"],
+    ["differs", "Text differs", "tag-accent"],
+    ["changed", "Changed", "tag-accent"],
+    ["new", "New source", "tag-accent-2"],
+  ])("%s reads as %s", (status, label, tag) => {
+    expect(statusOf(status)).toEqual({ label, tag });
   });
 });
 
@@ -98,5 +112,6 @@ describe("runState", () => {
   it("a failed run is failed, a finished one says its decision", () => {
     expect(runState(run({ error: "boom", finished_at: started }))).toBe("failed");
     expect(runState(run({ decision: "refresh", finished_at: started }))).toBe("refresh");
+    expect(runState(run({ decision: null, finished_at: started }))).toBe("done");
   });
 });

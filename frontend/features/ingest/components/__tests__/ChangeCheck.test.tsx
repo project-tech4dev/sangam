@@ -120,6 +120,76 @@ describe("ChangeCheck", () => {
     expect(screen.queryByText(/running/)).not.toBeInTheDocument();
   });
 
+  it("asks the judge after a yes, saying what it is doing, and shows the new result", async () => {
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    const judged = detail({ decision: "nothing to do", depth: "full" });
+    const posts: unknown[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      const reply = (body: unknown) => ({ ok: true, status: 200, json: async () => body }) as Response;
+      if (url.includes("/baseline")) return reply(BASELINE);
+      if (init?.method === "POST") {
+        posts.push(JSON.parse(String(init.body)));
+        await new Promise((r) => setTimeout(r, 20));
+        return reply(judged);
+      }
+      if (url.includes("/checks/r1")) return reply(detail({ decision: "needs the judge" }));
+      return reply([detail({ decision: "needs the judge" })]);
+    }));
+    render(<ChangeCheck slug="apf" />);
+    await userEvent.click(await screen.findByRole("button", { name: /Ask the judge/ }));
+    expect(screen.getByRole("status")).toHaveTextContent("Asking the judge…");
+    expect(await screen.findByText("Nothing to do")).toBeInTheDocument();
+    expect(posts).toEqual([{ depth: "full", refresh: false }]);
+  });
+
+  it("says it is updating while the update runs", async () => {
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      const reply = (body: unknown) => ({ ok: true, status: 200, json: async () => body }) as Response;
+      if (url.includes("/baseline")) return reply(BASELINE);
+      if (init?.method === "POST") {
+        await new Promise((r) => setTimeout(r, 20));
+        return reply(detail({ refresh_row_id: 91, refresh_summary: "1 updated" }));
+      }
+      if (url.includes("/checks/r1")) return reply(detail());
+      return reply([detail()]);
+    }));
+    render(<ChangeCheck slug="apf" />);
+    await userEvent.click(await screen.findByRole("button", { name: /Update what changed/ }));
+    expect(screen.getByRole("status")).toHaveTextContent("Updating what changed…");
+    expect(await screen.findByText("Update saved for review")).toBeInTheDocument();
+  });
+
+  it("shows any other failure as the backend gave it", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      const reply = (code: number, body: unknown) => ({ ok: code < 400, status: code, json: async () => body }) as Response;
+      if (url.includes("/baseline")) return reply(200, BASELINE);
+      if (init?.method === "POST") return reply(500, { detail: "the fetch failed" });
+      return reply(200, []);
+    }));
+    render(<ChangeCheck slug="apf" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Check for changes" }));
+    expect(await screen.findByText("the fetch failed")).toBeInTheDocument();
+  });
+
+  it("opens an earlier check from the list", async () => {
+    const older = detail({ run_id: "r2", decision: "nothing to do", started_at: "2026-11-18T08:00:00Z" });
+    const fetchMock = stubFetch({
+      "/baseline": BASELINE, "/research/apf/checks": [detail(), older], "/checks/r2": older, "/checks/r1": detail(),
+    });
+    render(<ChangeCheck slug="apf" />);
+    await userEvent.click(await screen.findByRole("button", { name: /nothing to do/ }));
+    expect(await screen.findByText("Nothing to do")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/checks/r2"))).toBe(true);
+  });
+
+  it("a source the baseline no longer lists shows with no facts", async () => {
+    const elsewhere = { ...detail().checks[0], url: "https://a.org/new-page", status: "new" };
+    stubFetch({ "/baseline": BASELINE, "/research/apf/checks": [detail()], "/checks/r1": detail({ checks: [elsewhere] }) });
+    render(<ChangeCheck slug="apf" />);
+    expect(await screen.findByText("a.org/new-page")).toBeInTheDocument();
+  });
+
   it("shows the backend's reason when it refuses", async () => {
     stubFetch({ "/baseline": status(403, { detail: "Staff only" }), "/research/apf/checks": [] });
     render(<ChangeCheck slug="apf" />);
