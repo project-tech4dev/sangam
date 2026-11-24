@@ -155,6 +155,64 @@ def test_configure_survives_a_broken_sdk(monkeypatch):
     assert tracing.configure_langfuse(Settings(**ENABLED)) is False
 
 
+def test_configure_builds_the_client_and_checks_it_once(monkeypatch):
+    built = []
+
+    def client(**k):
+        built.append(k["public_key"])
+        return SimpleNamespace(_mask=tracing.mask_payload, auth_check=lambda: True)
+
+    _install(monkeypatch, Langfuse=client)
+    assert all(tracing.configure_langfuse(Settings(**ENABLED)) for _ in range(5))
+    assert built == ["pk"]
+    tracing.configure_langfuse(Settings(**{**ENABLED, "langfuse_public_key": "pk2"}))
+    assert built == ["pk", "pk2"]
+
+
+# --- naming a call outside any graph, and a job's attributes ------------------
+
+def test_a_call_named_through_its_metadata_keeps_that_name():
+    named = {tracing.GENERATION_NAME: "source-check/judge"}
+    assert tracing.model_call_name(named, "sangam_source_check") == "source-check/judge"
+    assert tracing.model_call_name({}, "sangam_source_check") is None
+
+
+async def test_a_job_puts_its_user_session_and_tags_on_every_observation(monkeypatch):
+    seen = {}
+
+    class Attributes:
+        def __init__(self, **kw):
+            seen.update(kw)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    _install(monkeypatch, propagate_attributes=Attributes)
+    monkeypatch.setattr(tracing, "trace_config", lambda settings, name, tags: {"metadata": {}})
+
+    async def work():
+        return {"decision": "refresh"}
+
+    out = await tracing.traced_job(Settings(**ENABLED), "sangam_source_check", work, inputs={"slug": "axis"},
+                                   session_id="source-check-1", tags=("source-check", "full"), user_id="staff@x.org")
+    assert out == {"decision": "refresh"}
+    assert seen == {"user_id": "staff@x.org", "session_id": "source-check-1", "trace_name": "sangam_source_check",
+                    "tags": ["source-check", "full"]}
+
+
+async def test_a_job_still_runs_when_attributes_cannot_be_propagated(monkeypatch):
+    _install(monkeypatch)  # an SDK without propagate_attributes
+    monkeypatch.setattr(tracing, "trace_config", lambda settings, name, tags: {"metadata": {}})
+
+    async def work():
+        return 1
+
+    assert await tracing.traced_job(Settings(**ENABLED), "job", work, inputs={}, session_id="s") == 1
+
+
 # --- current observation and scores ------------------------------------------
 
 def test_current_observation_finds_our_handler_run():

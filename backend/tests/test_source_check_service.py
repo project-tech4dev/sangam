@@ -143,9 +143,40 @@ class TestRun:
             return await work()
 
         monkeypatch.setattr(service, "traced_job", traced_job)
-        run_id = await service.run(ScriptPool(ScriptConn()), SLUG, service.FREE, False, USER)
+        run_id = await service.run(ScriptPool(ScriptConn()), SLUG, service.FREE, False, USER,
+                                   user_email="staff@sangam.org")
         assert seen == {"name": "sangam_source_check", "inputs": {"slug": SLUG, "depth": service.FREE, "refresh": False},
-                        "session_id": f"source-check-{run_id}", "tags": ("source-check", service.FREE)}
+                        "session_id": f"source-check-{run_id}", "tags": ("source-check", service.FREE),
+                        "user_id": "staff@sangam.org"}
+
+    async def test_the_trace_records_what_the_check_found(self, stubbed, monkeypatch):
+        outputs = []
+
+        async def traced_job(settings, name, work, **kw):
+            outputs.append(await work())
+            return outputs[-1]
+
+        monkeypatch.setattr(service, "traced_job", traced_job)
+        await service.run(ScriptPool(ScriptConn()), SLUG, service.FREE, False, USER)
+        [out] = outputs
+        assert out["decision"] == decision.REFRESH and out["refresh_row_id"] is None
+        assert set(out) == {"decision", "sources", "new_sources", "source_checks_rows", "refresh_row_id",
+                            "refresh_summary"}
+
+    async def test_langfuse_is_set_up_and_flushed_once_even_when_the_check_fails(self, stubbed, monkeypatch):
+        calls = []
+
+        async def boom(*a, **kw):
+            raise RuntimeError("site down")
+
+        monkeypatch.setattr(service, "configure_langfuse", lambda settings: calls.append("configure"))
+        monkeypatch.setattr(service, "flush_traces", lambda: calls.append("flush"))
+        monkeypatch.setattr(service, "stages", boom)
+        conn = ScriptConn()
+        run_id = await service.run(ScriptPool(conn), SLUG, service.FREE, False, USER)
+        assert calls == ["configure", "flush"]
+        [(_sql, failed)] = conn.sql("SET error")
+        assert failed == ("RuntimeError: site down", run_id)
 
     async def test_no_update_unless_the_decision_is_refresh(self, stubbed, monkeypatch):
         async def stages(*a, **kw):
@@ -210,7 +241,7 @@ class TestRefresh:
 
         def resolve(spec):
             state.models.append(spec)
-            return SimpleNamespace(with_structured_output=lambda schema, **kw: (schema, kw))
+            return SimpleNamespace(with_structured_output=lambda schema, **kw: _Structured(schema, kw))
         monkeypatch.setattr(service, "resolve_model", resolve)
 
         async def propose(model, grader, question):
@@ -266,7 +297,9 @@ class TestRefresh:
         row_id, summary = await self.run()
         settings = service.get_settings()
         assert refresh.models == [settings.research_model, settings.utility_model]
-        assert refresh.model == (delta.Delta, {"method": "json_schema"}) and refresh.grader == (delta.Grade, {})
+        assert (refresh.model.schema, refresh.model.kw, refresh.model.name) == (
+            delta.Delta, {"method": "json_schema"}, "source-check/delta")
+        assert (refresh.grader.schema, refresh.grader.kw, refresh.grader.name) == (delta.Grade, {}, "source-check/grade")
         assert refresh.question.startswith("Organisation: Funder")
         assert row_id == 91 and "waits in Review & save" in summary and "reviewer: f1 should be an update" in summary
 
@@ -279,3 +312,14 @@ class TestRefresh:
         refresh.entity = None
         assert await self.run() == (None, f"{SLUG}: no refresh: no research row to carry forward")
         assert refresh.models == []
+
+
+class _Structured:
+    """A model's with_structured_output that remembers its schema and the step name with_config gave it."""
+
+    def __init__(self, schema, kw):
+        self.schema, self.kw, self.name = schema, kw, None
+
+    def with_config(self, metadata):
+        self.name = metadata[service.GENERATION_NAME]
+        return self

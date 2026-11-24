@@ -65,7 +65,7 @@ async def run_check(slug: str, body: CheckIn, pool: OwnerPoolDep,
     if body.refresh and (why := await update_refused(pool, slug)):
         raise HTTPException(status_code=409, detail=why)
     try:
-        run_id = await run(pool, slug, body.depth, body.refresh, staff.id)
+        run_id = await run(pool, slug, body.depth, body.refresh, staff.id, user_email=staff.email)
     except NoBaseline as exc:
         raise HTTPException(status_code=409, detail="Nothing to compare: no research of this organisation records "
                                                     "which versions it read. Research it once first.") from exc

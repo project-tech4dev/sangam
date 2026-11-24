@@ -29,7 +29,7 @@ from app.ingest.refresh import (
     judge,
     save,
 )
-from app.integrations.tracing import configure_langfuse, flush_traces, traced_job
+from app.integrations.tracing import GENERATION_NAME, configure_langfuse, flush_traces, traced_job
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +103,11 @@ async def baseline_view(conn: Any, slug: str) -> tuple[list[Source], int]:
             for b in baselines], unrecorded
 
 
+def named(model: Any, step: str) -> Any:
+    """`source-check/<step>` in the trace: the judge and the page picker share a model, so a name tells them apart."""
+    return model.with_config(metadata={GENERATION_NAME: f"source-check/{step}"})
+
+
 def free_decision(checks: list[compare.Check], redesign: bool) -> str:
     """Without the judge, a page whose facts all still hold cannot be called minor or changed."""
     if redesign:
@@ -114,8 +119,10 @@ def free_decision(checks: list[compare.Check], redesign: bool) -> str:
     return decision.NOTHING
 
 
-async def run(pool: Any, slug: str, depth: str, refresh: bool, user_id: UUID | None, say: Say = _quiet) -> UUID:
-    """Runs one check and saves it whole; the connection is never held while fetching or asking a model."""
+async def run(pool: Any, slug: str, depth: str, refresh: bool, user_id: UUID | None, say: Say = _quiet,
+              user_email: str | None = None) -> UUID:
+    """Runs one check and saves it whole; the connection is never held while fetching or asking a model.
+    `user_email` names the trace's user, as a chat's does."""
     async with pool.connection() as conn:
         given = await load_inputs(conn, slug)
         say(baseline.describe(slug, given.baselines, given.unrecorded))
@@ -130,12 +137,13 @@ async def run(pool: Any, slug: str, depth: str, refresh: bool, user_id: UUID | N
             await conn.execute(START_SQL, (run_id, slug, depth, user_id))
     settings = get_settings()
     # A check from the Scout screen can come before the first chat turn, which otherwise builds the masked client.
-    configure_langfuse(settings)
+    # Built once, but the first build makes a blocking auth_check, so it runs off the event loop.
+    await asyncio.to_thread(configure_langfuse, settings)
     try:
         outcome = await traced_job(
             settings, "sangam_source_check", lambda: _check(pool, run_id, slug, depth, refresh, given, say),
             inputs={"slug": slug, "depth": depth, "refresh": refresh}, session_id=f"source-check-{run_id}",
-            tags=("source-check", depth))
+            tags=("source-check", depth), user_id=user_email or (str(user_id) if user_id else None))
         async with pool.connection() as conn:
             await conn.execute(FINISH_SQL, (outcome["decision"], outcome["refresh_row_id"],
                                             outcome["refresh_summary"], run_id))
@@ -146,7 +154,7 @@ async def run(pool: Any, slug: str, depth: str, refresh: bool, user_id: UUID | N
         async with pool.connection() as conn:
             await conn.execute(FAIL_SQL, (failure, run_id))
     finally:
-        flush_traces()
+        await asyncio.to_thread(flush_traces)  # a blocking upload; the route's answer must not wait on it
     return run_id
 
 
@@ -207,7 +215,8 @@ async def stages(slug: str, depth: str, scratch: Path, given: Inputs, until: str
     else:
         settings = get_settings()
         model = resolve_model(settings.source_check_judge_model)
-        checks = await judge.run(checks, given.findings, given.context, model.with_structured_output(judge.Judgement))
+        checks = await judge.run(checks, given.findings, given.context,
+                                 named(model.with_structured_output(judge.Judgement), "judge"))
         say(judge.describe(slug, checks))
         if until == "judge":
             return None
@@ -216,7 +225,8 @@ async def stages(slug: str, depth: str, scratch: Path, given: Inputs, until: str
         known_hashes = {b.text_hash for b in given.baselines} | {t.fingerprint for t in today if t.fingerprint}
         async with httpx.AsyncClient() as client:
             found = await discover.run(given.subject, known_urls, known_hashes, given.context,
-                                       model.with_structured_output(discover.Picks), settings.tavily_api_key,
+                                       named(model.with_structured_output(discover.Picks), "discover"),
+                                       settings.tavily_api_key,
                                        client, scratch)
         say(discover.describe(slug, found))
         verdict = decision.decide(checks, found, redesign)
@@ -256,8 +266,9 @@ async def _refresh(pool: Any, slug: str, checks: list[compare.Check], found: dis
         # A dead page's facts are never removed by a refresh, so a model would be paid to change nothing.
         return None, f"{slug}: no refresh: only gone pages changed, and a person decides whether their facts still hold"
     # Sonnet refuses a forced tool call for structured output, so the delta asks for a JSON schema.
-    model = resolve_model(settings.research_model).with_structured_output(delta.Delta, method="json_schema")
-    grader = resolve_model(settings.utility_model).with_structured_output(delta.Grade)
+    model = named(resolve_model(settings.research_model).with_structured_output(delta.Delta, method="json_schema"),
+                  "delta")
+    grader = named(resolve_model(settings.utility_model).with_structured_output(delta.Grade), "grade")
     try:
         proposed, problems = await delta.propose(model, grader, delta.ask(name, srcs, context, kind))
     except Exception as exc:  # noqa: BLE001 — a reply that is no delta saves nothing, and says so
