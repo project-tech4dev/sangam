@@ -40,3 +40,9 @@ def test_extract_stops_early_on_a_long_document(monkeypatch, tmp_path):
     _fake_reader(monkeypatch, ["x" * (extract.PDF_TEXT_CHARS * 3), "never read"])
     text, _ = extract.extract_pdf_text(tmp_path / "x.pdf")
     assert "never read" not in text
+
+
+def test_extract_without_a_cap_reads_every_page(monkeypatch, tmp_path):
+    _fake_reader(monkeypatch, ["x" * (extract.PDF_TEXT_CHARS * 3), "the last page"])
+    text, _ = extract.extract_pdf_text(tmp_path / "x.pdf", max_chars=None)
+    assert "the last page" in text

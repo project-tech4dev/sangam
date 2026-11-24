@@ -9,7 +9,6 @@ from typing import Any
 
 import httpx
 import trafilatura
-from pypdf.errors import PyPdfError
 
 from app.core.config import get_settings
 from app.core.egress import TRUST
@@ -181,11 +180,17 @@ async def fetch_document_file(url: str, filename: str | None) -> str:
 
 def document_hash(path: Path) -> str:
     """A PDF by its text, so a re-export with new dates is not a change; a scan or any other file by its bytes."""
-    if path.suffix.lower() == ".pdf":
+    if _is_pdf(path):
         try:
-            text, _ = extract_pdf_text(path)
-        except PyPdfError:
+            text, _ = extract_pdf_text(path, max_chars=None)  # every page: a change on page 80 is a change
+        except Exception:  # noqa: BLE001 - pypdf raises far more than PyPdfError, and the read must not fail
             text = ""
         if text.strip():
             return text_hash(text)
     return bytes_hash(path.read_bytes())
+
+
+def _is_pdf(path: Path) -> bool:
+    """By its first bytes, not its name: a PDF from /download?id=42 is saved without .pdf."""
+    with open(path, "rb") as fh:
+        return b"%PDF-" in fh.read(1024)

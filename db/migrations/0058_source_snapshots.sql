@@ -13,6 +13,9 @@ CREATE TABLE source_snapshots (
     UNIQUE (url, text_hash)
 );
 
+-- moved() finds a promoted file's rows by archive_key.
+CREATE INDEX source_snapshots_archive_key_idx ON source_snapshots (archive_key);
+
 -- The versions a research run read; save_research writes it.
 ALTER TABLE entity_research ADD COLUMN snapshot_ids bigint[];
 
