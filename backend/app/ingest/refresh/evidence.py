@@ -19,6 +19,9 @@ MATCH = 95  # a sentence moved or re-spaced still scores ~100
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 # A changed month, status word or "not" also barely moves it, so every word must be there too.
 _WORD = re.compile(r"\w+")
+# extract_pdf_text's page headers, and a word split at a line end: neither is a change in what the page says.
+_PAGE = re.compile(r"^--- page \d+ ---$", re.MULTILINE)
+_HYPHEN = re.compile(r"(\w)- (\w)")
 
 # Every fact the brief shows comes from these rows, so all of them are checked, not only the baseline's.
 FINDINGS_SQL = """
@@ -44,7 +47,7 @@ async def load_findings(conn: Any, slug: str) -> dict[str, list[str]]:
 
 def on_page(sentence: str, text: str) -> bool:
     """The sentence is on the page nearly word for word, and with every number it states."""
-    needle, page = normalise(sentence), normalise(text)
+    needle, page = _clean(sentence), _clean(text)
     hit = fuzz.partial_ratio_alignment(needle, page)
     if hit is None or hit.score < MATCH:
         return False
@@ -57,6 +60,10 @@ def on_page(sentence: str, text: str) -> bool:
     window = page[start:end]
     words = Counter(_WORD.findall(needle.casefold())) <= Counter(_WORD.findall(window.casefold()))
     return words and Counter(_NUMBER.findall(needle)) <= Counter(_NUMBER.findall(window))
+
+
+def _clean(text: str) -> str:
+    return _HYPHEN.sub(r"\1\2", normalise(_PAGE.sub(" ", text)))
 
 
 def verdict(sentence: str, old: str, new: str) -> str:

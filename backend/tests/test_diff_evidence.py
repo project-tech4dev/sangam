@@ -124,6 +124,18 @@ class TestEvidence:
         sentence = "Applications for the 2025 grant cycle are open until 31 March 2025 for registered NGOs."
         assert evidence.verdict(sentence, sentence, "open until 31 March 2025") == BROKEN
 
+    def test_a_page_break_inside_the_sentence_is_not_a_change(self):
+        sentence = "The Foundation supported 412 organisations across Assam and Meghalaya in 2024."
+        old = f"--- page 5 ---\nIntro.\n{sentence}\nMore."
+        new = ("--- page 5 ---\nIntro.\nThe Foundation supported 412 organisations across\n\n"
+               "--- page 6 ---\nAssam and Meghalaya in 2024.\nMore.")
+        assert evidence.verdict(sentence, old, new) == INTACT
+
+    def test_a_word_split_by_a_line_end_hyphen_is_not_a_change(self):
+        sentence = "The Foundation supported 412 organisations across Assam and Meghalaya in 2024."
+        new = "The Foundation supported 412 organi-\nsations across Assam and Meghalaya in 2024."
+        assert evidence.verdict(sentence, sentence, new) == INTACT
+
     def test_a_re_spaced_sentence_with_other_case_is_intact(self):
         sentence = "We work in Karnataka and Uttarakhand."
         assert evidence.verdict(sentence, sentence, "Intro.  WE work   in Karnataka and Uttarakhand.  More.") == INTACT
