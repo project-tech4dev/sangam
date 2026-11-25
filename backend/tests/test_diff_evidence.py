@@ -109,6 +109,25 @@ class TestEvidence:
     def test_a_changed_number_is_broken(self):
         assert evidence.verdict("The Foundation supports over 400 organisations.", OLD, NEW) == BROKEN
 
+    @pytest.mark.parametrize("old, new", [
+        ("Applications for the 2025 grant cycle are open until 31 March 2025 for registered NGOs.",
+         "Applications for the 2025 grant cycle are open until 31 May 2025 for registered NGOs."),
+        ("Applications for the 2025 grant cycle are open until 31 March 2025 for registered NGOs.",
+         "Applications for the 2025 grant cycle are closed until 31 March 2025 for registered NGOs."),
+        ("The Foundation funds registered NGOs working in Assam and Meghalaya on livelihoods.",
+         "The Foundation does not fund registered NGOs working in Assam and Meghalaya on livelihoods."),
+    ])
+    def test_a_changed_word_is_broken_though_the_numbers_match(self, old, new):
+        assert evidence.verdict(old, old, new) == BROKEN
+
+    def test_a_page_holding_only_a_fragment_of_the_sentence_is_broken(self):
+        sentence = "Applications for the 2025 grant cycle are open until 31 March 2025 for registered NGOs."
+        assert evidence.verdict(sentence, sentence, "open until 31 March 2025") == BROKEN
+
+    def test_a_re_spaced_sentence_with_other_case_is_intact(self):
+        sentence = "We work in Karnataka and Uttarakhand."
+        assert evidence.verdict(sentence, sentence, "Intro.  WE work   in Karnataka and Uttarakhand.  More.") == INTACT
+
     def test_a_paraphrase_is_unanchored(self):
         assert evidence.verdict("Hundreds of NGOs receive its grants every year.", OLD, NEW) == UNANCHORED
 

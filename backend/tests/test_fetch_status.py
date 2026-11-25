@@ -14,6 +14,7 @@ from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 from app.ingest.reading import fetch
 from app.ingest.reading.fetch import Fetched
+from app.ingest.reading.fingerprint import text_hash
 from app.ingest.refresh import compare, fetch_status
 from app.ingest.refresh.baseline import Baseline
 from app.ingest.refresh.fetch_status import DEAD, OK, UNVERIFIED, classify
@@ -50,6 +51,11 @@ class TestClassify:
     def test_a_page_with_text_is_ok_and_keeps_it(self):
         today = classify(Fetched(URL, final_url=URL + "/", status=200, text="We fund schools."), "We fund schools.")
         assert (today.status, today.text) == (OK, "We fund schools.")
+
+    def test_a_url_that_always_landed_on_the_home_page_is_not_dead_while_it_reads_the_same(self):
+        got = Fetched(URL, final_url="https://funder.example/", status=200, text="Welcome")
+        assert classify(got, "Welcome", text_hash("Welcome")).status == OK
+        assert classify(got, "Welcome", text_hash("Something else")).status == DEAD
 
     def test_the_home_page_itself_is_not_a_soft_404(self):
         home = "https://funder.example/"

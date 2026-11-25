@@ -32,13 +32,13 @@ async def fetch_today(source: Baseline, scratch: Path) -> Today:
     if source.kind == "document":
         got = await download(source.url, None, scratch)
         text = await asyncio.to_thread(document_text, got.path) if got.path else ""
-        today = classify(got, text)
+        today = classify(got, text, source.text_hash)
         if today.status != OK or today.path is None:
             return today
         # The tools' own rule, page cap included, or a long report would never match its baseline.
         return replace(today, fingerprint=document_hash(today.path, text))
     got = await fetch_page(source.url)
-    today = classify(got, got.text)
+    today = classify(got, got.text, source.text_hash)
     return replace(today, fingerprint=text_hash(today.text)) if today.status == OK else today
 
 
@@ -55,8 +55,9 @@ async def fetch_all(sources: list[Baseline], scratch: Path) -> list[Today]:
     return list(await asyncio.gather(*(one(i, s) for i, s in enumerate(sources))))
 
 
-def classify(got: Fetched, text: str) -> Today:
-    """A failure is unverified, never a change; only a 404, a 410 or a fall back to the home page is dead."""
+def classify(got: Fetched, text: str, known: str | None = None) -> Today:
+    """A failure is unverified, never a change; only a 404, a 410 or a fall back to the home page is dead.
+    `known` is the baseline's fingerprint: a URL that already landed on the home page when it was read is not dead."""
     url = got.url
     if got.refused:
         return Today(url, UNVERIFIED, got.refused)
@@ -68,7 +69,7 @@ def classify(got: Fetched, text: str) -> Today:
         return Today(url, UNVERIFIED, got.error)
     if got.status is not None and not 200 <= got.status < 300:
         return Today(url, UNVERIFIED, f"HTTP {got.status}")
-    if _sent_home(url, got.final_url):
+    if _sent_home(url, got.final_url) and not _reads_as_before(got, text, known):
         return Today(url, DEAD, f"redirected to the home page {got.final_url}")
     if got.document:
         return Today(url, UNVERIFIED, f"now serves a {got.document}, not a page")
@@ -77,6 +78,14 @@ def classify(got: Fetched, text: str) -> Today:
     if not text.strip() and got.path is None:
         return Today(url, UNVERIFIED, "no readable text")
     return Today(url, OK, f"HTTP {got.status}", text=text, path=got.path)
+
+
+def _reads_as_before(got: Fetched, text: str, known: str | None) -> bool:
+    if not known:
+        return False
+    if got.path is not None:
+        return document_hash(got.path, text) == known
+    return bool(text.strip()) and text_hash(text) == known
 
 
 def _sent_home(url: str, final_url: str | None) -> bool:

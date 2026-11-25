@@ -17,6 +17,8 @@ INTACT, BROKEN, UNANCHORED = "intact", "broken", "unanchored"
 MATCH = 95  # a sentence moved or re-spaced still scores ~100
 # A changed figure barely moves the fuzzy score ("400" → "500" is ~98), so numbers must match exactly.
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
+# A changed month, status word or "not" also barely moves it, so every word must be there too.
+_WORD = re.compile(r"\w+")
 
 # Every fact the brief shows comes from these rows, so all of them are checked, not only the baseline's.
 FINDINGS_SQL = """
@@ -53,7 +55,8 @@ def on_page(sentence: str, text: str) -> bool:
     while end < len(page) and not page[end].isspace():
         end += 1
     window = page[start:end]
-    return Counter(_NUMBER.findall(needle)) <= Counter(_NUMBER.findall(window))
+    words = Counter(_WORD.findall(needle.casefold())) <= Counter(_WORD.findall(window.casefold()))
+    return words and Counter(_NUMBER.findall(needle)) <= Counter(_NUMBER.findall(window))
 
 
 def verdict(sentence: str, old: str, new: str) -> str:
