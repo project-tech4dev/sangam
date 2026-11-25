@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
+from app.ingest.catalog.promote_records import funder_from
 from app.ingest.catalog.rows import FunderRecord
 from app.ingest.research.finding_types import IdentityFinding
 
@@ -25,3 +26,13 @@ def test_a_new_save_must_use_one_of_the_nine():
     assert IdentityFinding.model_validate({**fields, "funder_type": "international_agency"}).funder_type
     with pytest.raises(ValidationError):
         IdentityFinding.model_validate({**fields, "funder_type": "corporate_csr"})
+
+
+def test_an_old_identity_finding_promotes_as_the_new_type():
+    row = {"slug": "tata-trusts", "canonical_name": "Tata Trusts", "entity_name": "Tata Trusts", "website": None,
+           "researched_at": datetime(2026, 10, 1, tzinfo=UTC)}
+    old = {"concept": "identity", "name": "Tata Trusts", "funder_type": "family_trust_network",
+           "source_url": "https://www.tatatrusts.org", "source_name": "Tata Trusts", "confidence": "high",
+           "evidence": "Tata Trusts is among India's oldest philanthropic organisations."}
+    report = {"reasons": [], "held": []}
+    assert funder_from(row, [old], report).funder_type == "private_foundation"
