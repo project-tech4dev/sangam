@@ -17,6 +17,7 @@ from app.ingest.reading.fetch import Fetched
 from app.ingest.reading.fingerprint import text_hash
 from app.ingest.refresh import compare, fetch_status
 from app.ingest.refresh.baseline import Baseline
+from app.ingest.refresh.discover import Lead
 from app.ingest.refresh.fetch_status import DEAD, OK, UNVERIFIED, classify
 
 URL = "https://funder.example/about"
@@ -73,6 +74,13 @@ class TestClassify:
 
 
 class TestFetchToday:
+    async def test_a_discovered_lead_has_no_baseline_and_is_still_fetched(self, monkeypatch):
+        async def fetch_page(url):
+            return Fetched(url, final_url="https://funder.example/", status=200, text="Welcome")
+        monkeypatch.setattr(fetch_status, "fetch_page", fetch_page)
+        lead = Lead("https://funder.example/new-report", "New report", "", "page")
+        assert (await fetch_status.fetch_today(lead, Path("."))).status == DEAD
+
     async def test_a_page_is_fetched_as_a_page(self, monkeypatch, tmp_path):
         async def page(url):
             return Fetched(url, final_url=url, status=200, text="Grants")
