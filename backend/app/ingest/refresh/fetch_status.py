@@ -7,8 +7,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from app.ingest.reading.fetch import Fetched, document_text, download, fetch_page
-from app.ingest.reading.fingerprint import bytes_hash, text_hash
+from app.ingest.reading.fetch import Fetched, document_hash, document_text, download, fetch_page
+from app.ingest.reading.fingerprint import text_hash
 from app.ingest.refresh.baseline import Baseline
 
 OK, UNVERIFIED, DEAD = "ok", "unverified", "dead"
@@ -35,7 +35,8 @@ async def fetch_today(source: Baseline, scratch: Path) -> Today:
         today = classify(got, text)
         if today.status != OK or today.path is None:
             return today
-        return replace(today, fingerprint=text_hash(text) if text else bytes_hash(today.path.read_bytes()))
+        # The tools' own rule, page cap included, or a long report would never match its baseline.
+        return replace(today, fingerprint=document_hash(today.path, text))
     got = await fetch_page(source.url)
     today = classify(got, got.text)
     return replace(today, fingerprint=text_hash(today.text)) if today.status == OK else today

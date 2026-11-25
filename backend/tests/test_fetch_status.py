@@ -85,6 +85,16 @@ class TestFetchToday:
         today = await fetch_status.fetch_today(source(kind="document"), tmp_path)
         assert seen == [tmp_path] and (today.status, today.text) == (OK, "Annual report")
 
+    async def test_a_document_is_fingerprinted_by_the_tools_rule(self, monkeypatch, tmp_path):
+        async def download(url, filename, directory):
+            (directory / "ar.pdf").write_bytes(b"%PDF long report")
+            return Fetched(url, final_url=url, status=200, path=directory / "ar.pdf")
+        monkeypatch.setattr(fetch_status, "download", download)
+        monkeypatch.setattr(fetch_status, "document_text", lambda path: "Annual report")
+        monkeypatch.setattr(fetch_status, "document_hash", lambda path, text: f"tools:{text}")
+        today = await fetch_status.fetch_today(source(kind="document"), tmp_path)
+        assert today.fingerprint == "tools:Annual report"
+
 
     async def test_a_pdf_archived_as_pdf_but_fetched_without_a_suffix_is_unchanged(self, monkeypatch, tmp_path):
         pdf = _pdf("Annual report 2026")
