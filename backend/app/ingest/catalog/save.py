@@ -20,6 +20,7 @@ from app.ingest.catalog import review, undo
 from app.ingest.catalog.promote import org_match, promote
 from app.ingest.catalog.promote_records import MERGEABLE
 from app.ingest.catalog.writer import UNWRITTEN, Gate, slugify
+from app.ingest.reading import snapshots
 from app.ingest.reading import vault as vault_store
 from app.ingest.research import coverage
 from app.ingest.research.expectations import CONCEPTS, concepts_for
@@ -284,17 +285,21 @@ async def save_to_catalog(slug: str, caller: CallerScope, decisions: dict[str, s
     reports = []
     for row in rows:
         for attempt in range(2):
-            try:
-                async with pool.connection() as conn, conn.transaction():
-                    promotion = await undo.start(conn, row.get("id"), row["slug"], caller.user_id)
-                    report = await promote(conn, row, gate=Gate(decisions or {}))
-                    await _record_save(conn, row, report)
-                    report["promotion_id"] = promotion if await undo.finish(conn, promotion) else None
-                break
-            except UniqueViolation:
-                # Another save added the same row between a look-up and its insert; the retry finds it.
-                if attempt:
-                    raise
+            with snapshots.recording_moves() as moves:
+                try:
+                    async with pool.connection() as conn, conn.transaction():
+                        promotion = await undo.start(conn, row.get("id"), row["slug"], caller.user_id)
+                        report = await promote(conn, row, gate=Gate(decisions or {}))
+                        await _record_save(conn, row, report)
+                        report["promotion_id"] = promotion if await undo.finish(conn, promotion) else None
+                    break
+                except UniqueViolation:
+                    # Another save added the same row between a look-up and its insert; the retry finds it.
+                    if attempt:
+                        raise
+                finally:
+                    # A Storage move is never undone, so its snapshots follow it even when the promotion rolls back.
+                    await snapshots.moved(moves)
         reports.append(report)
         await _publish_states(pool, row["slug"], report.get("facts") or {})
     return reports

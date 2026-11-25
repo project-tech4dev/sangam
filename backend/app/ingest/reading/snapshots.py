@@ -38,6 +38,18 @@ async def remember(url: str, kind: str, fingerprint: str, archive_key: str | Non
         ids.append(snapshot_id)
 
 
+async def known_fingerprint(archive_key: str) -> str | None:
+    """The fingerprint already recorded for these exact bytes; None when there is none or the lookup failed."""
+    try:
+        async with get_pool().connection() as conn:
+            row = await (await conn.execute(
+                "SELECT text_hash FROM source_snapshots WHERE archive_key = %s LIMIT 1", (archive_key,))).fetchone()
+        return row["text_hash"] if row else None
+    except Exception:
+        logger.warning("snapshot lookup failed for %s", archive_key, exc_info=True)
+        return None
+
+
 async def record_snapshot(url: str, kind: str, fingerprint: str, archive_key: str | None) -> int | None:
     """The id of this version of url, from text_hash or document_hash; an unchanged re-read bumps last_seen_at.
     Never raises: a read must not fail because its bookkeeping did."""
@@ -62,20 +74,48 @@ async def record_snapshot(url: str, kind: str, fingerprint: str, archive_key: st
         return None
 
 
-async def moved(old_key: str, new_key: str) -> None:
-    """Follow an archived file to its new key, or the change check could not load the old text."""
+MOVE_SQL = "UPDATE source_snapshots SET archive_key = %s WHERE archive_key = %s"
+# Storage moves made while a promotion holds its connection, applied once it lets go.
+MOVES: ContextVar[list[tuple[str, str]] | None] = ContextVar("import_moved_keys", default=None)
+
+
+@contextmanager
+def recording_moves() -> Iterator[list[tuple[str, str]]]:
+    pairs: list[tuple[str, str]] = []
+    token = MOVES.set(pairs)
+    try:
+        yield pairs
+    finally:
+        MOVES.reset(token)
+
+
+def note_moved(old_key: str, new_key: str) -> None:
+    if (pairs := MOVES.get()) is not None:
+        pairs.append((old_key, new_key))
+
+
+async def moved(pairs: list[tuple[str, str]]) -> None:
+    """Follow archived files to their new keys, or the change check could not load the old text."""
+    if not pairs:
+        return
     try:
         async with get_pool().connection() as conn:
-            await conn.execute("UPDATE source_snapshots SET archive_key = %s WHERE archive_key = %s",
-                               (new_key, old_key))
+            for old_key, new_key in pairs:
+                await conn.execute(MOVE_SQL, (new_key, old_key))
     except Exception:
-        logger.warning("snapshot key not moved from %s", old_key, exc_info=True)
+        logger.warning("snapshot keys not moved from %s", [old for old, _ in pairs], exc_info=True)
 
 
 async def log_unfetched(slug: str, snapshot_ids: list[int], cited: list[str]) -> None:
     """Log a cited public URL no tool fetched in this run: a finding with no version behind it."""
-    public = {canonical_url(u) for u in cited
-              if u and not staff_sources.is_staff_source_url(u) and not vault.is_vault_url(u)}
+    public = set()
+    for u in cited:
+        if not u or staff_sources.is_staff_source_url(u) or vault.is_vault_url(u):
+            continue
+        try:
+            public.add(canonical_url(u))
+        except Exception:  # noqa: BLE001 — the row is already saved; a bad URL must not fail the save
+            logger.info("%s cites %s, which is not a URL that can be fetched", slug, u)
     if not public:
         return
     try:

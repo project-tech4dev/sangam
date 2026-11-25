@@ -89,6 +89,13 @@ class TestDocumentHash:
         second.write_bytes(_pdf([*pages[:-1], "Page 40: total spend 500 crore"], "D:20260101000000Z"))
         assert document_hash(first) != document_hash(second)
 
+    def test_a_pdf_over_the_page_cap_hashes_its_bytes_without_parsing(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("app.ingest.reading.fetch.MAX_HASHED_PAGES", 2)
+        monkeypatch.setattr("app.ingest.reading.fetch.extract_pdf_text", lambda *a, **k: pytest.fail("parsed"))
+        long = tmp_path / "long.pdf"
+        long.write_bytes(_pdf(["one", "two", "three"], "D:20260101000000Z"))
+        assert document_hash(long) == bytes_hash(long.read_bytes())
+
     def test_a_pdf_with_no_text_hashes_its_bytes(self, tmp_path):
         scan = tmp_path / "scan.pdf"
         scan.write_bytes(_pdf("", "D:20260101000000Z"))

@@ -39,6 +39,18 @@ async def test_a_database_error_is_none_not_an_exception(monkeypatch, caplog):
     assert "record_snapshot failed" in caplog.text
 
 
+async def test_a_known_fingerprint_is_read_by_archive_key(monkeypatch):
+    conn = ScriptConn([("FROM source_snapshots", {"text_hash": "h1"})])
+    monkeypatch.setattr(snapshots, "get_pool", lambda: ScriptPool(conn))
+    assert await snapshots.known_fingerprint("archive/key.pdf") == "h1"
+    assert conn.sql("FROM source_snapshots")[0][1] == ("archive/key.pdf",)
+
+
+async def test_a_failed_fingerprint_lookup_is_none(monkeypatch):
+    monkeypatch.setattr(snapshots, "get_pool", lambda: BrokenPool())
+    assert await snapshots.known_fingerprint("archive/key.pdf") is None
+
+
 async def test_a_query_error_is_none_too(monkeypatch):
     conn = ScriptConn([("INSERT INTO source_snapshots", RuntimeError("constraint"))])
     monkeypatch.setattr(snapshots, "get_pool", lambda: ScriptPool(conn))
@@ -109,6 +121,7 @@ class TestTheToolsRecord:
             return None
 
         monkeypatch.setattr(fetch, "remember", remember)
+        monkeypatch.setattr(fetch, "known_fingerprint", lambda key: _value(None))
         monkeypatch.setattr(fetch, "check_url", allowed)
         monkeypatch.setattr(fetch, "downloads_dir", lambda: tmp_path)
         return calls
@@ -140,6 +153,13 @@ class TestTheToolsRecord:
                    "archive/report.docx")
         await fetch.fetch_document_file(URL, "report.docx")
         assert remembered == [(URL, "document", bytes_hash(b"PK word"), "archive/report.docx")]
+
+    async def test_an_unchanged_document_reuses_its_hash(self, monkeypatch, remembered):
+        self.serve(monkeypatch, httpx.Response(200, content=b"%PDF- big report"), "archive/report.pdf")
+        monkeypatch.setattr(fetch, "known_fingerprint", lambda key: _value("known-hash"))
+        monkeypatch.setattr(fetch, "document_hash", lambda path: pytest.fail("parsed again"))
+        await fetch.fetch_document_file(URL, "report.pdf")
+        assert remembered == [(URL, "document", "known-hash", "archive/report.pdf")]
 
     async def test_a_document_whose_upload_failed_is_not_hashed(self, monkeypatch, remembered):
         self.serve(monkeypatch, httpx.Response(200, content=b"PK word"), None)
@@ -221,6 +241,13 @@ class TestLogUnfetched:
         monkeypatch.setattr(snapshots, "get_pool", lambda: pytest.fail("queried"))
         await snapshots.log_unfetched("x", [], [staff_sources.source_url("grants.xlsx")])
 
+    async def test_an_unparseable_url_is_skipped_not_raised(self, monkeypatch, caplog):
+        conn = ScriptConn([("FROM source_snapshots", [{"id": 3, "url": URL}])])
+        monkeypatch.setattr(snapshots, "get_pool", lambda: ScriptPool(conn))
+        with caplog.at_level(logging.INFO):
+            await snapshots.log_unfetched("x", [3], ["https://example.org:abc/x", "https://example.org/other"])
+        assert "not a URL that can be fetched" in caplog.text and "cites https://example.org/other" in caplog.text
+
     async def test_a_database_error_does_not_raise(self, monkeypatch, caplog):
         monkeypatch.setattr(snapshots, "get_pool", lambda: BrokenPool())
         with caplog.at_level(logging.WARNING):
@@ -233,31 +260,34 @@ class TestAMovedFileKeepsItsSnapshot:
 
     @pytest.fixture
     def shelf(self, monkeypatch):
-        state = SimpleNamespace(move_ok=True, moved=[])
+        state = SimpleNamespace(move_ok=True)
         monkeypatch.setattr(promote_documents.storage, "stat", lambda bucket, key: _value(None))
         monkeypatch.setattr(promote_documents.storage, "move", lambda bucket, src, dst: _value(state.move_ok))
-
-        async def moved(old, new):
-            state.moved.append((old, new))
-        monkeypatch.setattr(snapshots, "moved", moved)
+        monkeypatch.setattr(snapshots, "get_pool", lambda: pytest.fail("shelving took a second connection"))
         return state
 
-    async def test_the_key_follows_the_file(self, shelf):
-        destination = await promote_documents._shelve(self.KEY, "zz-ltd", "FY2023-24", "a" * 64)
-        assert destination != self.KEY and shelf.moved == [(self.KEY, destination)]
+    async def test_the_key_follows_the_file_without_a_second_connection(self, shelf):
+        with snapshots.recording_moves() as moves:
+            destination = await promote_documents._shelve(self.KEY, "zz-ltd", "FY2023-24", "a" * 64)
+        assert destination != self.KEY and moves == [(self.KEY, destination)]
 
     async def test_a_failed_move_changes_nothing(self, shelf):
         shelf.move_ok = False
-        assert await promote_documents._shelve(self.KEY, "zz-ltd", "FY2023-24", "a" * 64) == self.KEY
-        assert shelf.moved == []
+        with snapshots.recording_moves() as moves:
+            assert await promote_documents._shelve(self.KEY, "zz-ltd", "FY2023-24", "a" * 64) == self.KEY
+        assert moves == []
 
-    async def test_moved_updates_the_row(self, monkeypatch):
+    async def test_moved_updates_each_row(self, monkeypatch):
         conn = ScriptConn()
         monkeypatch.setattr(snapshots, "get_pool", lambda: ScriptPool(conn))
-        await snapshots.moved("old/key.pdf", "funders/x/key.pdf")
-        [(_sql, params)] = conn.sql("UPDATE source_snapshots")
-        assert params == ("funders/x/key.pdf", "old/key.pdf")
+        await snapshots.moved([("old/a.pdf", "funders/x/a.pdf"), ("old/b.pdf", "funders/x/b.pdf")])
+        assert [params for _sql, params in conn.sql("UPDATE source_snapshots")] == [
+            ("funders/x/a.pdf", "old/a.pdf"), ("funders/x/b.pdf", "old/b.pdf")]
+
+    async def test_nothing_moved_takes_no_connection(self, monkeypatch):
+        monkeypatch.setattr(snapshots, "get_pool", lambda: pytest.fail("queried"))
+        await snapshots.moved([])
 
     async def test_a_failed_update_does_not_raise(self, monkeypatch):
         monkeypatch.setattr(snapshots, "get_pool", lambda: BrokenPool())
-        await snapshots.moved("old/key.pdf", "funders/x/key.pdf")
+        await snapshots.moved([("old/key.pdf", "funders/x/key.pdf")])

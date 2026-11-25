@@ -9,6 +9,7 @@ from typing import Any
 
 import httpx
 import trafilatura
+from pypdf import PdfReader
 
 from app.core.config import get_settings
 from app.core.egress import TRUST
@@ -17,7 +18,7 @@ from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.reading.access import canonical_url, check_url, source_banner
 from app.ingest.reading.fingerprint import bytes_hash, text_hash
 from app.ingest.reading.registry import rule_for_url
-from app.ingest.reading.snapshots import remember
+from app.ingest.reading.snapshots import known_fingerprint, remember
 from app.integrations import storage
 from app.integrations.storage import safe_name
 
@@ -29,6 +30,8 @@ def downloads_dir() -> Path:
 
 
 MAX_DOWNLOAD_MB = 60
+# A longer PDF is fingerprinted by its bytes: parsing all of a 400-page report held the tool's reply for minutes.
+MAX_HASHED_PAGES = 100
 WORD = "wordprocessingml"  # in a .docx's content type
 PAGE_HEADERS = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,*/*",
                 "Accept-Encoding": "gzip, deflate"}
@@ -174,15 +177,20 @@ async def fetch_document_file(url: str, filename: str | None) -> str:
         storage.SOURCE_ARCHIVE, storage.archive_key(url, data, name), data, content_type
     )
     if key:
-        await remember(url, "document", await asyncio.to_thread(document_hash, destination), key)
+        # The key names the bytes, so an unchanged re-fetch reuses the hash rather than parsing the PDF again.
+        fingerprint = await known_fingerprint(key) or await asyncio.to_thread(document_hash, destination)
+        await remember(url, "document", fingerprint, key)
     return f"Saved {name} ({size:,} bytes). Read it with read_document_pages('{name}')."
 
 
 def document_hash(path: Path) -> str:
-    """A PDF by its text, so a re-export with new dates is not a change; a scan or any other file by its bytes."""
+    """A PDF by its text, so a re-export with new dates is not a change; a scan, a PDF over MAX_HASHED_PAGES
+    or any other file by its bytes."""
     if _is_pdf(path):
         try:
-            text, _ = extract_pdf_text(path, max_chars=None)  # every page: a change on page 80 is a change
+            # Every page, so a change on page 80 is a change; pypdf holds the GIL, so a long report is not parsed.
+            text = "" if len(PdfReader(str(path)).pages) > MAX_HASHED_PAGES else \
+                extract_pdf_text(path, max_chars=None)[0]
         except Exception:  # noqa: BLE001 - pypdf raises far more than PyPdfError, and the read must not fail
             text = ""
         if text.strip():

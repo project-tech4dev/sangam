@@ -176,7 +176,7 @@ async def _shelve(
         )
     if not await storage.move(storage.SOURCE_ARCHIVE, key, destination):
         return key
-    await snapshots.moved(key, destination)
+    snapshots.note_moved(key, destination)
     return destination
 
 
