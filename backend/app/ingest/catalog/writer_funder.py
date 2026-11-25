@@ -82,6 +82,9 @@ async def write_funder(
                 (match.entity_id,),
             )
         ).fetchone()
+        if proposed["funder_type"] == "other" and existing["funder_type"]:
+            # 'other' says nothing fitted; a type set by hand or a better source is kept.
+            proposed["funder_type"] = None
         changes = diff_row({c: existing[c] for c in FUNDER_UPDATABLE}, proposed)
         if changes and gate and gate.on_change(
             "funders", {"name": existing["name"]}, dict(existing), changes, proposed

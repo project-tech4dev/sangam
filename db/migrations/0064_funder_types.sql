@@ -24,13 +24,16 @@ UPDATE funders
 ALTER TABLE funders ADD COLUMN IF NOT EXISTS money_origin text NOT NULL DEFAULT 'unknown';
 
 -- Reviewed by slug (docs/features/2026-11-25-funder-types-and-fcra.md). A slug this database lacks is skipped.
--- money_origin is set only where the funder's own website shows where its money comes from; that is the source.
+-- money_origin is set only where the funder's own website shows where its money comes from; that is the source,
+-- so a row with no website stays 'unknown'. A type this list replaces is kept in source_funder_type.
 UPDATE funders f
    SET funder_type = v.funder_type,
-       money_origin = v.money_origin,
-       profile = f.profile || CASE WHEN v.money_origin <> 'unknown' AND f.website IS NOT NULL
-                                   THEN jsonb_build_object('money_origin_source', f.website)
-                                   ELSE '{}'::jsonb END
+       money_origin = CASE WHEN f.website IS NULL THEN 'unknown' ELSE v.money_origin END,
+       profile = f.profile
+         || CASE WHEN v.money_origin <> 'unknown' AND f.website IS NOT NULL
+                 THEN jsonb_build_object('money_origin_source', f.website) ELSE '{}'::jsonb END
+         || CASE WHEN f.funder_type NOT IN ('other', v.funder_type) AND NOT f.profile ? 'source_funder_type'
+                 THEN jsonb_build_object('source_funder_type', f.funder_type) ELSE '{}'::jsonb END
   FROM (VALUES
     ('brot-f-r-die-welt-bread-for-the-world', 'international_agency', 'foreign'),
     ('dreik-nigsaktion-der-katholischen-jungschar-sterreichs-dka', 'international_agency', 'foreign'),
@@ -60,7 +63,7 @@ ALTER TABLE funders
     'international_agency', 'bilateral_multilateral', 'government', 'other')),
   ADD CONSTRAINT funders_money_origin_known CHECK (money_origin IN ('domestic', 'foreign', 'mixed', 'unknown'));
 
--- The roll-up the Registry and reports use; NULL while the type is not researched.
+-- The roll-up for filters and reports; NULL while the type is not researched.
 ALTER TABLE funders ADD COLUMN IF NOT EXISTS funder_group text GENERATED ALWAYS AS (
   CASE
     WHEN funder_type IN ('csr_company', 'csr_foundation') THEN 'corporate'

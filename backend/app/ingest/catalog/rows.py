@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, date, datetime, timedelta
-from typing import ClassVar, Literal, get_args
+from typing import Any, ClassVar, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -209,6 +209,14 @@ LEGACY_FUNDER_TYPES = {"corporate_csr": "csr_company", "corporate_foundation": "
                        "family_trust": "private_foundation", "family_trust_network": "private_foundation"}
 
 
+def current_funder_type(v: Any) -> str | None:
+    """An old or unknown label as one of the nine, the way 0064 mapped stored rows."""
+    if not isinstance(v, str) or not v.strip():
+        return None
+    v = LEGACY_FUNDER_TYPES.get(v, v)
+    return v if v in get_args(FunderType) else "other"
+
+
 class Tags(BaseModel):
     """Taxonomy codes the research gave, already checked against the vocabulary; the writer resolves them."""
 
@@ -250,8 +258,7 @@ class FunderRecord(Provenance, Tags):
     @field_validator("funder_type", mode="before")
     @classmethod
     def _current_type(cls, v: str | None) -> str | None:
-        v = LEGACY_FUNDER_TYPES.get(v, v) if isinstance(v, str) else v
-        return v if v in get_args(FunderType) else None
+        return current_funder_type(v)
 
     @field_validator("aliases")
     @classmethod

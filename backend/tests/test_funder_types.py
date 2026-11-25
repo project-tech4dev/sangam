@@ -14,7 +14,7 @@ PROV = {"source_url": "https://x.example.org", "source_name": "r", "fetched_at":
 @pytest.mark.parametrize("stored, promoted", [
     ("corporate_csr", "csr_company"), ("corporate_foundation", "csr_foundation"),
     ("family_trust", "private_foundation"), ("family_trust_network", "private_foundation"),
-    ("international_agency", "international_agency"), ("impact_investor", None), (None, None),
+    ("international_agency", "international_agency"), ("impact_investor", "other"), ("", None), (None, None),
 ])
 def test_a_brief_saved_before_0064_promotes_to_the_new_types(stored, promoted):
     assert FunderRecord(name="Misereor", funder_type=stored, **PROV).funder_type == promoted
@@ -36,3 +36,17 @@ def test_an_old_identity_finding_promotes_as_the_new_type():
            "evidence": "Tata Trusts is among India's oldest philanthropic organisations."}
     report = {"reasons": [], "held": []}
     assert funder_from(row, [old], report).funder_type == "private_foundation"
+
+
+def _identity(funder_type, source_type):
+    return {"concept": "identity", "name": "Caring Friends", "funder_type": funder_type, "source_type": source_type,
+            "source_url": "https://caringfriends.in", "source_name": "Caring Friends", "confidence": "high",
+            "evidence": "Caring Friends is a network of individuals who give to grassroots NGOs."}
+
+
+def test_a_real_type_from_a_weaker_source_beats_other_from_a_stronger_one():
+    row = {"slug": "caring-friends", "canonical_name": "Caring Friends", "entity_name": "Caring Friends",
+           "website": None, "researched_at": datetime(2026, 10, 1, tzinfo=UTC)}
+    findings = [_identity("impact_investor", "funder"), _identity("hni", "aggregator")]
+    assert funder_from(row, findings, {"reasons": [], "held": []}).funder_type == "hni"
+    assert funder_from(row, findings[:1], {"reasons": [], "held": []}).funder_type == "other"

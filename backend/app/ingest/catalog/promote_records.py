@@ -30,6 +30,7 @@ from app.ingest.catalog.rows import (
     OrgRecord,
     ProgramRecord,
     RfpRecord,
+    current_funder_type,
     fiscal_year_of,
     http_url,
     normalise_cin,
@@ -303,9 +304,14 @@ def merged_identity(
     reasons = report["reasons"] if report is not None else []
     fields: dict[str, Any] = {k: [] for k in _IDENTITY_LISTS}
     used = [ranked[0]]
+    vague = False
     for f in ranked:
         for k, v in f.items():
             if k in _IDENTITY_META or v is None or v == "" or v == []:
+                continue
+            if k == "funder_type" and (v := current_funder_type(v)) == "other":
+                # 'other' says nothing fitted, so any real type, even from a weaker source, beats it.
+                vague = True
                 continue
             if k in _IDENTITY_LISTS:
                 fields[k].extend(x for x in v if x not in fields[k])
@@ -317,6 +323,8 @@ def merged_identity(
                 if k == "name" and v not in fields["aliases"]:
                     fields["aliases"].append(v)
                 reasons.append(f"{concept}: {k} {fields[k]!r} kept over {v!r} ({f.get('source_url')})")
+    if vague:
+        fields.setdefault("funder_type", "other")
     reasons.extend(f"{concept}: theme {t!r} not tagged (at most {MAX_THEMES})" for t in fields["themes"][MAX_THEMES:])
     fields["themes"] = fields["themes"][:MAX_THEMES]
     notes = dict.fromkeys(n.strip() for f in ranked if (n := f.get("tag_note")) and n.strip())

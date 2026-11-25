@@ -37,7 +37,10 @@ Example: Misereor is `international_agency` and `foreign`, with `https://www.mis
 | `family_trust`, `family_trust_network` | `private_foundation`; the old value kept in `profile->>'source_funder_type'` |
 | any other value | `other`, the old value kept the same way |
 
-Briefs saved before `0064` still carry old values; `FunderRecord` (`ingest/catalog/rows.py`) maps them on promote.
+Briefs saved before `0064` still carry old values; promote maps them the same way (`current_funder_type`,
+`ingest/catalog/rows.py`). A re-import's `other` never replaces a type already on the row, and in a merge any real
+type beats `other`, whatever the source. A type the reviewed list in `0064` replaced is kept in `source_funder_type`
+too, and a funder marked foreign there always has its website as `money_origin_source`.
 
 ## Foreign sources
 
