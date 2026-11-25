@@ -27,7 +27,7 @@ ORG = OrgFacts.model_validate({
 
 FUNDER = FunderFacts.model_validate({
     "funder": {"id": 29, "slug": "axis-bank-foundation", "name": "Axis Bank Foundation",
-               "funder_type": "corporate_foundation", "funding_trend": "Livelihoods first"},
+               "funder_type": "csr_foundation", "funding_trend": "Livelihoods first"},
     "partners": {"groups": [GROUP], "total": 48, "in_registry": 1, "next_cursor": "WzIwXQ=="},
     "spend": [{"id": 1, "fiscal_year": "FY2024-25", "amount": 2.3e9}],
     "open_calls": [{"id": 6, "title": "Call 2026"}],

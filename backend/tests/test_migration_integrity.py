@@ -59,3 +59,20 @@ def test_v2_content_present(conn):
         """
     ).fetchone()[0]
     assert primary >= 1
+
+
+def test_funder_types_are_the_nine_and_roll_up(conn):
+    groups = dict(conn.execute(
+        "SELECT funder_type, funder_group FROM funders WHERE funder_type IS NOT NULL GROUP BY 1, 2"
+    ).fetchall())
+    assert groups.get("csr_company") == "corporate"
+    assert groups.get("private_foundation") == "philanthropy"
+    tata = conn.execute("SELECT profile->>'source_funder_type' FROM funders WHERE slug = 'tata-trusts'").fetchone()
+    assert tata == ("family_trust_network",)
+    assert conn.execute("SELECT count(*) FROM funders WHERE money_origin IS NULL").fetchone()[0] == 0
+
+
+@pytest.mark.parametrize("column, value", [("funder_type", "corporate_csr"), ("money_origin", "abroad")])
+def test_funders_refuse_an_unknown_type_or_origin(conn, column, value):
+    with pytest.raises(psycopg.errors.CheckViolation), conn.transaction(force_rollback=True):
+        conn.execute(f"UPDATE funders SET {column} = %s WHERE slug = 'tata-trusts'", (value,))

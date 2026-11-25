@@ -19,7 +19,7 @@ HELD = frozenset({"registered", "provisional"})
 LAPSED = frozenset({"cancelled", "expired", "suspended", "surrendered"})
 INDIA = "India"
 # CSR money routed through a company's foundation still needs a CSR-1 registered implementer.
-SECTION_135_TYPES = frozenset({"corporate_csr", "corporate_foundation"})
+SECTION_135_TYPES = frozenset({"csr_company", "csr_foundation"})
 UNTYPED = frozenset({None, "", "other"})
 # Relief, administration and unlabelled spend land here, so sharing it says nothing about fit.
 CATCH_ALL_DOMAIN = "domain-others"

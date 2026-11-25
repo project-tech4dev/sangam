@@ -18,7 +18,7 @@ describe("kindLine", () => {
   });
 
   it("lists up to three funder states, then counts them and names a north-east one", () => {
-    const f = { kind: "funder" as const, funder_type: "corporate_csr" };
+    const f = { kind: "funder" as const, funder_type: "csr_company" };
     expect(kindLine(row(f))).toBe("Corporate CSR");
     expect(kindLine(row({ ...f, states: ["Goa", "Bihar"] }))).toBe("Corporate CSR · Goa, Bihar");
     expect(kindLine(row({ ...f, states: ["Goa", "Bihar", "Kerala", "Sikkim"] }))).toBe(

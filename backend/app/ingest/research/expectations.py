@@ -193,6 +193,8 @@ OURS: dict[str, frozenset[str]] = {
     "document": frozenset({"status"}),
     # `details` is our own catch-all, not something a call publishes.
     "rfp": frozenset({"details"}),
+    # funder_group is computed from funder_type; money_origin is set by hand until researchers look for it (#324 M4).
+    "identity": frozenset({"funder_group", "money_origin"}),
 }
 
 

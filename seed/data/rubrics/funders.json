@@ -2,7 +2,7 @@
   {
     "slug": "axis-bank-foundation",
     "name": "Axis Bank Foundation",
-    "funder_type": "corporate_csr",
+    "funder_type": "csr_company",
     "website": "https://www.axisbankfoundation.org",
     "focus_sectors": ["sustainable livelihoods", "natural resource management", "agriculture", "skill development"],
     "geographies": ["India", "Assam", "Udalguri"],
@@ -35,7 +35,7 @@
   {
     "slug": "sbi-foundation",
     "name": "SBI Foundation",
-    "funder_type": "corporate_csr",
+    "funder_type": "csr_company",
     "website": "https://www.sbifoundation.in",
     "focus_sectors": ["health", "environment", "water conservation", "rural development"],
     "geographies": ["India", "Assam", "Udalguri", "Baksa"],
@@ -53,12 +53,13 @@
   {
     "slug": "tata-trusts",
     "name": "Tata Trusts",
-    "funder_type": "family_trust_network",
+    "funder_type": "private_foundation",
     "website": "https://www.tatatrusts.org",
     "focus_sectors": ["health", "nutrition", "education", "livelihoods"],
     "geographies": ["India", "Northeast India", "Assam"],
     "profile": {
       "section_135_bound": false,
+      "source_funder_type": "family_trust_network",
       "flagship_program": "Health/nutrition and education dominant; livelihoods/NRM secondary (NEIDA covers Nagaland/Arunachal/Mizoram, not Assam)",
       "funding_trend": "Disbursements on track to roughly 3.5x from ₹575 cr (FY23-24) to ₹2,000 cr target (FY26-27); shifting from direct implementation toward grant-making",
       "governance_note": "Chairmanship transition (Oct 2024), reported trustee disputes, Maharashtra Charity Commissioner inquiry into Sir Ratan Tata Trust board composition",

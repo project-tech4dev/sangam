@@ -41,8 +41,8 @@ async def world(db):
     beta = await _id(db, "INSERT INTO orgs (slug, name) VALUES (%s, %s)", (f"b-{t}", f"beta {t}"))
     await _id(db, "INSERT INTO orgs (slug, name) VALUES (%s, %s)", (f"c-{t}", f"Ćhi {t}"))
     fund = await _id(db, "INSERT INTO funders (slug, name, funder_type, intake_mode) "
-                         "VALUES (%s, %s, 'corporate_foundation', 'invitation_only')", (f"f-{t}", f"Fund {t}"))
-    grants = await _id(db, "INSERT INTO funders (slug, name, funder_type) VALUES (%s, %s, 'foundation')",
+                         "VALUES (%s, %s, 'csr_foundation', 'invitation_only')", (f"f-{t}", f"Fund {t}"))
+    grants = await _id(db, "INSERT INTO funders (slug, name, funder_type) VALUES (%s, %s, 'private_foundation')",
                        (f"g-{t}", f"Grants {t}"))
 
     await db.execute("INSERT INTO org_tags (org_id, tag_id) VALUES (%s, %s), (%s, %s)", (alpha, theme, alpha, women))
@@ -89,10 +89,10 @@ async def test_registrations_apply_to_csos_only(world):
 
 
 async def test_funder_type_and_approach_apply_to_funders_only(world):
-    assert await _names(world, kind="funder", ftype="corporate_foundation") == ["Fund"]
+    assert await _names(world, kind="funder", ftype="csr_foundation") == ["Fund"]
     assert await _names(world, kind="funder", approach="invites") == ["Fund"]
     assert await _names(world, kind="funder", approach="open") == ["Grants"]
-    assert len(await _names(world, ftype="corporate_foundation")) == 5
+    assert len(await _names(world, ftype="csr_foundation")) == 5
 
 
 async def test_search_reads_aliases_programmes_and_states_inside_a_word_ignoring_case(world):

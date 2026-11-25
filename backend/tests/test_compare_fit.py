@@ -24,7 +24,7 @@ def _match(funder_id: int, share: float, *, note: str = LONG) -> Match:
         org_id=8,
         funder_id=funder_id,
         funder_name=f"Funder {funder_id}",
-        funder_type="corporate_csr",
+        funder_type="csr_company",
         criteria=criteria,
         card=[Reason(kind="fit", criterion="theme", text=f"fit line {LONG}"),
               Reason(kind="gap", criterion="eligibility", text=f"gap {funder_id}")],
@@ -72,7 +72,7 @@ def test_top_fits_in_full_the_rest_one_line_each(funders):
     assert "summary:" not in reply
     one_liners = [line for line in reply.splitlines() if line.startswith("- Funder")]
     assert len(one_liners) == 3
-    assert "- Funder 20 [funder:20] · corporate_csr · 20/100 · weak · ! gap 20" in one_liners
+    assert "- Funder 20 [funder:20] · csr_company · 20/100 · weak · ! gap 20" in one_liners
 
 
 def test_named_funders_carry_every_field(funders):
