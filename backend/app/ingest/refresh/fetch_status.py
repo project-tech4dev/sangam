@@ -40,13 +40,13 @@ async def fetch_today(source: Source, scratch: Path) -> Today:
     if source.kind == "document":
         got = await download(source.url, None, Path(tempfile.mkdtemp(dir=scratch)))
         text = await asyncio.to_thread(document_text, got.path) if got.path else ""
-        today = classify(got, text, source.text_hash)
+        today = classify(got, text, getattr(source, "text_hash", None))
         if today.status != OK or today.path is None:
             return today
         # The tools' own rule, page cap included, or a long report would never match its baseline.
         return replace(today, fingerprint=document_hash(today.path, text))
     got = await fetch_page(source.url)
-    today = classify(got, got.text, source.text_hash)
+    today = classify(got, got.text, getattr(source, "text_hash", None))
     return replace(today, fingerprint=text_hash(today.text)) if today.status == OK else today
 
 
