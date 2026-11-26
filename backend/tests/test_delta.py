@@ -182,6 +182,25 @@ class TestPropose:
         found, problems = await delta.propose(Once(), Model(Grade(passed=False, problems=["update f1"])), "q")
         assert found.keep == ["f1"] and problems[-1].startswith("the revision failed (ValueError)")
 
+    async def test_no_delta_is_an_error_the_refresh_reports(self):
+        with pytest.raises(ValueError, match="no structured answer"):
+            await delta.propose(Model(None), Model(Grade(passed=True)), "q")
+
+    async def test_no_grade_lets_the_delta_through(self):
+        found, problems = await delta.propose(Model(answer(keep=["f2"])), Model(None), "q")
+        assert found.keep == ["f2"] and problems == []
+
+    async def test_no_revision_keeps_the_first_delta(self):
+        class FirstOnly:
+            def __init__(self):
+                self.asked = 0
+
+            async def ainvoke(self, messages):
+                self.asked += 1
+                return answer(keep=["f1"]) if self.asked == 1 else None
+        found, problems = await delta.propose(FirstOnly(), Model(Grade(passed=False, problems=["update f1"])), "q")
+        assert found.keep == ["f1"] and problems[-1].startswith("the revision failed (ValueError)")
+
     async def test_a_failed_grader_lets_the_delta_through(self):
         model = Model(answer(keep=["f2"]))
         found, problems = await delta.propose(model, Model(RuntimeError("overloaded")), "q")
