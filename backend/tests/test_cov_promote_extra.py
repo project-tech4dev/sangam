@@ -60,6 +60,18 @@ async def test_the_version_the_run_read_is_promoted_not_a_newer_one(db, archive)
     assert src == read_then  # the fake archive's newest copy is the a-hash one; the run read the b-hash one
 
 
+async def test_a_report_an_earlier_save_already_shelved_is_not_moved_again(db, archive):
+    name = f"Zz Shelved Ltd {tag()}"
+    url = f"https://zz-shelved-{tag()}.example.org/annual.pdf"
+    shelved = "funders/zz-shelved-ltd/2023-24-annual-report.pdf"
+    snap = await one(db, "INSERT INTO source_snapshots (url, kind, text_hash, archive_key) "
+                         "VALUES (%s, 'document', %s, %s) RETURNING id", url, "e" * 64, shelved)
+    row = await research(db, name, [finding("identity", url, name=name)])
+    await promote(db, {**row, "snapshot_ids": [snap["id"]]})
+    doc = await one(db, "SELECT storage_path FROM documents WHERE source_url = %s", url)
+    assert archive["moves"] == [] and doc["storage_path"] == f"source-archive/{shelved}"
+
+
 async def test_a_name_already_taken_gets_a_suffix_and_a_failed_move_keeps_the_old_key(db, archive):
     archive.update(taken=True, move_ok=False)
     name = f"Zz Shelf Two Ltd {tag()}"
