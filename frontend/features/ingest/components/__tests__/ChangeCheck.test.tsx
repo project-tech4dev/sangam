@@ -98,16 +98,16 @@ describe("ChangeCheck", () => {
     expect(await screen.findByRole("heading", { name: "Check apf for changes" })).toBeInTheDocument();
   });
 
-  it("says a check is already running when the backend answers 409", async () => {
+  it("shows the backend's own reason when it refuses a check", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       const reply = (code: number, body: unknown) => ({ ok: code < 400, status: code, json: async () => body }) as Response;
       if (url.includes("/baseline")) return reply(200, BASELINE);
-      if (init?.method === "POST") return reply(409, { detail: "a check of apf is already running" });
+      if (init?.method === "POST") return reply(409, { detail: "This organisation was already researched today." });
       return reply(200, []);
     }));
     render(<ChangeCheck slug="apf" />);
     await userEvent.click(await screen.findByRole("button", { name: "Check for changes" }));
-    expect(await screen.findByText(/already running\. Try again when it finishes/)).toBeInTheDocument();
+    expect(await screen.findByText("This organisation was already researched today.")).toBeInTheDocument();
   });
 
   it("lists a run that never finished as stopped once it is past the backend's window", async () => {

@@ -58,10 +58,12 @@ async def get_check(run_id: UUID, pool: OwnerPoolDep) -> CheckRunDetailOut:
              summary="Check one entity's sources for change, and save what it found")
 async def run_check(slug: str, body: CheckIn, pool: OwnerPoolDep,
                     staff: CurrentUser = Depends(require_staff)) -> CheckRunDetailOut:
-    from app.ingest.refresh.service import Busy, NoBaseline, run
+    from app.ingest.refresh.service import Busy, NoBaseline, run, update_refused
 
     if body.refresh and body.depth != "full":
         raise HTTPException(status_code=422, detail="an update needs the full check: it reads the judge's hints")
+    if body.refresh and (why := await update_refused(pool, slug)):
+        raise HTTPException(status_code=409, detail=why)
     try:
         run_id = await run(pool, slug, body.depth, body.refresh, staff.id)
     except NoBaseline as exc:

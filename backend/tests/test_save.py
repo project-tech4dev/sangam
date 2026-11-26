@@ -137,6 +137,13 @@ class TestWrite:
         [row] = self.rows(conn)
         assert row[4] is None and row[10] == "only the order changed; archive failed"
 
+    async def test_a_nul_in_a_pdfs_text_is_dropped_before_postgres_sees_it(self):
+        conn = ScriptConn()
+        nul = replace(check(status=CHANGED), removed=("old\x00 line",), added=("new\x00\x00 line",))
+        await save.write(conn, RUN, SLUG, [nul], Discovery(), {})
+        [row] = self.rows(conn)
+        assert (row[11], row[12]) == (["old line"], ["new line"])
+
     async def test_an_unverified_source_keeps_its_fetch_reason(self):
         conn = ScriptConn()
         await save.write(conn, RUN, SLUG, [blocked()], Discovery(), {})

@@ -34,8 +34,7 @@ ROWS_SQL = """
 # Registry slug are made apart (pratham vs pratham-2), so only the id names the same organisation.
 TRACKED_SQL = """
     SELECT slug, kind, id, sources, last_checked FROM (
-        SELECT r.slug, (array_agg(r.entity_kind ORDER BY r.researched_at DESC))[1] AS kind,
-               count(DISTINCT s.url) AS sources,
+        SELECT r.slug, count(DISTINCT s.url) AS sources,
                (SELECT max(c.finished_at) FROM source_check_runs c WHERE c.slug = r.slug AND c.error IS NULL)
                    AS last_checked
           FROM entity_research r
@@ -45,11 +44,13 @@ TRACKED_SQL = """
          GROUP BY r.slug
     ) t
     CROSS JOIN LATERAL (
-        -- A refresh row is not saved yet, so the id comes from the newest row that was.
-        SELECT CASE t.kind WHEN 'funder' THEN x.resolved_funder_id ELSE x.resolved_org_id END AS id
+        -- The kind and id come from the newest row that was saved, not the newest row: a refresh row is not saved
+        -- yet, and a later run that found nothing has kind 'unknown'.
+        SELECT CASE WHEN x.resolved_funder_id IS NOT NULL THEN 'funder' ELSE 'org' END AS kind,
+               coalesce(x.resolved_funder_id, x.resolved_org_id) AS id
           FROM entity_research x
          WHERE x.slug = t.slug AND x.status <> 'wrong_entity'
-           AND CASE t.kind WHEN 'funder' THEN x.resolved_funder_id ELSE x.resolved_org_id END IS NOT NULL
+           AND (x.resolved_funder_id IS NOT NULL OR x.resolved_org_id IS NOT NULL)
          ORDER BY x.researched_at DESC
          LIMIT 1
     ) saved

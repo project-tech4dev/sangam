@@ -31,6 +31,12 @@ describe("verdictOf", () => {
     expect(v).toEqual({ title: "Update saved for review", text: "1 updated", next: "none" });
   });
 
+  it("says why an update was not saved, and does not offer it again", () => {
+    const v = verdictOf(run({ decision: "refresh", refresh_row_id: null,
+                              refresh_summary: "apf: no refresh: it was already researched today" }));
+    expect(v).toEqual({ title: "No update saved", text: "apf: no refresh: it was already researched today", next: "none" });
+  });
+
   it("a run with no decision yet is still checking", () => {
     expect(verdictOf(run({ decision: null, finished_at: null }))).toEqual({ title: "Checking…", text: "", next: "none" });
   });

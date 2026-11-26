@@ -81,13 +81,18 @@ async def write(conn: Any, run_id: UUID, slug: str, checks: list[Check], found: 
             detail = f"{c.reason or c.today.reason}{note}"
             await conn.execute(INSERT_SQL, (run_id, slug, c.baseline.url, c.baseline.snapshot_id, new_id, c.status,
                                             *tally, Jsonb(c.judgement) if c.judgement else None, detail or None,
-                                            list(c.removed), list(c.added), _evidence(c)))
+                                            _text(c.removed), _text(c.added), _evidence(c)))
         for lead, why in found.new:
             today = found.fetched.get(lead.url)
             new_id, note = await snapshot(lead.url, lead.kind, today) if today else (None, "")
             await conn.execute(INSERT_SQL, (run_id, slug, lead.url, None, new_id, NEW, 0, 0, 0, None, f"{why}{note}",
                                             [], [], None))
     return Saved(len(checks) + len(found.new), len(ids), failed, ids)
+
+
+def _text(paragraphs: tuple[str, ...]) -> list[str]:
+    # A PDF's extracted text can hold NUL, which Postgres text refuses, failing the whole run's save.
+    return [p.replace("\x00", "") for p in paragraphs]
 
 
 def _evidence(check: Check) -> Jsonb | None:

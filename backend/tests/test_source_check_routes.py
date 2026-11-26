@@ -113,6 +113,22 @@ async def test_tracked_lists_what_a_check_can_run_on(monkeypatch):
     assert r.status_code == 200 and r.json() == [row]
 
 
+async def test_an_update_that_cannot_be_saved_is_refused_before_anything_is_paid(monkeypatch):
+    monkeypatch.setattr(service, "update_refused", lambda pool, slug: _value("already researched today"))
+    monkeypatch.setattr(service, "run", lambda *a: pytest.fail("ran a paid check for an update that cannot save"))
+    async with client() as c:
+        r = await c.post(f"/api/ingest/research/{SLUG}/checks", json={"depth": "full", "refresh": True})
+    assert r.status_code == 409 and r.json()["detail"] == "already researched today"
+
+
+async def test_tracked_takes_kind_and_id_from_the_saved_row():
+    # A later run that found nothing has kind 'unknown'; the saved row still names the funder.
+    sql = repo.TRACKED_SQL
+    assert "array_agg(r.entity_kind" not in sql
+    assert "CASE WHEN x.resolved_funder_id IS NOT NULL THEN 'funder' ELSE 'org' END AS kind" in sql
+    assert "coalesce(x.resolved_funder_id, x.resolved_org_id) AS id" in sql
+
+
 async def test_tracked_is_staff_only():
     async with client(CurrentUser(id=TEST_USER, is_staff=False)) as c:
         r = await c.get("/api/ingest/tracked")
