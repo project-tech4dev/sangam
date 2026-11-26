@@ -135,8 +135,13 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   research.
 - **A superseded fact stays out of the brief.** A refresh that removes a fact lists it in `supersedes` (`0060`) by its
   key and source, and `brief.merge_findings` drops that source's copy from every older row, so a later merge cannot
-  bring it back; a copy cited from another source was not rechecked and stays. This holds for the brief only: a fact
-  already saved to the catalog stays there until someone removes it.
+  bring it back; a copy cited from another source was not rechecked and stays, even one a stronger copy displaced
+  earlier. An update supersedes only a fact with its own key, so a page rolling over to a new fiscal year adds that
+  year beside the last. This holds for the brief only: a fact already saved to the catalog stays there until someone
+  removes it.
+- **A refresh moves only the baselines it read whole.** A source whose diff or text was cut for the question, or that
+  did not fit in it, keeps its old version, and dead sources take only the room left. The refresh row carries the
+  newest row's versions forward for every page it did not reread, so promotion archives the version that was read.
 
 ## 5. Funder Match
 
