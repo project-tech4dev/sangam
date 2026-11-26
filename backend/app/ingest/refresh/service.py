@@ -176,15 +176,23 @@ async def run(pool: Any, slug: str, depth: str, refresh: bool, user_id: UUID | N
         async with pool.connection() as conn:
             await conn.execute(FINISH_SQL, (outcome["decision"], outcome["refresh_row_id"],
                                             outcome["refresh_summary"], run_id))
+    except asyncio.CancelledError:
+        # A stopped chat turn; unrecorded, the run would read as running, and block checks, for STALE_MINUTES.
+        await asyncio.shield(_fail(pool, "cancelled", run_id))
+        raise
     except Exception as exc:
         logger.warning("change check of %s failed", slug, exc_info=True)
         failure = f"{type(exc).__name__}: {exc}"[:500]
         say(f"{slug}: the check failed: {failure}")
-        async with pool.connection() as conn:
-            await conn.execute(FAIL_SQL, (failure, run_id))
+        await _fail(pool, failure, run_id)
     finally:
         await asyncio.to_thread(flush_traces)  # a blocking upload; the route's answer must not wait on it
     return run_id
+
+
+async def _fail(pool: Any, failure: str, run_id: UUID) -> None:
+    async with pool.connection() as conn:
+        await conn.execute(FAIL_SQL, (failure, run_id))
 
 
 async def _check(pool: Any, run_id: UUID, slug: str, depth: str, refresh: bool, given: Inputs,

@@ -210,7 +210,7 @@ class TestReadPage:
         assert "off Give.do's allowed paths" in out
 
     async def test_an_unexpected_failure_is_returned(self, monkeypatch):
-        async def boom(url):
+        async def boom(url, subject):
             raise RuntimeError("x")
         monkeypatch.setattr(research_tools, "read_page_text", boom)
         assert await research_tools.read_page.ainvoke({"url": URL}) == "read_page failed: RuntimeError: x"
@@ -263,7 +263,7 @@ class TestFetchDocument:
         assert (await research_tools.fetch_document.ainvoke({"url": URL})).startswith("REFUSED:")
 
     async def test_an_unexpected_failure_is_returned(self, monkeypatch):
-        async def boom(url, name):
+        async def boom(url, name, subject):
             raise OSError("disk full")
         monkeypatch.setattr(research_tools, "fetch_document_file", boom)
         assert await research_tools.fetch_document.ainvoke({"url": URL}) == "fetch_document failed: OSError: disk full"
@@ -613,6 +613,17 @@ class TestSaveResearch:
             out = await research_tools.save_research.ainvoke(head)
         problems = out.split("Taken out")[0]
         assert "Broken" in problems and "Sports scholarships" not in problems, out
+
+    async def test_a_top_up_saves_under_the_research_it_builds_on(self, saving):
+        head = {k: v for k, v in research(canonical_name="Example Foundation Trust").items()
+                if k not in ("findings", "gaps")}
+        with running_as(STAFF), draft.drafting() as current:
+            current.slug = "example-foundation"
+            draft.record(current, research()["findings"], research()["gaps"], None)
+            out = await research_tools.save_research.ainvoke(head)
+        assert out.startswith("Saved as"), out
+        [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        assert "example-foundation" in params and "example-foundation-trust" not in params
 
     async def test_one_object_is_recorded_as_a_list_of_one(self):
         schema = research_tools.record_findings.tool_call_schema.model_json_schema()

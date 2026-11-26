@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import Counter
 from typing import Any
 
 from langchain_core.tools import tool
@@ -19,8 +20,10 @@ from app.ingest.catalog import manual_checks
 from app.ingest.catalog.matcher import resolve_funder, resolve_org
 from app.ingest.catalog.promote import promote
 from app.ingest.catalog.save import ENTITY_KEYS, SaveRefused, held_per_concept, research_rows, save_to_catalog
-from app.ingest.catalog.writer import Gate
-from app.ingest.research import coverage
+from app.ingest.catalog.writer import Gate, slugify
+from app.ingest.refresh import compare, decision, fetch_status, service
+from app.ingest.research import coverage, draft
+from app.ingest.research import saved as saved_research
 from app.ingest.research.expectations import (
     CONCEPTS,
     concepts_for,
@@ -28,6 +31,7 @@ from app.ingest.research.expectations import (
     recent_fiscal_years,
 )
 from app.ingest.research.finding_types import FINDING_MODELS, FindingBase
+from app.repositories import source_checks
 
 logger = logging.getLogger(__name__)
 
@@ -342,7 +346,7 @@ def _reject_unknown(entity_kind: str) -> str | None:
 
 
 @tool
-async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
+async def research_goals(name: str, entity_kind: str, years: str = "", top_up: str = "") -> str:
     """What to look for, derived from what the database expects. Call this FIRST.
 
     The catalog has a column for every fact worth finding, and this reads that
@@ -358,6 +362,9 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                aimed at a funder's has nowhere to put its 12A, 80G or FCRA.
         years: comma-separated fiscal years, e.g. 'FY2024-25,FY2023-24'.
                Empty means the three most recent reportable years.
+        top_up: the research slug, ONLY when your task says this run is a top-up and names it
+               (top_up=<slug>). Then the goals are what that saved research left open, and pages it
+               read answer ALREADY READ. Empty is a full research, whatever was saved before.
     """
     refusal = _reject_unknown(entity_kind)
     if refusal:
@@ -377,6 +384,12 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                 )
             ).fetchone()
             held = await held_per_concept(conn, row["id"], entity_kind) if row else {}
+            # The slug the supervisor's task names, never a name match no model saw ("Infosys" finds its foundation).
+            saved = await saved_research.by_slug(conn, top_up.strip(), entity_kind, wanted) if top_up.strip() else None
+        if top_up.strip() and saved is None:
+            return f"No saved {entity_kind} research has the slug {top_up!r}. Call research_goals again without top_up."
+        if (current := draft.CURRENT.get()) is not None:
+            current.slug = saved.slug if saved else None
 
         out = [
             (f"Research goals for {name!r}. These are the database's columns, not a wish list — "
@@ -392,6 +405,7 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
             f"That is not evidence the {noun} is absent from the sector."
         )
 
+        out += saved_research.goal_lines(saved)
         wanted_concepts = concepts_for(entity_kind)
         if entity_kind == "org":
             out.append(
@@ -510,6 +524,90 @@ async def coverage_report(slug: str) -> str:
     except Exception as exc:
         logger.exception("coverage_report failed")
         return f"coverage_report failed: {type(exc).__name__}: {exc}"
+
+
+def _top_up_task(saved: Any, items: str) -> str:
+    return (f"launch ONE entity-researcher, its task naming {saved.name!r} and saying it is a top-up with "
+            f"top_up={saved.slug!r} of {items}")
+
+
+def _changes_next(slug: str, verdict: str | None, changed: list[str], saved: Any, unread: int = 0,
+                  opened: int = 0) -> str:
+    """What the supervisor does with a free check's decision; it never waits on the person."""
+    to_try = len(saved.to_try)
+    top_up = _top_up_task(saved, f"the {to_try} items research_goals will list") if to_try else ""
+    if verdict == decision.NOTHING and unread and not opened:
+        return (f"NEXT: none of its {unread} sources could be opened, so nothing was checked and it may be out of "
+                "date: research it in full as usual.")
+    if verdict == decision.NOTHING and unread:
+        known = f"{unread} sources could not be opened, so the rest are unchanged but not all of it is known current"
+        return f"NEXT: {known}; {top_up}." if top_up else f"NEXT: {known}. Launch no researcher; report that."
+    if verdict == decision.FULL_PULL:
+        return "NEXT: most sources changed at once, so the site was rebuilt: research it in full as usual."
+    if verdict in (decision.REFRESH, service.NEEDS_JUDGE):
+        report = (f"In your report, name what changed ({'; '.join(changed[:8])}) and say /import/check/{slug} "
+                  "updates the saved facts from just those pages.")
+        return f"NEXT: {top_up + '. ' if top_up else 'launch no researcher. '}{report}"
+    if top_up:
+        return f"NEXT: nothing changed; {top_up}. The saved findings are kept."
+    return ("NEXT: nothing changed and nothing a new run could fill is open. Launch no researcher; report that the "
+            "research is current.")
+
+
+@tool
+async def check_changes(name: str) -> str:
+    """Whether an organisation's saved research is still current. Call it BEFORE researching an
+    organisation Sangam researched before, and follow its NEXT line.
+
+    Free: it fetches every page and report the saved research read, compares each with the version
+    read then, and checks every saved fact is still on its page. No model is called; the check is
+    recorded and shown at /import/check/<slug>. Staff only.
+
+    Args:
+        name: the organisation as asked for, or its research slug.
+    """
+    if refusal := staff_only("check_changes"):
+        return refusal
+    caller = scope()
+    try:
+        pool = get_pool()
+        wanted = list(recent_fiscal_years())
+        async with pool.connection() as conn:
+            saved = await saved_research.latest(conn, [name], None, wanted)
+        if saved is None:
+            return f"No saved research matches {name!r}. NEXT: research it in full as usual."
+        slug = saved.slug
+        try:
+            run_id = await service.run(pool, slug, service.FREE, False, caller.user_id, user_email=caller.email)
+        except service.NoBaseline:
+            return (f"{slug}: its research does not record which versions it read, so there is nothing to compare. "
+                    f"NEXT: {_top_up_task(saved, 'what research_goals lists as open')}.")
+        except service.Busy:
+            return (f"{slug}: a check of it is already running. NEXT: do not call check_changes again this turn; "
+                    f"report that a check is running and its result will be at /import/check/{slug}.")
+        async with pool.connection() as conn:
+            run = await source_checks.get_run(conn, run_id)
+        if run is None or run["error"]:
+            return (f"{slug}: the check failed ({run and run['error']}). "
+                    f"NEXT: {_top_up_task(saved, 'what research_goals lists as open')}.")
+        checks = [c for c in run["checks"] if c["status"] != "gap"]
+        counts = Counter(c["status"] for c in checks)
+        changed = [f"{c['url']} ({c['status']})" for c in checks
+                   if c["status"] in (*decision.ACT_ON, compare.DIFFERS)]
+        sources = ", ".join(f"{n} {status}" for status, n in sorted(counts.items())) or "none"
+        return "\n".join([
+            (f"Change check of the saved research for {saved.name} ({slug}, saved {saved.researched_on:%d %b %Y}, "
+             f"{saved.findings} findings): {run['decision']}. Sources: {sources}."
+             + (f" It matched by name, not slug: if {saved.name!r} is not the organisation asked for, ignore this "
+                "and research it in full." if slug != slugify(name) else "")),
+            (f"Open: {len(saved.gaps)} gaps, of which {len(saved.to_try) - len(saved.unanswered)} were not reached; "
+             f"{len(saved.unanswered)} fields unanswered."),
+            _changes_next(slug, run["decision"], changed, saved, unread=counts[fetch_status.UNVERIFIED],
+                          opened=len(checks) - counts[fetch_status.UNVERIFIED]),
+        ])
+    except Exception as exc:
+        logger.exception("check_changes failed")
+        return f"check_changes failed: {type(exc).__name__}: {exc}"
 
 
 @tool

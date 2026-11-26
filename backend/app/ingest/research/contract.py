@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from types import SimpleNamespace
 from typing import Any
 
 from app.ingest.research.expectations import concepts_for, expected_fields, filled, recent_fiscal_years
@@ -18,14 +19,24 @@ _FISCAL = re.compile(r"\d{4}\s*[-–]\s*\d{2,4}")
 _SHOWN = 15
 
 
-def unanswered(research: EntityResearch) -> list[str]:
-    """What a save reporting findings leaves with neither a finding nor a gap; not_found and wrong_entity have none."""
-    if research.status not in ("complete", "partial") or research.entity_kind == "unknown":
-        return []
-    findings, gaps = research.findings, research.gaps
-    years = research.years or list(recent_fiscal_years())
+def stored(items: Any) -> list[SimpleNamespace]:
+    """Saved findings or gaps (dicts) read the way the contract reads this run's models."""
+    return [SimpleNamespace(**{**dict.fromkeys(("concept", "fiscal_year", "field")), **i}) for i in items or []]
+
+
+def spread(gaps: list[dict[str, Any]], years: list[str]) -> list[dict[str, Any]]:
+    """An every-year gap of a yearly concept as one gap per year its run asked, so a later year is asked again."""
+    out: list[dict[str, Any]] = []
+    for g in gaps:
+        every = g.get("concept") in YEARLY and not g.get("fiscal_year") and not g.get("field")
+        out += [{**g, "fiscal_year": y} for y in years] if every and years else [g]
+    return out
+
+
+def holes(entity_kind: str, years: list[str], findings: list[Any], gaps: list[Any]) -> list[str]:
+    """Each field with neither a finding nor a gap, for any objects with the finding and gap attributes."""
     missing: list[str] = []
-    for concept in concepts_for(research.entity_kind):
+    for concept in concepts_for(entity_kind):
         found = [f for f in findings if f.concept == concept]
         gapped = [g for g in gaps if g.concept == concept]
         if not found and not gapped:
@@ -40,6 +51,17 @@ def unanswered(research: EntityResearch) -> list[str]:
             for name in fields:
                 if not any(filled(getattr(f, name, None)) for f in found) and not any(g.field == name for g in gapped):
                     missing.append(f"{concept}.{name}: no value and no gap")
+    return missing
+
+
+def unanswered(research: EntityResearch, held: list[dict[str, Any]] | None = None) -> list[str]:
+    """What a save reporting findings leaves with neither a finding nor a gap; not_found and wrong_entity have none.
+    `held` is what earlier days' research found, which answers a field as well as this run's finding."""
+    if research.status not in ("complete", "partial") or research.entity_kind == "unknown":
+        return []
+    findings, gaps = research.findings, research.gaps
+    years = research.years or list(recent_fiscal_years())
+    missing = holes(research.entity_kind, years, [*findings, *stored(held)], gaps)
     themes_gaps = [g.detail.lower() for g in gaps if g.concept == "program" and g.field == "themes"]
     for f in findings:
         if f.concept == "program" and f.description and not f.themes \

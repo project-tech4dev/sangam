@@ -36,6 +36,7 @@ from app.ingest.middleware import (
 from app.ingest.research.findings import PromotionReport, ResearchSummary, VaultSummary, WorkbookEntities
 from app.ingest.research.judge import ResearchJudge
 from app.ingest.tools.catalog_tools import (
+    check_changes,
     compare_with_catalog,
     coverage_report,
     funder_dossier,
@@ -146,6 +147,8 @@ TOOLS = [
     choose_sources,
     # catalog_tools — what Sangam already holds; promote_research is the catalog-writer's.
     funder_dossier,
+    # The free change check of saved research, before any researcher: research again only what changed or is open.
+    check_changes,
     compare_with_catalog,
     coverage_report,
     # A person's check, recorded on their word; the researcher reads untrusted pages, so not its.

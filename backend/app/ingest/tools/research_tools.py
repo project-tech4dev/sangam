@@ -33,10 +33,12 @@ from app.ingest.reading.access import check_url
 from app.ingest.reading.fetch import downloads_dir, fetch_document_file, read_page_text
 from app.ingest.reading.staff_sources import is_staff_source_url
 from app.ingest.research import draft
-from app.ingest.research.contract import quoted_only, unanswered
+from app.ingest.research.contract import quoted_only, spread, unanswered
 from app.ingest.research.expectations import concepts_for
 from app.ingest.research.finding_types import SCHEMA_VERSION, STORED
 from app.ingest.research.findings import EntityResearch
+from app.ingest.research.saved import earlier_rows
+from app.ingest.research.source_guards import is_private_source
 from app.integrations.storage import safe_name
 
 logger = logging.getLogger(__name__)
@@ -119,7 +121,8 @@ async def read_page(url: str) -> str:
     is checked too: a REFUSED that names a redirect is still final.
     """
     try:
-        return await read_page_text(url)
+        current = draft.CURRENT.get()
+        return await read_page_text(url, current.slug if current else None)
     except Exception as exc:  # noqa: BLE001 - errors are return values
         return f"read_page failed: {type(exc).__name__}: {exc}"
 
@@ -133,7 +136,8 @@ async def fetch_document(url: str, filename: str | None = None) -> str:
     with read_document_pages. Access is checked before anything is fetched.
     """
     try:
-        return await fetch_document_file(url, filename)
+        current = draft.CURRENT.get()
+        return await fetch_document_file(url, filename, current.slug if current else None)
     except Exception as exc:  # noqa: BLE001 - errors are return values
         return f"fetch_document failed: {type(exc).__name__}: {exc}"
 
@@ -270,27 +274,40 @@ def _notes(prior: dict[str, Any] | None, stored: list[dict[str, Any]]) -> list[d
 
 
 def _kept_label(head: dict[str, Any], prior: dict[str, Any], found: bool) -> dict[str, Any]:
-    """A run that found nothing, or could not tell the kind, does not relabel what earlier today's run found."""
+    """A run that found nothing, or could not tell the kind, does not relabel what earlier research found."""
     if head["entity_kind"] == "unknown" and prior["entity_kind"] != "unknown":
         head = {**head, "entity_kind": prior["entity_kind"]}
     if found and head["status"] == "not_found":
         status = prior["status"] if prior["status"] not in ("not_found", "wrong_entity") else "partial"
         head = {**head, "status": status, "stopped_reason": head["stopped_reason"] or prior["stopped_reason"]
-                or "This run found nothing more; the findings are from earlier today's research."}
+                or "This run found nothing more; the findings are from earlier research."}
     return head
 
 
-def _merged(head: dict[str, Any], current: draft.Draft,
-            prior: dict[str, Any] | None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _merged(head: dict[str, Any], current: draft.Draft, prior: dict[str, Any] | None,
+            earlier: list[dict[str, Any]] = ()) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """This run's draft over the row saved today, so a second save adds to the first and never shrinks it; and the
-    refresh's carried findings, which were checked when first saved and are kept beside it unchecked."""
+    refresh's carried findings, kept beside it unchecked; a first save today starts from the last day's open gaps."""
     if head["status"] == "wrong_entity":
         return {**head, "findings": current.findings, "gaps": _fitting(current.gaps, head),
                 "unplaced": current.unplaced}, []
     if not prior or prior["status"] == "wrong_entity":
         # A wrong_entity row is another organisation: nothing of it is carried into the right one.
+        if not earlier:
+            return {**head, "findings": current.findings, "unplaced": current.unplaced,
+                    "gaps": _fitting(draft.merged_gaps([], current.gaps, current.findings), head)}, []
+        head = _kept_label(head, earlier[0], bool(current.findings) or any(_json(r["findings"]) for r in earlier))
+        if head["status"] == "complete" and not current.findings:
+            # 'complete' needs findings of its own; the saved ones stay in the brief.
+            head = {**head, "status": "partial", "stopped_reason": head["stopped_reason"]
+                    or "This top-up found nothing new; the findings are from earlier research."}
+        open_gaps = spread(_json(earlier[0]["gaps"]), list(earlier[0].get("years") or []))
+        # Promotion reads private findings from the newest row only, as a refresh row's carry does.
+        found = {fact_key(f) for f in current.findings}
+        carried = [{**f, CARRIED: True} for f in _json(earlier[0]["findings"])
+                   if is_private_source(f.get("source_url")) and fact_key(f) not in found]
         return {**head, "findings": current.findings, "unplaced": current.unplaced,
-                "gaps": _fitting(draft.merged_gaps([], current.gaps, current.findings), head)}, []
+                "gaps": _fitting(draft.merged_gaps(open_gaps, current.gaps, current.findings), head)}, carried
     before = _json(prior["findings"])
     findings = merge_findings([{"findings": before}, {"findings": current.findings}])
     kept = {fact_key(f) for f in findings}
@@ -352,7 +369,9 @@ async def save_research(
     # What the tools fetched in this researcher's run, not what the model says it read; None outside a run.
     collected = snapshots.COLLECTED.get()
     try:
-        slug = slugify(canonical_name or entity_name)
+        # A top-up saves under the research it builds on, whatever spelling of the name this run used.
+        slug = (current.slug if current.slug and status != "wrong_entity" else None) or slugify(
+            canonical_name or entity_name)
         pool = get_pool()
         async with pool.connection() as conn:
             if entity_kind == "org" and not caller.is_staff and not await _may_research(
@@ -366,6 +385,8 @@ async def save_research(
                     (slug,),
                 )
             ).fetchone()
+            # Only a top-up builds on earlier days; a full research answers every field itself.
+            earlier = await earlier_rows(conn, slug) if current.slug else []
         # One row per entity per day is shared, so only staff add to what someone else saved.
         if prior and not caller.is_staff and prior["researched_by"] != caller.user_id:
             return (f"REFUSED: {slug} was already researched and saved today. Report back with "
@@ -385,7 +406,10 @@ async def save_research(
             replaced = (f" It replaced the {prior['fact_count']} findings saved earlier today as a "
                         f"{prior['entity_kind']}; say so in your summary.")
             prior = None
-        payload, carried = _merged(head, current, prior)
+        # Earlier days' research of the same kind: its open gaps carry forward and its findings answer the contract.
+        kind = entity_kind if entity_kind != "unknown" else next((r["entity_kind"] for r in earlier), entity_kind)
+        earlier = [r for r in earlier if r["entity_kind"] == kind]
+        payload, carried = _merged(head, current, prior, earlier)
         staff_save = staff_save or any(is_staff_source_url(f.get("source_url") or "")
                                        for f in [*payload["findings"], *carried])
         try:
@@ -399,7 +423,7 @@ async def save_research(
             return ("REFUSED, nothing saved:\n" + "\n".join(f"- {p}" for p in draft.problems(exc, refused))
                     + taken + "\nFix this call's own arguments if a problem names them, then call save_research again.")
         # The expected way to finish the contract, so it is not a refusal that moves the run to the strong model.
-        if missing := unanswered(findings):
+        if missing := unanswered(findings, held=merge_findings(earlier[::-1])):
             return (
                 f"REFUSED, nothing saved: every field gets a finding or a gap, and {len(missing)} have neither: "
                 f"{'; '.join(missing[:40])}. Record each with record_findings, as a finding or a gap "

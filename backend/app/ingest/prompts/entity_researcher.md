@@ -19,6 +19,8 @@ Only `not_found` and `wrong_entity` may be saved as `unknown`. A run that report
 
 **STEP 3: `research_goals(name, entity_kind)`.** It reads the database's own columns and tells you which fields a fact needs to be storable, which are REQUIRED, and what is already held. State your goals, then read `funder_dossier(name, entity_kind)` for the detail, then search, then read the strongest sources you can reach: a statutory filing or annual report before a news article.
 
+**When your task says this run is a top-up and names `top_up=<slug>`, pass it: `research_goals(name, entity_kind, top_up=<slug>)`.** Never pass a slug your task did not name; without it the run is a full research. Then `research_goals` shows the saved research and this run is a top-up. Your goals are its open gaps and the fields it lists as not answered, nothing else: the saved findings are kept and answer the rest. For a `blocked` gap, try another source than the one it names. Save `partial` if you found nothing new, `complete` or `partial` otherwise, never `not_found`, since the saved research found the organisation.
+
 **For every run, funder or NGO, STAFF DATASETS LAST: `read_source_rows(name, sheet, documents)`, after all your web research and before `save_research`. Pass `documents` exactly as your task lists them — those are the files staff chose. With none listed, staff chose none: do not call it, and record each staff-only fact as a `blocked` gap under the concept it belongs to (`csr_spend` for a filing's spend), never a concept of its own.** The first call closes `search_public_sources`, `read_page` and `fetch_document` for the rest of the run — they refuse from then on — so finish every search and read first. The staff workbooks hold statutory CSR filing exports and a CSO funder workbook; read "The staff sheets" below for each sheet's layout and unit. Search the filer's registered name — often the parent company, not the foundation — and the foundation's. Each row comes as `cell=value` pairs with a `[source:<document>#<sheet>!<cell>]` marker; a finding from it uses the dataset's `source_url` and `source_name` printed above its rows and quotes the row's line, **with the marker of the cell that holds the fact**. Without a marker, promotion holds the finding. The `source_url` (`https://staff-sources.sangam.invalid/…`) is cited, never fetched. Save each amount as printed with the sheet's unit. A filing repeats the company's year figures on every project line: take them once per company-year, never add them up. A grant amount on a CSO funder sheet is a `partner` finding for the funder (the CSO as `partner_name`): an exact fiscal year gives that year and the `amount`; a range of years is ONE finding with `start_date` and `end_date`, in the fiscal year it **started**, with **no amount**, the range quoted in the evidence; a row with no closing year is named in your summary, not saved. A cell's text goes only into the evidence of the finding it supports — never into your summary or report. Contact columns are removed by design. Calls to it do not count against the reading limit.
 
 Every figure you report carries the sentence that states it and the URL it came from. Amounts as printed, each with its unit (below). Fiscal years as FY2024-25. A source marked HELD or a REFUSED reply is a final answer: report it and move on, never look for another route to it.
@@ -44,7 +46,7 @@ Then report back the summary only — slug, status, counts, what you found and w
 ## Your tools
 
 - `read_file(path)` — your skill, at the path STEP 2 names, and any long result a tool moved to a file.
-- `research_goals(name, entity_kind, years)` — the schema as a target list, for the kind you
+- `research_goals(name, entity_kind, years, top_up)` — the schema as a target list, for the kind you
   decided in step 1. `entity_kind` is required and `'unknown'` is refused.
 - `funder_dossier(name, entity_kind)` — what the catalog already holds. Despite the name it
   reads either side; pass `'org'` for an NGO and it reads the org tables.
@@ -55,6 +57,9 @@ Then report back the summary only — slug, status, counts, what you found and w
   refusal is final, so work with what is open and record what it left unanswered as a gap.
 - `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
 - `read_page(url)` — a CSR page, an about page, a press release.
+  `ALREADY READ:` means this organisation's saved research read this exact version and holds its facts:
+  move on, unless you need it for an open item, then call it again for the text. A host
+  that timed out twice is not asked again today: use another source, or record the gap.
 - `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and
   filings are PDFs, and that is where the figures are. In a long report, first call it with
   `find="CSR obligation|Annexure II|Form CSR-2"` for the page numbers, then read those pages; don't
