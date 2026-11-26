@@ -252,5 +252,21 @@ class TestSupersedes:
         rows = [{"findings": [home, report]}, {"findings": [], "supersedes": [brief.superseded(home)]}]
         assert brief.merge_findings(rows) == [report]
 
+    def test_a_removal_brings_back_a_copy_another_source_still_states(self):
+        """R0 read the year in the report, R1 on the homepage; the homepage dropping it leaves the report's."""
+        report = {"concept": "csr_year", "fiscal_year": "FY2023-24", "source_url": "https://x.org/report.pdf",
+                  "confidence": "medium", "evidence": "Spent 12 crore in FY 2023-24."}
+        home = {**report, "source_url": "https://x.org/", "confidence": "high"}
+        rows = [{"findings": [report]}, {"findings": [home]}, {"findings": [], "supersedes": [brief.superseded(home)]}]
+        assert brief.merge_findings(rows) == [report]
+
+    def test_a_removed_copy_never_comes_back(self):
+        report = {"concept": "csr_year", "fiscal_year": "FY2023-24", "source_url": "https://x.org/report.pdf"}
+        home = {**report, "source_url": "https://x.org/", "confidence": "high"}
+        rows = [{"findings": [report]}, {"findings": [home]},
+                {"findings": [], "supersedes": [brief.superseded(report)]},
+                {"findings": [], "supersedes": [brief.superseded(home)]}]
+        assert brief.merge_findings(rows) == []
+
     def test_a_row_without_the_column_supersedes_nothing(self):
         assert brief.merge_findings([{"findings": [self.OLD]}, {"findings": []}]) == [self.OLD]

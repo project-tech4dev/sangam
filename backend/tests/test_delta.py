@@ -151,6 +151,20 @@ class TestAsk:
         shown = delta.fit("Funder", many, CONTEXT)
         assert 1 <= len(shown) < 5 and len(delta.ask("Funder", shown, CONTEXT)) <= 2_000
 
+    def test_a_big_dead_page_first_does_not_crowd_out_a_changed_one(self, monkeypatch):
+        monkeypatch.setattr(delta, "MAX_QUESTION", 2_000)
+        facts = tuple(delta.Fact(f"f{n}", {**OFFICE, "name": f"Office {n}"}, delta.PAGE_GONE) for n in range(20))
+        gone, moved = Source(GONE, "dead", "", facts), Source(URL, "changed", "y" * 900)
+        small = Source(LEAD.url, "new", "z" * 300)
+        assert [s.url for s in delta.fit("Funder", [gone, moved, small], CONTEXT)] == [URL, LEAD.url]
+
+    def test_a_source_too_long_for_one_question_is_cut(self):
+        big = tuple("x" * 200 for _ in range(100))
+        assert delta.was_cut(Source(URL, "changed", "t", removed=big, added=(NEW_SENTENCE,)))
+        assert delta.was_cut(Source(URL, "new", "y" * (delta.NEW_TEXT + 1)))
+        assert not delta.was_cut(Source(URL, "changed", "y" * (delta.NEW_TEXT + 1), added=(NEW_SENTENCE,)))
+        assert not delta.was_cut(Source(GONE, "dead", ""))
+
     def test_the_kind_is_named(self):
         assert delta.ask("Funder", [], CONTEXT, "org").startswith("Organisation: Funder (org)")
 
@@ -238,6 +252,23 @@ class TestApply:
         assert [f["evidence"] for f in out.findings] == [NEW_SENTENCE, CALL_SENTENCE]
         assert out.supersedes == [brief.superseded(OLD, updated=True), brief.superseded(KEPT)]
 
+    def test_an_update_to_another_year_leaves_last_years_figure(self):
+        """The CSR page rolled over to FY2024-25; FY2023-24's figure is still true."""
+        sentence = "Our CSR obligation for FY 2024-25 is 14 crore."
+        old = {"concept": "csr_year", "fiscal_year": "FY2023-24", "evidence": "Our CSR obligation for FY 2023-24 "
+               "is 12 crore.", "source_url": URL, "confidence": "high"}
+        new = {**old, "fiscal_year": "FY2024-25", "evidence": sentence}
+        page = Source(URL, "changed", sentence, (delta.Fact("f1", old, BROKEN),), added=(sentence,))
+        out = delta.apply(answer(update=[Update(id="f1", finding=json.dumps(new))]), [page])
+        assert out.refused == [] and (out.updated, out.added, out.supersedes) == (0, 1, [])
+        assert [f["fiscal_year"] for f in out.findings] == ["FY2024-25"] and out.unhandled == []
+
+    def test_a_source_cut_short_keeps_its_old_version(self):
+        long_page = Source(LEAD.url, "new", "y" * (delta.NEW_TEXT + 1))
+        out = delta.apply(answer(), [*srcs(), long_page])
+        assert out.cut == [LEAD.url] and LEAD.url in out.stale
+        assert "too long to show in full" in delta.describe(SLUG, out, 91, [])
+
     def test_a_fact_from_a_page_that_is_gone_is_never_removed(self):
         out = delta.apply(answer(remove=[Removal(id="f3", why="the page 404s")]), srcs())
         assert (out.removed, out.supersedes) == (0, [])
@@ -322,6 +353,15 @@ class TestSaveRow:
         assert json.loads(p[12]) == ["find its calls"] and json.loads(p[14]) == [{"concept": "csr_year"}]
         assert p[15] == ["FY2024-25"] and p[16] == [55] and json.loads(p[17]) == [brief.superseded(OLD)]
         assert p[18:] == ("u-1", None, 7)  # the owner and resolved entity of the row it replaces
+
+    async def test_pages_not_reread_keep_the_version_the_row_read(self):
+        conn = ScriptConn([("INSERT INTO entity_research", {"id": 96}),
+                           ("FROM source_snapshots", [{"id": 10, "url": URL}, {"id": 11, "url": GONE},
+                                                      {"id": 12, "url": "https://funder.example/team"}])])
+        entity = {**self.ENTITY, "snapshot_ids": [10, 11, 12]}
+        await delta.save_row(conn, entity, delta.Applied(findings=[CALL]), answer(), CONTEXT, [55], [URL])
+        [(_sql, p)] = conn.sql("INSERT INTO entity_research")
+        assert p[16] == [55, 11, 12]  # today's URL, the dead page's and an untouched page's old versions
 
     async def test_a_gap_the_model_names_but_no_accepted_finding_fills_stays_open(self):
         conn = ScriptConn([("INSERT INTO entity_research", {"id": 93})])
