@@ -5,8 +5,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NotRequired
 
-from langchain.agents.middleware import after_agent
+from langchain.agents.middleware import AgentMiddleware, AgentState, after_agent
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
 from app.ask.audit import DATA_TOOLS
@@ -139,3 +140,59 @@ def jev_shadow(settings: Settings, skills: dict[str, str]):
         score_skill(decision, label)
 
     return _shadow
+
+
+def preload(messages: list[BaseMessage], name: str, text: str) -> list[BaseMessage]:
+    """The model request with the skill right after the question, so every call of the turn shares one cached prefix."""
+    last = max((i for i, m in enumerate(messages) if isinstance(m, HumanMessage)), default=None)
+    if last is None:
+        return messages
+    loaded = HumanMessage(f'<skill name="{name}" loaded="true">\n{text}\n</skill>\n'
+                          "This skill is already loaded for the question above: follow it, and do not read it again.")
+    return [*messages[: last + 1], loaded, *messages[last + 1:]]
+
+
+class JevState(AgentState):
+    jev_skill: NotRequired[str | None]
+
+
+class JevAct(AgentMiddleware):
+    """Before the agent, one Jev call; a skill named above the threshold goes into this turn's model requests."""
+
+    state_schema = JevState
+
+    def __init__(self, settings: Settings, skills_dir: Path):
+        super().__init__()
+        self.settings = settings
+        self.texts = {name: (skills_dir / name / "SKILL.md").read_text() for name in skill_catalog(skills_dir)}
+        self.asking = {k: v for k, v in questions(skill_catalog(skills_dir)).items() if k == "skill"}
+
+    @property
+    def name(self) -> str:
+        return "jev_act"
+
+    async def abefore_agent(self, state, runtime):
+        state_in = asked(state["messages"])
+        decision = await adecide(state_in, self.asking, name="jev_route_skill", settings=self.settings) if state_in else None
+        skill, confidence, _ = decision.choice("skill") if decision else (None, 0.0, {})
+        sure = skill in self.texts and confidence >= self.settings.jev_skill_threshold
+        return {"jev_skill": skill if sure else None}
+
+    def _request(self, request):
+        name = request.state.get("jev_skill")
+        if name not in self.texts:
+            return request
+        return request.override(messages=preload(request.messages, name, self.texts[name]))
+
+    def wrap_model_call(self, request, handler):
+        return handler(self._request(request))
+
+    async def awrap_model_call(self, request, handler):
+        return await handler(self._request(request))
+
+    def after_agent(self, state, runtime):
+        name = state.get("jev_skill")
+        if name:
+            reread = name in did(state["messages"]).skills
+            score_answer("jev_skill_preloaded", 0.0 if reread else 1.0,
+                         comment=f"{name}; model read it again: {reread}")

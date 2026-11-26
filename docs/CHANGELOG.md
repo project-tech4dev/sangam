@@ -72,6 +72,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-20 · #467 · Every Ask citation chip says its record's name: `/api/orgs`, `/api/scores` and `/api/partner-lines` take `?ids=` (up to 100), and the workspace looks up the cited rows its page did not load (it holds 500 of 1,925 orgs); the chip no longer turns into "source" beside a written name (#466).
 - 2026-11-20 · (unmerged) · #453 · Ask clears the tool results of questions already answered before each new one (answers, SQL and `compare_fit` stay); on the two 19 Nov chats the history sent with a question's first call fell by about half (30.3k → 16.4k tokens at question 10, 36.0k → 21.3k at 15).
 - 2026-11-24 · (unmerged) · #315 · Jev M0: with `TYPESAFE_API_KEY` and `JEV_ROUTE`/`JEV_SKILL=shadow`, each Ask turn asks TypeSafe's Jev after the answer where the question should go and which skill it needs, and scores `jev_route_agree` and `jev_skill_agree` against what the model did; each call is a `jev_route_skill` generation with its cost. `make jev-replay` runs the same over recorded turns. Off by default.
+- 2026-11-24 · (unmerged) · #315 · Jev M1: `JEV_SKILL=act` asks Jev before the model's first call, and a skill it names at or above `JEV_SKILL_THRESHOLD` (0.8) goes into that turn's model requests right after the question, so the model skips its `read_file` of the skill; `jev_skill_preloaded` scores 0 when it read the skill anyway. Off by default.
 
 ## Knowledge graph
 

@@ -104,7 +104,9 @@ class Settings(BaseSettings):
     typesafe_api_key: str = ""
     jev_model: str = "jev-latest"
     jev_route: Literal["off", "shadow"] = "off"
-    jev_skill: Literal["off", "shadow"] = "off"
+    # `act` preloads the skill Jev names at or above the threshold, so the model skips reading it.
+    jev_skill: Literal["off", "shadow", "act"] = "off"
+    jev_skill_threshold: float = 0.8
     # Input price per million tokens, for the cost Langfuse shows: it has no price of its own for jev-*.
     jev_usd_per_mtok: float = 0.042
 
@@ -148,7 +150,7 @@ class Settings(BaseSettings):
         "research_model",
         "utility_model",
         "sql_audit_model",
-        "jev_model", "jev_route", "jev_skill", "jev_usd_per_mtok",
+        "jev_model", "jev_route", "jev_skill", "jev_skill_threshold", "jev_usd_per_mtok",
         "max_parallel_research", "research_page_limit", "research_model_call_limit", "ask_model_call_limit",
         "free_questions",
         "db_pool_max_size", "db_pool_timeout_s", "db_connect_timeout_s", "db_statement_timeout_ms",
