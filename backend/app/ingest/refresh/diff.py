@@ -63,7 +63,7 @@ async def _diff_one(check: Check) -> Check:
         return replace(check, status=CHANGED, reason="no archived copy to compare with, so assumed changed")
     if not old.strip() and not check.today.text.strip():
         return replace(check, status=CHANGED, old_text=old, reason="a document with no text changed its bytes")
-    removed, added = diff(old, check.today.text)
+    removed, added = await asyncio.to_thread(diff, old, check.today.text)
     if not removed and not added:
         return replace(check, status=MINOR, old_text=old, reason="only the order or spacing changed")
     return replace(check, old_text=old, removed=removed, added=added,

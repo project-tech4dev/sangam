@@ -105,9 +105,10 @@ export function verdictOf(run: CheckRun): Verdict {
         next: "judge",
       };
     case "refresh":
-      return run.refresh_row_id
-        ? { title: "Update saved for review", text: run.refresh_summary ?? "", next: "none" }
-        : { title: "A change found", text: "Update only what changed, then review it before it reaches the profile.", next: "update" };
+      if (run.refresh_row_id) return { title: "Update saved for review", text: run.refresh_summary ?? "", next: "none" };
+      // An update was asked for and not saved: its summary says why, and asking again would pay for nothing.
+      if (run.refresh_summary) return { title: "No update saved", text: run.refresh_summary, next: "none" };
+      return { title: "A change found", text: "Update only what changed, then review it before it reaches the profile.", next: "update" };
     case "full pull":
       return { title: "Most sources changed", text: "This looks like a new website. Research the organisation again.", next: "research" };
     default:

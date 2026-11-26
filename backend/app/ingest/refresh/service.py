@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import tempfile
 import uuid
@@ -166,10 +167,11 @@ async def stages(slug: str, depth: str, scratch: Path, given: Inputs, until: str
         return None
     checks = await diff.run(checks)
     say(diff.describe(slug, checks))
-    redesign = decision.redesigned(checks)
+    # Matching every fact against a whole report is CPU work; in a thread it never stalls the server's other requests.
+    redesign = await asyncio.to_thread(decision.redesigned, checks)
     if until == "diff":
         return None
-    checks = evidence.run(checks, given.findings)
+    checks = await asyncio.to_thread(evidence.run, checks, given.findings)
     say(evidence.describe(slug, checks))
     if until == "evidence":
         return None
@@ -202,6 +204,19 @@ async def stages(slug: str, depth: str, scratch: Path, given: Inputs, until: str
         verdict = decision.decide(checks, found, redesign)
     say(decision.describe(slug, checks, found, verdict))
     return checks, found, verdict
+
+
+async def update_refused(pool: Any, slug: str) -> str | None:
+    """Why an update could not be saved today, asked before the judge and the search are paid for; None when it can."""
+    async with pool.connection() as conn:
+        entity, _rows = await delta.load(conn, slug)
+        if entity is None:
+            return "Nothing to update: no research of this organisation is on file."
+        if await delta.researched_today(conn, slug):
+            return ("This organisation was already researched today, and a day holds one research row, "
+                    "so an update can be saved from tomorrow.")
+    why = delta.cannot_refresh(entity)
+    return f"No update: {why}." if why else None
 
 
 async def _refresh(pool: Any, slug: str, checks: list[compare.Check], found: discover.Discovery,

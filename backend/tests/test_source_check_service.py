@@ -165,6 +165,29 @@ def _changed(url: str = "https://a.org/about", status: str = compare.CHANGED) ->
     return compare.Check(base, fetch_status.Today(url, fetch_status.OK, "HTTP 200", text="Grants of 500."), status)
 
 
+class TestUpdateRefused:
+    @pytest.fixture
+    def entity(self, monkeypatch):
+        state = SimpleNamespace(row={"id": 5, "slug": SLUG, "status": "complete", "entity_kind": "funder"},
+                                today=False)
+        monkeypatch.setattr(delta, "load", lambda conn, slug: _value((state.row, [])))
+        monkeypatch.setattr(delta, "researched_today", lambda conn, slug: _value(state.today))
+        return state
+
+    async def test_an_update_that_can_be_saved_is_not_refused(self, entity):
+        assert await service.update_refused(ScriptPool(ScriptConn()), SLUG) is None
+
+    async def test_researched_today_is_refused_up_front(self, entity):
+        entity.today = True
+        assert "already researched today" in await service.update_refused(ScriptPool(ScriptConn()), SLUG)
+
+    async def test_no_research_or_research_that_found_nothing_is_refused(self, entity):
+        entity.row = {**entity.row, "status": "not_found"}
+        assert "found nothing" in await service.update_refused(ScriptPool(ScriptConn()), SLUG)
+        entity.row = None
+        assert "no research" in await service.update_refused(ScriptPool(ScriptConn()), SLUG)
+
+
 class TestRefresh:
     @pytest.fixture
     def refresh(self, monkeypatch):
@@ -244,6 +267,3 @@ class TestRefresh:
         refresh.entity = None
         assert await self.run() == (None, f"{SLUG}: no refresh: no research row to carry forward")
         assert refresh.models == []
-
-async def _value(v):
-    return v

@@ -17,7 +17,6 @@ import {
   type CheckRunDetail,
   type SourceCheck,
 } from "../lib/changeCheck";
-import { ApiError } from "@/lib/api/rest";
 import { StepBar } from "./StepBar";
 
 const STEPS = ["Baseline", "Compare", "Decide", "Review"];
@@ -64,9 +63,8 @@ export function ChangeCheck({ slug }: { slug: string }) {
       setRun(await runCheck(slug, depth, refresh));
       setRuns(await fetchChecks(slug));
     } catch (e) {
-      setError(e instanceof ApiError && e.status === 409
-        ? "A check of this organisation is already running. Try again when it finishes."
-        : e instanceof Error ? e.message : String(e));
+      // A refusal (already running, nothing to compare, researched today) says why in its own words.
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
