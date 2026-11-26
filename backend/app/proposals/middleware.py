@@ -16,7 +16,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 
 from app.agentkit.middleware import AgUiState
 from app.ingest.reading.access import canonical_url
-from app.integrations.storage import _safe_name
+from app.integrations.storage import safe_name
 from app.proposals import context
 from app.proposals import facts as fact_rules
 
@@ -110,7 +110,7 @@ class PublicGuard(AgentMiddleware):
                 run.files[m.group(1)] = page_key(args.get("url"))
             # A find lists snippets, not pages read, so a quote from one must not pass the quote check.
             elif name == "read_document_pages" and not args.get("find") and \
-                    (url := run.files.get(_safe_name(str(args.get("filename") or "")))):
+                    (url := run.files.get(safe_name(str(args.get("filename") or "")))):
                 run.pages[url] = run.pages.get(url, "") + "\n" + text
         return result
 

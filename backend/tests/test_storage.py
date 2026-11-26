@@ -19,6 +19,7 @@ import pytest
 from app.core.config import Settings
 from app.ingest import brief
 from app.ingest.catalog.writer import ensure_document
+from app.ingest.reading import fetch
 from app.ingest.research.findings import EntityResearch
 from app.ingest.tools import research_tools as research
 from app.integrations import storage
@@ -150,7 +151,7 @@ def test_a_long_name_is_cut_short_but_keeps_its_extension(name, ends):
 
 class TestArchiveKey:
     def test_two_sources_named_report_pdf_do_not_collide(self):
-        """The bug this replaces: _safe_name flattens the URL to its filename,
+        """The bug this replaces: safe_name flattens the URL to its filename,
         so the second report.pdf overwrites the first on disk mid-run.
         """
         a = storage.archive_key("https://a.example/csr/report.pdf", b"one", "report.pdf")
@@ -477,10 +478,10 @@ class TestFetchDocumentArchives:
     @pytest.fixture
     def downloaded(self, monkeypatch, tmp_path):
         """A fetch_document that downloads PDF_BYTES and records what it archived."""
-        monkeypatch.setattr(research, "check_url", lambda url: _none())
-        monkeypatch.setattr(research, "downloads_dir", lambda: tmp_path)
+        monkeypatch.setattr(fetch, "check_url", lambda url: _none())
+        monkeypatch.setattr(fetch, "downloads_dir", lambda: tmp_path)
         monkeypatch.setattr(
-            research.httpx, "AsyncClient",
+            fetch.httpx, "AsyncClient",
             lambda **kw: _FakeClient(b"%PDF-1.4 annual report", "application/pdf"),
         )
         archived: list[tuple] = []
@@ -489,7 +490,7 @@ class TestFetchDocumentArchives:
             archived.append((bucket, key, data, content_type))
             return key
 
-        monkeypatch.setattr(research.storage, "upload", fake_upload)
+        monkeypatch.setattr(fetch.storage, "upload", fake_upload)
         return archived
 
     async def test_what_was_downloaded_is_what_was_archived(self, downloaded):
@@ -505,9 +506,9 @@ class TestFetchDocumentArchives:
         assert key == storage.archive_key(url, data, "report.pdf")
 
     async def test_a_refused_url_is_never_archived(self, monkeypatch):
-        monkeypatch.setattr(research, "check_url", lambda url: _text("held source"))
+        monkeypatch.setattr(fetch, "check_url", lambda url: _text("held source"))
         called = []
-        monkeypatch.setattr(research.storage, "upload", lambda *a: called.append(a))
+        monkeypatch.setattr(fetch.storage, "upload", lambda *a: called.append(a))
         result = await research.fetch_document.ainvoke({"url": "https://held.example/x.pdf"})
         assert result.startswith("REFUSED:")
         assert called == [], "the access gate must run before anything is stored"
