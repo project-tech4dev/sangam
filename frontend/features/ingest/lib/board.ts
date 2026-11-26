@@ -210,7 +210,10 @@ export function boardOf(
       else if (p?.state === "scanned") text = `opened ${what}: it is a scan, with no text to read`;
       else if (p) text = `couldn't open ${what}`;
     } else if (s.tool === "save_research" && s.result?.startsWith("REFUSED")) {
-      text = "is fixing what the save refused";
+      // Only a refusal that asks for the save again is being fixed; the others end the researcher.
+      text = s.result.includes("call save_research again") ? "is fixing what the save refused"
+        : s.result.includes("already researched and saved today") ? "found today's research already saved"
+        : "stopped without saving";
     } else if (s.tool === "save_research") {
       const across = /findings across (.+?); status/.exec(s.result ?? "")?.[1];
       const n = across && across !== "nothing" ? across.split(", ").length : new Set(conceptsOf(s)).size;

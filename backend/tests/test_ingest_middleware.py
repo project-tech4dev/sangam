@@ -14,6 +14,7 @@ from langchain.agents.middleware import (
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from app.agentkit.middleware import SUMMARY_INPUT_TOKENS, SUMMARY_PROMPT, cheap_summarizer
+from app.ingest import agent as ingest_agent
 from app.ingest import middleware as mw
 from app.ingest.research import draft
 from app.ingest.research.judge import ResearchJudge
@@ -159,7 +160,9 @@ class TestQualityIsJudgedNotGraded:
 
     def test_old_tool_results_are_cleared_on_the_researcher(self, built):
         (clearing,) = of(built.researcher, ContextEditingMiddleware)
-        assert any(isinstance(e, ClearToolUsesEdit) for e in clearing.edits)
+        (edit,) = [e for e in clearing.edits if isinstance(e, ClearToolUsesEdit)]
+        # Once, late, and never the goals each record_findings is checked against.
+        assert edit.trigger == ingest_agent.RESEARCHER_CLEAR_AT and "research_goals" in edit.exclude_tools
 
 
 class TestSummariesAreWrittenByTheUtilityTier:

@@ -81,7 +81,8 @@ Generated detail (tools, skills, middleware order, prompt rules): [ask-sangam](.
   with their citations, and so do the SQL and `compare_fit`, so a follow-up can re-run a query in one call. The cleared set
   changes only when a question starts, so every model call within a question shares one cached prefix. Edits apply to the
   request, never to state, so the answer audit still reads every result. Pitch and Import keep the 60k stepped clearing alone:
-  their later steps read earlier results.
+  their later steps read earlier results. Import's researcher clears at 120k instead, once per run, since each
+  clearing rewrites its cached prompt, and never clears `research_goals`, the contract its records are checked against.
 - **Someone outside every organisation gets `FREE_QUESTIONS` (10) Ask questions in all, no reset** (#314). `threads.questions`
   counts their turns in `claim_thread`; `ask_access` sums every chat they have, under a lock on their `users` row, and
   answers 429 before the agent runs. Every chat counts whatever its id, since the browser picks the id, and the count can't
@@ -119,9 +120,13 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   again. The draft lives in a ContextVar beside `snapshots.COLLECTED`, outside the messages, so summarisation and
   cleared tool results cannot lose it; a crash loses it, as it lost everything before. `save_research` merges into
   today's row (`brief.merge_findings`, `snapshot_ids` unioned), so a short re-run no longer needs a shrink refusal or a
-  `replace` flag. The Haiku rubric that gated each save was removed: it sent correct saves back ($0.27 on `c2b6973d`).
+  `replace` flag. A fact sent again from its page replaces the earlier copy (a contact is keyed by its quote too, since
+  one page lists a mailbox and a helpline), and a refresh's `updated` notes stay while the row still holds their facts.
+  Only a refusal for what a save contains counts towards `MODEL`; "these fields have neither a finding nor a gap" is
+  the expected way to finish. The Haiku rubric that gated each save was removed: it sent correct saves back ($0.27 on `c2b6973d`).
   `ResearchJudge` scores correctness, completeness, relevance, consistency and source quality to Langfuse, from public
-  findings only, and never retries.
+  findings only, and never retries. It reads the row as saved, merged with today's earlier one, and runs in the
+  background, so the researcher's return never waits on it.
 - **A metric's period has four shapes**, because it is part of the metric's key: `FY2024-25`, `CY2025`,
   `cumulative to <date>`, `as of <date>` (`rows.shape_period`). A save rewrites an exact match and refuses the rest;
   research read back for promotion (`STORED` context) is rewritten the same way but never refused, so a rule added

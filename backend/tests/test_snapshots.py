@@ -233,13 +233,13 @@ class TestTheSaveLinksWhatWasRead:
             ids.extend([3, 4])
             assert (await self.save()).startswith("Saved as entity_research #31")
         [(sql, params)] = saving.conn.sql("INSERT INTO entity_research")
-        assert params[-2] == [3, 4] and "snapshot_ids = EXCLUDED.snapshot_ids" in sql
+        assert params[16] == [3, 4] and "snapshot_ids = EXCLUDED.snapshot_ids" in sql
         assert saving.logged == [("example-foundation", [3, 4], [URL])]
 
     async def test_outside_a_researcher_nothing_is_claimed(self, saving):
         await self.save()
         [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
-        assert params[-2] is None and saving.logged == []
+        assert params[16] is None and saving.logged == []
 
     async def test_a_second_save_today_keeps_the_first_ones_ids(self, saving):
         saving.conn.on("SELECT fact_count", prior_row(snapshot_ids=[1, 3]))
@@ -247,7 +247,7 @@ class TestTheSaveLinksWhatWasRead:
             ids.extend([3, 4])
             await self.save()
         [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
-        assert params[-2] == [1, 3, 4]
+        assert params[16] == [1, 3, 4]
 
 
 class TestLogUnfetched:

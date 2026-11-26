@@ -18,7 +18,7 @@ from app.ingest.research.findings import Gap, Unplaced
 
 # Problems named per refused item, so one bad finding never buries the rest.
 LINES_PER_ITEM = 4
-_LABELS = ("partner_name", "program_name", "project_name", "title", "name", "id_type", "state", "fiscal_year")
+LABELS = ("partner_name", "program_name", "project_name", "title", "name", "id_type", "state", "fiscal_year")
 
 
 @dataclass
@@ -31,6 +31,8 @@ class Draft:
     # What the last successful save wrote, for the summary the parent reads, and the goals it was judged against.
     saved: dict[str, Any] | None = None
     goals: list[str] = field(default_factory=list)
+    # The row that save wrote, merged with today's earlier one: what the judge reads.
+    record: dict[str, Any] | None = None
 
 
 # One per launched researcher; ChosenSources opens it beside snapshots.collecting().
@@ -80,8 +82,8 @@ def _clean(item: dict[str, Any], model: type[BaseModel]) -> tuple[dict[str, Any]
     return {k: v for k, v in item.items() if k in model.model_fields}, dropped
 
 
-def _label(item: dict[str, Any]) -> str:
-    label = next((str(item[k])[:60] for k in _LABELS if item.get(k)), "")
+def label(item: dict[str, Any]) -> str:
+    label = next((str(item[k])[:60] for k in LABELS if item.get(k)), "")
     return f"{item.get('concept', '?')}{f' {label!r}' if label else ''}"
 
 
@@ -102,9 +104,14 @@ def _put(items: list[dict[str, Any]], item: dict[str, Any], key: Any) -> None:
     items.append(item)
 
 
+# One page can hold two of these under one key (a mailbox and a helpline), so the quote tells them apart.
+_BY_QUOTE = frozenset({"contact"})
+
+
 def _finding_key(f: dict[str, Any]) -> tuple:
-    # The quote too: one page can hold two facts with one key (two unnamed contacts), and both are kept.
-    return fact_key(f), f.get("source_url"), f.get("evidence")
+    """A fact sent again from its page replaces the earlier copy, so a corrected figure or a reworded quote is one."""
+    quote = f.get("evidence") if f.get("concept") in _BY_QUOTE else None
+    return fact_key(f), f.get("source_url"), quote
 
 
 def _gap_key(g: dict[str, Any]) -> tuple:
@@ -123,7 +130,7 @@ def _one(kind: str, i: int, item: Any) -> tuple[dict[str, Any] | None, list[str]
         model = FINDING_MODELS.get(item.get("concept"))
         if model is None:
             return None, [], f"findings[{i}]: unknown concept {item.get('concept')!r}; allowed: {list(FINDING_MODELS)}"
-        name = _label(item)
+        name = label(item)
     else:
         model, name = (Gap if kind == "gaps" else Unplaced), str(item.get("concept") or item.get("field") or "?")
     clean, dropped = _clean(item, model)
@@ -197,7 +204,7 @@ def problems(exc: ValidationError, findings: list[dict[str, Any]]) -> list[str]:
     for e in exc.errors()[:REFUSAL_LINES]:
         loc, msg = e["loc"], e["msg"].removeprefix("Value error, ")
         if len(loc) >= 2 and loc[0] == "findings" and isinstance(loc[1], int) and loc[1] < len(findings):
-            where = f"finding ({_label(findings[loc[1]])}) {'.'.join(str(p) for p in loc[3:])}".rstrip()
+            where = f"finding ({label(findings[loc[1]])}) {'.'.join(str(p) for p in loc[3:])}".rstrip()
         else:
             where = ".".join(str(p) for p in loc) or "save"
         out.append(f"{where}: {msg}")

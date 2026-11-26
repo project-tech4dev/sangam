@@ -320,6 +320,16 @@ class TestTheDraftKeepsTwoFactsFromOnePage:
         draft.record(current, [{**mail, "email": "hello@acme.org"}], None, None)
         assert len(current.findings) == 2 and current.findings[0]["email"] == "hello@acme.org"
 
+    def test_a_fact_sent_again_from_its_page_replaces_the_first_copy(self):
+        # 7925d873: Planatearth, Meghshala and IIH were each saved twice, from one page, with two quotes.
+        page = "https://hclfoundation.org/partners"
+        first = {"concept": "partner", "partner_name": "Planatearth", "fiscal_year": "FY2024-25", "source_url": page,
+                 "confidence": "high", "evidence": "Partners include Planatearth."}
+        current = draft.Draft()
+        draft.record(current, [first, {**first, "evidence": "Planatearth works with HCLFoundation on Harit."}],
+                     None, None)
+        assert [f["evidence"] for f in current.findings] == ["Planatearth works with HCLFoundation on Harit."]
+
 
 class TestAFieldGapClosesOnlyWhenEveryFindingHasTheField:
     GAP = {"concept": "program", "field": "themes", "reason": "not_stated", "detail": "Udaan's page names no theme"}

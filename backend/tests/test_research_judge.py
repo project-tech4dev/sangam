@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 
 import pytest
@@ -48,29 +49,39 @@ def scores(monkeypatch):
 
 class TestWhatTheJudgeReads:
     def test_public_findings_and_gaps_with_quotes_cut_and_empties_dropped(self):
-        current = draft.Draft(findings=[finding(evidence="x" * 1000)], gaps=[{"concept": "rfp", "reason": "not_stated"}])
-        got = json.loads(judge_input(current, ["csr_year"]))
+        record = {"findings": [finding(evidence="x" * 1000)], "gaps": [{"concept": "rfp", "reason": "not_stated"}]}
+        got = json.loads(judge_input(record, ["csr_year"]))
         (f,) = got["findings"]
         assert len(f["quote"]) == judge.QUOTE_CHARS and "evidence" not in f and "notes" not in f
         assert got["goals"] == ["csr_year"] and got["gaps"][0]["concept"] == "rfp"
 
     def test_a_private_quote_never_leaves(self):
         private = finding(url=f"https://{PRIVATE_SOURCE_DOMAIN}/grants.xlsx#Sheet1!B4", evidence="Confidential cell")
-        assert judge_input(draft.Draft(findings=[private]), []) is None
-        got = judge_input(draft.Draft(findings=[private, finding()]), [])
+        assert judge_input({"findings": [private], "gaps": []}, []) is None
+        got = judge_input({"findings": [private, finding()], "gaps": []}, [])
         assert "Confidential" not in got and PUBLIC in got
 
     def test_a_large_save_is_capped(self):
         many = [finding(url=f"{PUBLIC}/{i}") for i in range(judge.MAX_FINDINGS + 5)]
-        assert len(json.loads(judge_input(draft.Draft(findings=many), []))["findings"]) == judge.MAX_FINDINGS
+        assert len(json.loads(judge_input({"findings": many, "gaps": []}, []))["findings"]) == judge.MAX_FINDINGS
+
+
+def record(*findings) -> dict:
+    return {"findings": list(findings), "gaps": []}
+
+
+async def judged(model, current) -> None:
+    """The judge scores in the background; the researcher's return does not wait for it."""
+    assert await ResearchJudge(model).aafter_agent({}, None) is None
+    await asyncio.gather(*judge._PENDING)
 
 
 class TestTheJudgeScores:
     async def test_each_dimension_is_one_score_for_the_slug(self, scores):
         model = Model(QUALITY)
         with draft.drafting() as current:
-            current.findings, current.saved, current.goals = [finding()], SAVED, ["csr_year"]
-            assert await ResearchJudge(model).aafter_agent({}, None) is None
+            current.record, current.saved, current.goals = record(finding()), SAVED, ["csr_year"]
+            await judged(model, current)
         assert model.method == "json_schema" and "acme-foundation" in model.asked[0]
         assert [(n, v) for n, v, _, _ in scores] == [
             ("research_correctness", 4), ("research_completeness", 3), ("research_relevance", 5),
@@ -86,12 +97,21 @@ class TestTheJudgeScores:
             with draft.drafting() as current:
                 if setup == "only_private":
                     current.saved = SAVED
-                    current.findings = [finding(url=f"https://{PRIVATE_SOURCE_DOMAIN}/a.xlsx#S!A1")]
+                    current.record = record(finding(url=f"https://{PRIVATE_SOURCE_DOMAIN}/a.xlsx#S!A1"))
                 await ResearchJudge(model).aafter_agent({}, None)
         assert model.asked == [] and scores == []
 
     async def test_a_failing_judge_is_logged_and_the_run_goes_on(self, scores, caplog):
         with draft.drafting() as current:
-            current.findings, current.saved = [finding()], SAVED
-            assert await ResearchJudge(Model(TimeoutError("slow"))).aafter_agent({}, None) is None
+            current.record, current.saved = record(finding()), SAVED
+            await judged(Model(TimeoutError("slow")), current)
         assert scores == [] and "research judge failed for acme-foundation" in caplog.text
+
+    async def test_it_judges_the_saved_row_not_the_draft(self, scores):
+        # A gap the save closed, or a finding merged from this morning's row, is what the brief holds.
+        model = Model(QUALITY)
+        with draft.drafting() as current:
+            current.findings, current.gaps = [], [{"concept": "csr_year", "reason": "not_stated"}]
+            current.record, current.saved = record(finding(), finding(url=f"{PUBLIC}/2")), SAVED
+            await judged(model, current)
+        assert f"{PUBLIC}/2" in model.asked[0] and "not_stated" not in model.asked[0]

@@ -105,8 +105,7 @@ def _messages(state: Any) -> list[AnyMessage]:
 
 SAVE_SCHEMAS: dict[str, type[BaseModel]] = {"save_vault_findings": VaultResearch}
 # ToolNode echoes the whole payload before the error, so a big save's reason was evicted and cut off.
-REFUSAL_LINES = 25
-_LABELS = ("partner_name", "program_name", "project_name", "title", "name", "id_type", "state", "fiscal_year")
+REFUSAL_LINES = draft.REFUSAL_LINES
 
 
 def _problem(error: dict[str, Any], payload: dict[str, Any], schema: type[BaseModel]) -> str:
@@ -115,8 +114,7 @@ def _problem(error: dict[str, Any], payload: dict[str, Any], schema: type[BaseMo
         finding = (payload.get("findings") or [None] * (loc[1] + 1))[loc[1]]
         finding = finding if isinstance(finding, dict) else {}
         concept = finding.get("concept", "?")
-        label = next((str(finding[k])[:60] for k in _LABELS if finding.get(k)), "")
-        where = f"finding {loc[1]} ({concept}{f' {label!r}' if label else ''})"
+        where = f"finding {loc[1]} ({draft.label(finding)})"
         field = ".".join(str(p) for p in loc[3:])
         model = FINDING_MODELS.get(concept)
         if error["type"] == "extra_forbidden" and model:

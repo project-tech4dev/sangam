@@ -254,6 +254,8 @@ VAULT_READER: dict = {
 
 # Pages and PDFs past this many tokens go to a file the researcher pages back; the library default is 20k.
 RESEARCHER_EVICT_AT = 8_000
+# Each clearing rewrites the cached prompt (~$0.13 at 50k), so the researcher clears once, well before the summary.
+RESEARCHER_CLEAR_AT = 120_000
 # Promote, read back, report: a handful of calls, so a dozen is already a loop.
 WRITER_MODEL_CALL_LIMIT = 12
 
@@ -328,8 +330,9 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             # A score with nowhere to go is not worth a call.
             *([ResearchJudge(resolve_model(settings.research_judge_model))]
               if settings.research_judge_model and settings.langfuse_enabled else []),
-            # Pages already recorded are dead weight; the findings live in the draft, not the messages.
-            clear_old_tool_results(),
+            # Pages already recorded are dead weight; the findings live in the draft, not the messages. The goals are
+            # the contract each record_findings is checked against, so they stay.
+            clear_old_tool_results(trigger=RESEARCHER_CLEAR_AT, keep_tools=("research_goals",)),
             cheap_summarizer(utility, backend),
         ],
     }

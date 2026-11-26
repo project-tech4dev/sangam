@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -49,13 +50,17 @@ def _brief(f: dict[str, Any]) -> dict[str, Any]:
     return {**out, "quote": (f.get("evidence") or "")[:QUOTE_CHARS]}
 
 
-def judge_input(current: draft.Draft, goals: list[str]) -> str | None:
-    """This run's own public findings and gaps; a staff or vault quote never leaves for the judge."""
-    public = [f for f in current.findings if not is_private_source(f.get("source_url") or "")]
+def judge_input(record: dict[str, Any], goals: list[str]) -> str | None:
+    """The saved row's public findings and open gaps; a staff or vault quote never leaves for the judge."""
+    public = [f for f in record["findings"] if not is_private_source(f.get("source_url") or "")]
     if not public:
         return None
     return json.dumps({"goals": goals, "findings": [_brief(f) for f in public[:MAX_FINDINGS]],
-                       "gaps": current.gaps}, ensure_ascii=False, default=str)
+                       "gaps": record["gaps"]}, ensure_ascii=False, default=str)
+
+
+# Held until done, since the loop keeps only a weak reference to a task.
+_PENDING: set[asyncio.Task] = set()
 
 
 class ResearchJudge(AgentMiddleware):
@@ -67,12 +72,17 @@ class ResearchJudge(AgentMiddleware):
 
     async def aafter_agent(self, state: Any, runtime: Any) -> None:
         current = draft.CURRENT.get()
-        if current is None or current.saved is None:
+        if current is None or current.saved is None or current.record is None:
             return
-        research = judge_input(current, current.goals)
+        research = judge_input(current.record, current.goals)
         if research is None:
             return
-        slug = current.saved["slug"]
+        # A score is never read by the run, so the researcher returns without waiting for it.
+        task = asyncio.create_task(self.score(current.saved["slug"], research))
+        _PENDING.add(task)
+        task.add_done_callback(_PENDING.discard)
+
+    async def score(self, slug: str, research: str) -> None:
         try:
             judge = self.model.with_structured_output(ResearchQuality, method="json_schema")
             quality: ResearchQuality = await judge.ainvoke(PROMPT.format(entity=slug, research=research))

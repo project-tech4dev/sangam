@@ -89,16 +89,17 @@ def tool_errors() -> ToolErrorMiddleware:
     return ToolErrorMiddleware(_tool_failed)
 
 
-def clear_old_tool_results(*, answered_turns: bool = False) -> ContextEditingMiddleware:
+def clear_old_tool_results(*, answered_turns: bool = False, trigger: int = TOOL_RESULT_CLEAR_TRIGGER_TOKENS,
+                           keep_tools: tuple[str, ...] = ()) -> ContextEditingMiddleware:
     """Drop bulky old tool output from the request once context grows large; `answered_turns` also clears every
     result from a question already answered (Ask, where each question stands on its own answer)."""
     return ContextEditingMiddleware(
         edits=[
             *([ClearAnsweredTurnsEdit()] if answered_turns else []),
             SteppedClearToolUsesEdit(
-                trigger=TOOL_RESULT_CLEAR_TRIGGER_TOKENS,
+                trigger=trigger,
                 keep=TOOL_RESULTS_KEPT,
-                exclude_tools=NEVER_CLEARED,
+                exclude_tools=(*NEVER_CLEARED, *keep_tools),
             )
         ]
     )

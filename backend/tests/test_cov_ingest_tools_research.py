@@ -433,7 +433,8 @@ class TestSaveResearch:
         out = await self.save(research(gaps=[]))
         assert out.startswith("REFUSED, nothing saved: every field gets a finding or a gap")
         assert "Nothing already recorded needs sending again" in out
-        assert not saving.conn.sql("INSERT") and self.run.refusals == 1
+        # Finishing the contract is the expected loop, not a refusal that moves the run to the strong model.
+        assert not saving.conn.sql("INSERT") and self.run.refusals == 0
 
     async def test_a_whole_save_problem_is_refused_and_counted(self, saving):
         out = await self.save(research(stopped_reason=None))
@@ -504,12 +505,20 @@ class TestSaveResearch:
         assert ("csr_spend", "FY2022-23", "403 on the PDF") in gaps
         assert params[10] == ["https://example.org/a", "https://example.org/b"] and params[16] == [1, 2]
 
-    async def test_a_save_over_todays_row_keeps_what_a_refresh_removed(self, saving):
-        # A row's supersedes apply before its own findings, so what this run finds again still stands.
+    async def test_a_save_over_a_refresh_row_keeps_its_notes_while_their_facts_stay(self, saving):
+        # A refresh set csr_spend to 12 crore over an older 10: the merged row still holds the update, so its note
+        # stays, or an older day's 10 crore would compete with it in the brief again.
+        updated = spend(project_name="Updated", evidence="It spent Rs 12 crore on the updated project.")
+        notes = [{"key": ["csr_spend", "updated", "", "", "", "", "fy2023-24"], "source_url": URL,
+                  "evidence": "It spent Rs 10 crore on the updated project.", "updated": True},
+                 {"key": ["csr_spend", "gone", "", "", "", "", "fy2023-24"], "source_url": URL,
+                  "evidence": "A project that ended.", "updated": True},
+                 {"key": ["rfp", "old call"], "source_url": URL, "evidence": "A closed call."}]
+        saving.conn.on("SELECT fact_count", prior_row([updated], supersedes=notes))
         await self.save(research())
-        [(sql, _params)] = saving.conn.sql("INSERT INTO entity_research")
-        # A removal stays removed; an update's note goes, or the updated fact would vanish with its new value.
-        assert "WHERE NOT coalesce((e->>'updated')::boolean, false)" in sql
+        [(sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        assert "supersedes = EXCLUDED.supersedes" in sql
+        assert [n["key"][1] for n in json.loads(params[17])] == ["updated", "old call"]
 
     WRONG = {"findings": [], "status": "wrong_entity", "stopped_reason": "A different trust."}
 
@@ -523,6 +532,14 @@ class TestSaveResearch:
         saving.conn.on("SELECT fact_count", prior_row(gaps=[{"concept": "rfp", "reason": "blocked", "detail": "403"}]))
         out = await self.save(research(**self.WRONG))
         assert out.startswith("Saved as") and self.inserted(saving) == []
+
+    async def test_a_wrong_entity_drops_gaps_its_kind_is_not_researched_for(self, saving):
+        # An org researcher recorded an rfp gap before finding it was another organisation.
+        stray = {"concept": "rfp", "reason": "not_stated", "detail": "no open call"}
+        out = await self.save(research(**self.WRONG, gaps=[stray], entity_kind="org"), scope=STAFF)
+        assert out.startswith("Saved as")
+        [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        assert json.loads(params[14]) == []
 
     async def test_a_wrong_entity_row_is_never_merged_into_the_right_one(self, saving):
         # Its findings are another organisation's: Tata Trust Ltd's CSR figures are not Tata Trusts'.
@@ -578,6 +595,19 @@ class TestSaveResearch:
                       evidence="[source:12#FY24!B7] Example Foundation 6.74 crore sports.")
         out = await self.save(research(findings=[staff]))
         assert out.startswith("save_research failed: RuntimeError. Report the failure") and "down" not in out
+
+    async def test_a_staff_finding_carried_from_todays_row_never_quotes_the_error(self, saving, monkeypatch):
+        carried = spend(source_url="https://staff-sources.sangam.invalid/12", carried=True, project_name="Kept",
+                        evidence="[source:12#FY24!B7] Example Foundation 6.74 crore sports.")
+        saving.conn.on("SELECT fact_count", prior_row([carried]))
+        saving.conn.on("INSERT INTO entity_research", RuntimeError("value 6.74 crore too long"))
+        out = await self.save(research())
+        assert out.startswith("save_research failed: RuntimeError. Report") and "6.74" not in out
+
+    async def test_the_saved_row_is_kept_for_the_judge(self, saving):
+        saving.conn.on("SELECT fact_count", prior_row([spend(project_name="Morning")]))
+        await self.save(research())
+        assert {f["project_name"] for f in self.run.record["findings"]} == {"Morning", "Sports scholarships"}
 
 
 def ngo_research(name="Arpan") -> dict:

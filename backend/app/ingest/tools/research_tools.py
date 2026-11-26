@@ -261,12 +261,20 @@ def _fitting(gaps: list[dict[str, Any]], head: dict[str, Any]) -> list[dict[str,
     return [g for g in gaps if g.get("concept") in allowed]
 
 
+def _notes(prior: dict[str, Any] | None, stored: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A refresh's removals stay; an update's note stays while the row still holds a finding with its key."""
+    keys = {fact_key(f) for f in stored}
+    return [e for e in _json(prior and prior.get("supersedes"))
+            if not e.get("updated") or tuple(e["key"]) in keys]
+
+
 def _merged(head: dict[str, Any], current: draft.Draft,
             prior: dict[str, Any] | None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """This run's draft over the row saved today, so a second save adds to the first and never shrinks it; and the
     refresh's carried findings, which were checked when first saved and are kept beside it unchecked."""
     if head["status"] == "wrong_entity":
-        return {**head, "findings": current.findings, "gaps": current.gaps, "unplaced": current.unplaced}, []
+        return {**head, "findings": current.findings, "gaps": _fitting(current.gaps, head),
+                "unplaced": current.unplaced}, []
     if not prior or prior["status"] == "wrong_entity":
         # A wrong_entity row is another organisation: nothing of it is carried into the right one.
         return {**head, "findings": current.findings, "unplaced": current.unplaced,
@@ -339,7 +347,7 @@ async def save_research(
                 return _NGO_REFUSAL
             prior = await (
                 await conn.execute(
-                    "SELECT fact_count, status, researched_by, findings, gaps, sources_read, snapshot_ids "
+                    "SELECT fact_count, status, researched_by, findings, gaps, sources_read, snapshot_ids, supersedes "
                     "FROM entity_research WHERE slug = %s AND researched_on = current_date",
                     (slug,),
                 )
@@ -353,6 +361,8 @@ async def save_research(
                     f"organisation today, which a wrong_entity save would erase. Report back status wrong_entity "
                     f"with saved=false.")
         payload, carried = _merged(head, current, prior)
+        staff_save = staff_save or any(is_staff_source_url(f.get("source_url") or "")
+                                       for f in [*payload["findings"], *carried])
         try:
             findings = EntityResearch.model_validate(payload, context=STORED)
         except ValidationError as exc:
@@ -360,8 +370,8 @@ async def save_research(
             return ("REFUSED, nothing saved:\n" + "\n".join(f"- {p}" for p in draft.problems(exc, payload["findings"]))
                     + "\nFix a finding by recording it again with record_findings (it replaces the earlier copy), "
                       "or fix this call's own arguments, then call save_research again.")
+        # The expected way to finish the contract, so it is not a refusal that moves the run to the strong model.
         if missing := unanswered(findings):
-            current.refusals += 1
             return (
                 f"REFUSED, nothing saved: every field gets a finding or a gap, and {len(missing)} have neither: "
                 f"{'; '.join(missing[:40])}. Record each with record_findings, as a finding or a gap "
@@ -379,9 +389,9 @@ async def save_research(
                     INSERT INTO entity_research (
                         entity_name, canonical_name, entity_kind, slug, website, status,
                         stopped_reason, summary, findings, not_found, sources_read, fact_count,
-                        goals, schema_version, gaps, years, snapshot_ids, researched_by)
+                        goals, schema_version, gaps, years, snapshot_ids, supersedes, researched_by)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s,
-                            %s::jsonb, %s, %s::jsonb, %s, %s, %s)
+                            %s::jsonb, %s, %s::jsonb, %s, %s, %s::jsonb, %s)
                     ON CONFLICT (slug, researched_on) DO UPDATE SET
                         entity_name = EXCLUDED.entity_name,
                         canonical_name = EXCLUDED.canonical_name,
@@ -399,10 +409,7 @@ async def save_research(
                         gaps = EXCLUDED.gaps,
                         years = EXCLUDED.years,
                         snapshot_ids = EXCLUDED.snapshot_ids,
-                        -- A removal stays removed; an update's note goes with the finding this save replaces.
-                        supersedes = (SELECT coalesce(jsonb_agg(e), '[]'::jsonb)
-                                        FROM jsonb_array_elements(entity_research.supersedes) e
-                                       WHERE NOT coalesce((e->>'updated')::boolean, false)),
+                        supersedes = EXCLUDED.supersedes,
                         researched_by = EXCLUDED.researched_by,
                         researched_at = now()
                     RETURNING *
@@ -414,7 +421,7 @@ async def save_research(
                         findings.not_found, findings.sources_read, len(stored),
                         json.dumps(findings.goals), SCHEMA_VERSION,
                         json.dumps([g.model_dump(mode="json") for g in findings.gaps]), findings.years,
-                        snapshot_ids, caller.user_id,
+                        snapshot_ids, json.dumps(_notes(prior, stored)), caller.user_id,
                     ),
                 )
             ).fetchone()
@@ -425,6 +432,7 @@ async def save_research(
             "concepts_found": findings.concepts_found(), "not_found": findings.not_found,
         }
         current.goals = findings.goals
+        current.record = {"findings": stored, "gaps": [g.model_dump(mode="json") for g in findings.gaps]}
         unfetched = (await snapshots.log_unfetched(slug, snapshot_ids, [f["source_url"] for f in stored]) or []
                      if snapshot_ids is not None else [])
         # Publish the brief with the same call that saves it: waiting for a
