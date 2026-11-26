@@ -68,9 +68,13 @@ async def load_context(conn: Any, slug: str) -> Context:
     row = await (await conn.execute(CONTEXT_SQL, (slug,))).fetchone()
     if row is None:
         return Context((), ())
-    gaps = dict.fromkeys(f"{g['concept']}.{g['field']}" if g.get("field") else g["concept"]
-                         for g in row["gaps"] or [] if g.get("concept"))
+    gaps = dict.fromkeys(gap_name(g) for g in row["gaps"] or [] if g.get("concept"))
     return Context(concepts_for(row["entity_kind"]), tuple(gaps))
+
+
+def gap_name(gap: dict[str, Any]) -> str:
+    """A gap as the models are shown it and name it back: `concept` or `concept.field`."""
+    return f"{gap['concept']}.{gap['field']}" if gap.get("field") else gap["concept"]
 
 
 def ask(check: Check, sentences: list[str], context: Context) -> str:

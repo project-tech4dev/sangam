@@ -214,6 +214,28 @@ def fact_key(f: dict[str, Any]) -> tuple:
     return (concept, *(_norm(f.get(k)) for k in fields))
 
 
+def superseded(f: dict[str, Any], *, updated: bool = False) -> dict[str, Any]:
+    """How a refresh names a fact it replaced: its key, its source and its sentence, since one page can hold two
+    facts with one key and only this one ended. `updated` marks one the row's own findings replace."""
+    entry = {"key": list(fact_key(f)), "source_url": f.get("source_url"), "evidence": f.get("evidence")}
+    return {**entry, "updated": True} if updated else entry
+
+
+# A private finding a refresh row carries unchanged: it hides the summary and reaches promotion, but it is not new
+# research, so it never displaces another copy in the merge.
+CARRIED = "carried"
+
+
+def _same(f: dict[str, Any], g: dict[str, Any]) -> bool:
+    return f.get("source_url") == g.get("source_url") and (f.get("evidence") or "") == (g.get("evidence") or "")
+
+
+def _gone(f: dict[str, Any], entry: dict[str, Any]) -> bool:
+    # An entry saved before it named its sentence ends every copy from its source.
+    return f.get("source_url") == entry["source_url"] and (
+        "evidence" not in entry or (f.get("evidence") or "") == (entry["evidence"] or ""))
+
+
 def _json_list(value: Any) -> list[dict[str, Any]]:
     return value if isinstance(value, list) else json.loads(value or "[]")
 
@@ -234,22 +256,57 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
     """Every fact any run found, once: a later run's replaces an earlier one unless the earlier source is stronger.
 
     `prior` is the brief's own facts, laid down before the rows (oldest first); a wrong_entity row is another
-    organisation and adds nothing.
+    organisation and adds nothing, and a row's `supersedes` removes those facts, by key and source, from everything
+    before it.
     """
     by_key: dict[tuple, list[dict[str, Any]]] = {}
-    runs = [list(prior), *(_findings(r) for r in rows if r.get("status") != "wrong_entity")]
-    for findings in runs:
+    # Copies a stronger one displaced: a removal names only its own source, so another's copy comes back.
+    aside: dict[tuple, list[dict[str, Any]]] = {}
+    runs = [(list(prior), []), *((_findings(r), _json_list(r.get("supersedes"))) for r in rows
+                                 if r.get("status") != "wrong_entity")]
+    for findings, superseded in runs:
+        # A refresh that removed a fact names it, so neither an older row nor the brief brings it back; a copy
+        # cited from another source was not rechecked, so it stays.
+        replaced: dict[tuple, set[str]] = {}
+        for gone in superseded:
+            key = tuple(gone["key"])
+            replaced.setdefault(key, set()).add(gone["source_url"])
+            left = [f for f in by_key.get(key, []) if not _gone(f, gone)]
+            aside[key] = [f for f in aside.get(key, []) if not _gone(f, gone)]
+            if not left and aside[key]:
+                left = _strongest_source(aside[key])
+                aside[key] = [f for f in aside[key] if not any(f is g for g in left)]
+            if left:
+                by_key[key] = left
+            else:
+                by_key.pop(key, None)
         mine: dict[tuple, list[dict[str, Any]]] = {}
         for f in findings:
-            mine.setdefault(fact_key(f), []).append(f)
+            if not f.get(CARRIED):
+                mine.setdefault(fact_key(f), []).append(f)
         for key, group in mine.items():
             if key not in by_key:
                 by_key[key] = group
                 continue
-            win, lose = (group, by_key[key]) if _strength(group) >= _strength(by_key[key]) else (by_key[key], group)
-            # Promotion unions identity lists, so a weaker copy of the page stays while it adds a tag or alias.
-            by_key[key] = win + [f for f in lose if key[0] in _UNIONED_IDENTITY and _adds(f, win)]
+            if key in replaced:
+                # An update outranks the copies it was checked against: a stale copy from another source, however
+                # strong, was not reread. Same-page siblings the refresh kept stay beside it.
+                kept = group + [f for f in by_key[key] if f.get("source_url") in replaced[key]
+                                and not any(_same(f, g) for g in group)]
+            else:
+                win, lose = (group, by_key[key]) if _strength(group) >= _strength(by_key[key]) else (by_key[key], group)
+                # Promotion unions identity lists, so a weaker copy of the page stays while it adds a tag or alias.
+                kept = win + [f for f in lose if key[0] in _UNIONED_IDENTITY and _adds(f, win)]
+            aside.setdefault(key, []).extend(f for f in by_key[key] + group if not any(f is g for g in kept))
+            by_key[key] = kept
     return [f for group in by_key.values() for f in group]
+
+
+def _strongest_source(copies: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_source: dict[Any, list[dict[str, Any]]] = {}
+    for f in copies:
+        by_source.setdefault(f.get("source_url"), []).append(f)
+    return max(by_source.values(), key=_strength)
 
 
 _UNIONED_IDENTITY = frozenset({"identity", "org_identity"})
@@ -525,7 +582,8 @@ async def promotable(row: dict[str, Any], rows: list[dict[str, Any]]) -> dict[st
     merged = merge_findings(rows or [row], [{k: v for k, v in f.items() if k != STATE} for f in facts])
     # A pre-typed fact has no concept, so nothing could write it.
     public = [f for f in merged if f.get("concept") and not is_private_source(f.get("source_url"))]
-    private = [f for f in _findings(row) if is_private_source(f.get("source_url"))]
+    private = [{k: v for k, v in f.items() if k != CARRIED}
+               for f in _findings(row) if is_private_source(f.get("source_url"))]
     return {**row, "findings": [*public, *private], "unplaced": unplaced}
 
 

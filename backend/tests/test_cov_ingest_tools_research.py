@@ -15,6 +15,7 @@ import pytest
 
 from app.ingest.catalog.matcher import Match
 from app.ingest.reading import fetch
+from app.ingest.refresh.delta import REFRESH_REASON
 from app.ingest.research.expectations import concepts_for
 from app.ingest.tools import research_tools
 from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, running_as
@@ -451,18 +452,32 @@ class TestSaveResearch:
         assert (await self.save(research())).startswith("Saved as entity_research #31")
 
     async def test_a_fuller_save_today_is_kept_without_replace(self, saving):
-        saving.conn.on("SELECT fact_count", {"fact_count": 15, "researched_by": STAFF.user_id})
+        saving.conn.on("SELECT fact_count", {"fact_count": 15, "researched_by": STAFF.user_id, "stopped_reason": None})
         out = await self.save(research())
         assert "already has 15 findings saved today" in out
         assert not saving.conn.sql("INSERT")
 
+    async def test_a_refresh_today_is_weighed_by_its_own_delta_not_the_whole_record(self, saving):
+        # Older rows still merge into the brief, so overwriting a 1-fact refresh loses 1 fact, not the record.
+        saving.conn.on("SELECT fact_count", {"fact_count": 1, "researched_by": None,
+                                             "stopped_reason": f"{REFRESH_REASON}: 1 changed or new sources reread"})
+        out = await self.save(research(findings=[spend(), spend(evidence="The company spent Rs 9 crore on CSR.")]))
+        assert out.startswith("Saved as") and saving.conn.sql("INSERT INTO entity_research")
+
+    async def test_a_save_over_todays_row_keeps_what_a_refresh_removed(self, saving):
+        # A row's supersedes apply before its own findings, so what this run finds again still stands.
+        await self.save(research())
+        [(sql, _params)] = saving.conn.sql("INSERT INTO entity_research")
+        # A removal stays removed; an update's note goes, or the updated fact would vanish with its new value.
+        assert "WHERE NOT coalesce((e->>'updated')::boolean, false)" in sql
+
     async def test_replace_overwrites_and_says_so(self, saving):
-        saving.conn.on("SELECT fact_count", {"fact_count": 15, "researched_by": UUID(int=9)})
+        saving.conn.on("SELECT fact_count", {"fact_count": 15, "researched_by": UUID(int=9), "stopped_reason": None})
         out = await self.save(research(), replace=True)
         assert "Replaced 15 findings saved earlier today." in out
 
     async def test_a_members_own_earlier_save_may_be_replaced(self, saving):
-        saving.conn.on("SELECT fact_count", {"fact_count": 0, "researched_by": MEMBER.user_id})
+        saving.conn.on("SELECT fact_count", {"fact_count": 0, "researched_by": MEMBER.user_id, "stopped_reason": None})
         assert (await self.save(research(), scope=MEMBER)).startswith("Saved as")
 
     async def test_a_database_failure_is_returned(self, monkeypatch):

@@ -223,3 +223,50 @@ class TestStorage:
                         return [{"slug": "acme"}]
                 return C()
         assert await brief.rows_for(Conn(), "acme") == [{"slug": "acme"}]
+
+
+class TestSupersedes:
+    OLD = {"concept": "contact", "name": "Old office", "email": "old@x.org", "source_url": "https://x.org/"}
+    KEY = brief.superseded(OLD)
+
+    def test_a_fact_a_newer_row_supersedes_is_gone(self):
+        rows = [{"findings": [self.OLD]}, {"findings": [], "supersedes": [self.KEY]}]
+        assert brief.merge_findings(rows) == []
+
+    def test_the_briefs_own_copy_is_gone_too(self):
+        assert brief.merge_findings([{"findings": [], "supersedes": json.dumps([self.KEY])}], [self.OLD]) == []
+
+    def test_a_later_row_may_find_it_again(self):
+        rows = [{"findings": [self.OLD]}, {"findings": [], "supersedes": [self.KEY]}, {"findings": [self.OLD]}]
+        assert brief.merge_findings(rows) == [self.OLD]
+
+    def test_it_reaches_back_only(self):
+        rows = [{"findings": [], "supersedes": [self.KEY]}, {"findings": [self.OLD]}]
+        assert brief.merge_findings(rows) == [self.OLD]
+
+    def test_only_the_copy_from_the_removed_source_goes(self):
+        """The PAN read on the homepage and in the annual report: the footer dropping it leaves the report's."""
+        home = {"concept": "identifier", "id_type": "PAN", "value": "AAATA1234A", "source_url": "https://x.org/"}
+        report = {**home, "source_url": "https://x.org/annual-report.pdf"}
+        assert brief.fact_key(home) == brief.fact_key(report)
+        rows = [{"findings": [home, report]}, {"findings": [], "supersedes": [brief.superseded(home)]}]
+        assert brief.merge_findings(rows) == [report]
+
+    def test_a_removal_brings_back_a_copy_another_source_still_states(self):
+        """R0 read the year in the report, R1 on the homepage; the homepage dropping it leaves the report's."""
+        report = {"concept": "csr_year", "fiscal_year": "FY2023-24", "source_url": "https://x.org/report.pdf",
+                  "confidence": "medium", "evidence": "Spent 12 crore in FY 2023-24."}
+        home = {**report, "source_url": "https://x.org/", "confidence": "high"}
+        rows = [{"findings": [report]}, {"findings": [home]}, {"findings": [], "supersedes": [brief.superseded(home)]}]
+        assert brief.merge_findings(rows) == [report]
+
+    def test_a_removed_copy_never_comes_back(self):
+        report = {"concept": "csr_year", "fiscal_year": "FY2023-24", "source_url": "https://x.org/report.pdf"}
+        home = {**report, "source_url": "https://x.org/", "confidence": "high"}
+        rows = [{"findings": [report]}, {"findings": [home]},
+                {"findings": [], "supersedes": [brief.superseded(report)]},
+                {"findings": [], "supersedes": [brief.superseded(home)]}]
+        assert brief.merge_findings(rows) == []
+
+    def test_a_row_without_the_column_supersedes_nothing(self):
+        assert brief.merge_findings([{"findings": [self.OLD]}, {"findings": []}]) == [self.OLD]

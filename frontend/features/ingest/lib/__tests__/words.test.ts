@@ -24,6 +24,12 @@ describe("researchState", () => {
     expect(researchState(record({ saved_at: "2026-10-02" })).label).toBe("Saved");
     expect(researchState(record())).toEqual({ label: "Not saved", tag: "tag-neutral" });
   });
+
+  it("calls a refresh of a saved profile not saved until its own save", () => {
+    const refresh = record({ resolved_org_id: 3, stopped_reason: "A refresh: 2 changed or new sources reread" });
+    expect(researchState(refresh)).toEqual({ label: "Not saved", tag: "tag-neutral" });
+    expect(researchState({ ...refresh, saved_at: "2026-10-02" }).label).toBe("Saved");
+  });
 });
 
 describe("savedSinceResearch", () => {

@@ -20,6 +20,7 @@ from app.ingest.refresh import (
     baseline,
     compare,
     decision,
+    delta,
     diff,
     discover,
     evidence,
@@ -39,13 +40,17 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
                         help="stop after this stage and print what it found (default: the last)")
     parser.add_argument("--write", action="store_true",
                         help="archive what differed and save one source_checks row per source (every stage runs)")
+    parser.add_argument("--refresh", action="store_true",
+                        help="with --write: when the decision is refresh, save a delta as today's research row")
     args = parser.parse_args(argv)
     if args.write and args.until != STAGES[-1]:
         parser.error("--write saves what every stage found, so it cannot stop early with --until")
+    if args.refresh and not args.write:
+        parser.error("--refresh needs --write: the delta cites the versions --write archives")
     return args
 
 
-async def main(slug: str, until: str, write: bool = False) -> None:
+async def main(slug: str, until: str, write: bool = False, refresh: bool = False) -> None:
     """Each stage prints what it found; the check stops after `until`, or when nothing is left to check.
     The database is held only to read at the start and, with write, to save at the end, never while fetching."""
     async with _connection() as conn:
@@ -59,12 +64,61 @@ async def main(slug: str, until: str, write: bool = False) -> None:
     # One folder for the run: a document that differed is archived from it at the end.
     with tempfile.TemporaryDirectory(prefix="source-check-") as scratch:
         ended = await _stages(slug, until, Path(scratch), baselines, findings, context, subject)
-        if write and ended is not None:
-            checks, found = ended
-            keys = await save.archive_all(checks)
-            run_id = uuid.uuid4()
-            async with _connection() as conn:
-                print(save.describe(slug, run_id, await save.write(conn, run_id, slug, checks, found, keys)))
+        if not write or ended is None:
+            return
+        checks, found, verdict = ended
+        keys = await save.archive_all(checks, found)
+        run_id = uuid.uuid4()
+        async with _connection() as conn:
+            saved = await save.write(conn, run_id, slug, checks, found, keys)
+        print(save.describe(slug, run_id, saved))
+        if refresh and verdict == decision.REFRESH:
+            await _refresh(slug, checks, found, context, saved)
+        elif refresh:
+            print(f"{slug}: no refresh: the decision is {verdict}")
+
+
+async def _refresh(slug: str, checks: list[compare.Check], found: discover.Discovery, context: judge.Context,
+                   saved: save.Saved) -> None:
+    """The delta is asked for with no connection held; the brief waits for the person's save in Review & save."""
+    settings = get_settings()
+    async with _connection() as conn:
+        entity, rows = await delta.load(conn, slug)
+        today = entity is not None and await delta.researched_today(conn, slug)
+    if entity is None:
+        print(f"{slug}: no refresh: no research row to carry forward")
+        return
+    if today:
+        print(f"{slug}: no refresh: it was already researched today")
+        return
+    if why := delta.cannot_refresh(entity):
+        print(f"{slug}: no refresh: {why}")
+        return
+    name, kind = entity["canonical_name"] or entity["entity_name"], entity.get("entity_kind")
+    srcs = delta.fit(name, delta.sources(checks, found, delta.facts_by_url(rows)), context, kind)
+    if not any(s.status != "dead" for s in srcs):
+        # A dead page's facts are never removed by a refresh, so a model would be paid to change nothing.
+        print(f"{slug}: no refresh: only gone pages changed, and a person decides whether their facts still hold")
+        return
+    # Sonnet refuses a forced tool call for structured output, so the delta asks for a JSON schema.
+    model = resolve_model(settings.research_model).with_structured_output(delta.Delta, method="json_schema")
+    grader = resolve_model(settings.utility_model).with_structured_output(delta.Grade)
+    try:
+        proposed, problems = await delta.propose(model, grader, delta.ask(name, srcs, context, kind))
+    except Exception as exc:  # noqa: BLE001 — a reply that is no delta saves nothing, and says so
+        print(f"{slug}: refresh not saved: the update model gave no usable delta ({type(exc).__name__})")
+        return
+    applied = delta.apply(proposed, srcs, kind)
+    read = [s.url for s in srcs if s.status != "dead" and s.url not in applied.stale]
+    ids = [saved.snapshot_ids[u] for u in read if u in saved.snapshot_ids]
+    if not applied.findings and not applied.supersedes:
+        async with _connection() as conn:
+            await delta.note_reread(conn, entity["id"], ids)
+        print(delta.describe(slug, applied, None, problems, nothing=True))
+        return
+    async with _connection() as conn, conn.transaction():
+        row_id = await delta.save_row(conn, entity, applied, proposed, context, ids, read)
+    print(delta.describe(slug, applied, row_id, problems))
 
 
 @asynccontextmanager
@@ -80,7 +134,7 @@ async def _connection() -> AsyncIterator[Any]:
 
 async def _stages(slug: str, until: str, scratch: Path, baselines: list[baseline.Baseline],
                   findings: dict[str, list[str]], context: judge.Context,
-                  subject: discover.Subject | None) -> tuple[list[compare.Check], discover.Discovery] | None:
+                  subject: discover.Subject | None) -> tuple[list[compare.Check], discover.Discovery, str] | None:
     """The stages after the baseline; the checks and the discovery when every stage ran, else None."""
     settings = get_settings()
     today = await fetch_status.fetch_all(baselines, scratch)
@@ -121,10 +175,11 @@ async def _stages(slug: str, until: str, scratch: Path, baselines: list[baseline
                                        model.with_structured_output(discover.Picks), settings.tavily_api_key,
                                        client, scratch)
         print(discover.describe(slug, found))
-    print(decision.describe(slug, checks, found, decision.decide(checks, found, redesign)))
-    return checks, found
+    verdict = decision.decide(checks, found, redesign)
+    print(decision.describe(slug, checks, found, verdict))
+    return checks, found, verdict
 
 
 if __name__ == "__main__":
     args = parse()
-    asyncio.run(main(args.slug, args.until, args.write))
+    asyncio.run(main(args.slug, args.until, args.write, args.refresh))

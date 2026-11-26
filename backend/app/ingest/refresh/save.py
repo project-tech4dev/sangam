@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import mimetypes
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
@@ -14,7 +14,7 @@ from app.ingest.reading.snapshots import RECORD_SQL
 from app.ingest.refresh.compare import Check
 from app.ingest.refresh.discover import NEW, Discovery
 from app.ingest.refresh.evidence import BROKEN, INTACT, UNANCHORED
-from app.ingest.refresh.fetch_status import OK
+from app.ingest.refresh.fetch_status import OK, Today
 
 INSERT_SQL = """
     INSERT INTO source_checks (run_id, slug, url, baseline_snapshot_id, new_snapshot_id, status,
@@ -28,6 +28,7 @@ class Saved:
     rows: int
     snapshots: int
     archive_failed: int
+    snapshot_ids: dict[str, int] = field(default_factory=dict)  # today's version of each source, by URL
 
 
 def differed(check: Check) -> bool:
@@ -36,42 +37,54 @@ def differed(check: Check) -> bool:
         check.today.fingerprint != check.baseline.text_hash
 
 
-async def archive(check: Check) -> str | None:
-    """Today's version in the source archive, as the reading tools store it; the document must still be on disk."""
-    today, kind = check.today, check.baseline.kind
+async def archive(url: str, kind: str | None, today: Today) -> str | None:
+    """Today's version in the source archive, as the reading tools store it; a document must still be on disk."""
     if kind == "document":
         if today.path is None or not today.path.exists():
             return None
-        return await archive_document(check.baseline.url, today.path, mimetypes.guess_type(today.path.name)[0])
-    return await archive_page(check.baseline.url, today.text)
+        return await archive_document(url, today.path, mimetypes.guess_type(today.path.name)[0])
+    return await archive_page(url, today.text)
 
 
-async def archive_all(checks: list[Check]) -> dict[str, str | None]:
-    """Each source that differed, archived before any row is written: a snapshot row never names a missing file."""
-    return {c.baseline.url: await archive(c) for c in checks if differed(c)}
+async def archive_all(checks: list[Check], found: Discovery) -> dict[str, str | None]:
+    """Each source that differed, and each new one, archived before any row is written: a snapshot row never
+    names a missing file."""
+    keys = {c.baseline.url: await archive(c.baseline.url, c.baseline.kind, c.today) for c in checks if differed(c)}
+    for lead, _why in found.new:
+        if lead.url in found.fetched:
+            keys[lead.url] = await archive(lead.url, lead.kind, found.fetched[lead.url])
+    return keys
 
 
 async def write(conn: Any, run_id: UUID, slug: str, checks: list[Check], found: Discovery,
                 keys: dict[str, str | None]) -> Saved:
     """One transaction: a run is saved whole or not at all."""
-    snapshots = failed = 0
+    ids: dict[str, int] = {}
+    failed = 0
+
+    async def snapshot(url: str, kind: str | None, today: Today) -> tuple[int | None, str]:
+        nonlocal failed
+        if url not in keys:
+            return None, ""
+        if not keys[url]:
+            failed += 1
+            return None, "; archive failed"
+        row = await (await conn.execute(RECORD_SQL, (url, kind, today.fingerprint, keys[url]))).fetchone()
+        ids[url] = row["id"]
+        return row["id"], ""
+
     async with conn.transaction():
         for c in checks:
-            new_id, detail = None, c.reason or c.today.reason
-            if c.baseline.url in keys:
-                key = keys[c.baseline.url]
-                if key:
-                    row = await (await conn.execute(RECORD_SQL, (c.baseline.url, c.baseline.kind,
-                                                                 c.today.fingerprint, key))).fetchone()
-                    new_id, snapshots = row["id"], snapshots + 1
-                else:
-                    detail, failed = f"{detail}; archive failed", failed + 1
+            new_id, note = await snapshot(c.baseline.url, c.baseline.kind, c.today)
             tally = [sum(v == k for v, _ in c.verdicts) for k in (INTACT, BROKEN, UNANCHORED)]
+            detail = f"{c.reason or c.today.reason}{note}"
             await conn.execute(INSERT_SQL, (run_id, slug, c.baseline.url, c.baseline.snapshot_id, new_id, c.status,
                                             *tally, Jsonb(c.judgement) if c.judgement else None, detail or None))
         for lead, why in found.new:
-            await conn.execute(INSERT_SQL, (run_id, slug, lead.url, None, None, NEW, 0, 0, 0, None, why))
-    return Saved(len(checks) + len(found.new), snapshots, failed)
+            today = found.fetched.get(lead.url)
+            new_id, note = await snapshot(lead.url, lead.kind, today) if today else (None, "")
+            await conn.execute(INSERT_SQL, (run_id, slug, lead.url, None, new_id, NEW, 0, 0, 0, None, f"{why}{note}"))
+    return Saved(len(checks) + len(found.new), len(ids), failed, ids)
 
 
 def describe(slug: str, run_id: UUID, saved: Saved) -> str:

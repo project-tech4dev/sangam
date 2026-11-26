@@ -264,18 +264,20 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                 return _NGO_REFUSAL
             prior = await (
                 await conn.execute(
-                    "SELECT fact_count, researched_by FROM entity_research "
+                    "SELECT fact_count, researched_by, stopped_reason FROM entity_research "
                     "WHERE slug = %s AND researched_on = current_date",
                     (slug,),
                 )
             ).fetchone()
+            # Overwriting today's row loses only that row's own findings; for a refresh, only its delta.
+            held = prior["fact_count"] if prior else 0
         # One row per entity per day is shared, so only staff replace what someone else saved.
         if prior and not caller.is_staff and prior["researched_by"] != caller.user_id:
             return (f"REFUSED: {slug} was already researched and saved today. Report back with "
                     f"slug={slug!r} and saved=true, and say the research on file is today's.")
-        if prior and prior["fact_count"] > len(findings.findings) and not replace:
+        if prior and held > len(findings.findings) and not replace:
             return (
-                f"REFUSED: {slug} already has {prior['fact_count']} findings saved today and "
+                f"REFUSED: {slug} already has {held} findings saved today and "
                 f"you are offering {len(findings.findings)}. Saving would replace the fuller "
                 f"result. If you meant to, call again with replace=true; otherwise report what "
                 f"you found and say the earlier research is already on file."
@@ -307,6 +309,10 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         gaps = EXCLUDED.gaps,
                         years = EXCLUDED.years,
                         snapshot_ids = EXCLUDED.snapshot_ids,
+                        -- A removal stays removed; an update's note goes with the finding this save replaces.
+                        supersedes = (SELECT coalesce(jsonb_agg(e), '[]'::jsonb)
+                                        FROM jsonb_array_elements(entity_research.supersedes) e
+                                       WHERE NOT coalesce((e->>'updated')::boolean, false)),
                         researched_by = EXCLUDED.researched_by,
                         researched_at = now()
                     RETURNING *
