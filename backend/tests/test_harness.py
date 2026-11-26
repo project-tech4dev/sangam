@@ -225,11 +225,21 @@ class TestEachTierGetsItsModel:
         with pytest.raises(ValidationError, match="SQL_AUDIT_MODEL"):
             Settings(_env_file=None, model=c, research_model=c, utility_model=c, **judge, **url)
         with pytest.raises(ValidationError, match="SOURCE_CHECK_JUDGE_MODEL"):
-            Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off", **url)
+            Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off",
+                     source_check_judge_model="anthropic:claude-haiku-5-5", **url)
         assert Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off",
                         **judge, **url)
+        # A compat deployment from before the judge existed sets no judge, and still boots: it follows UTILITY_MODEL.
+        unset = Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off", **url)
+        assert unset.source_check_judge_model == c
         assert Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model=c,
                         **judge, **url)
+
+    def test_a_blank_judge_follows_the_utility_tier(self):
+        from app.core.config import Settings
+
+        assert Settings(_env_file=None, source_check_judge_model="").source_check_judge_model == \
+            Settings(_env_file=None).utility_model
 
     def test_compat_tiers_refuse_to_boot_without_their_endpoint(self):
         from pydantic import ValidationError

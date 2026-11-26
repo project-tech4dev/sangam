@@ -58,6 +58,11 @@ async def test_promotion_reads_the_version_the_run_read(monkeypatch):
     assert await snapshots.read_key(ScriptConn(), None, URL) is None
 
 
+async def test_a_url_that_cannot_be_parsed_falls_back_rather_than_failing_the_save():
+    conn = ScriptConn()
+    assert await snapshots.read_key(conn, [3], "https://example.org:abc/x") is None and conn.calls == []
+
+
 async def test_a_query_error_is_none_too(monkeypatch):
     conn = ScriptConn([("INSERT INTO source_snapshots", RuntimeError("constraint"))])
     monkeypatch.setattr(snapshots, "get_pool", lambda: ScriptPool(conn))

@@ -98,7 +98,8 @@ class Settings(BaseSettings):
     # it is a real extra model call per SQL turn, so it runs on the cheapest tier.
     sql_audit_model: str = "anthropic:claude-haiku-5-5"
     # make source-check: decides whether a changed page matters. It reads only the diff, once per changed page.
-    source_check_judge_model: str = "anthropic:claude-haiku-5-5"
+    # Blank follows UTILITY_MODEL, so a deployment that moved its tiers to compat: needs no new variable.
+    source_check_judge_model: str = ""
 
     # Graph steps per turn, not tool calls: every middleware hook is its own node, so one model-then-tool
     # cycle costs several. Bound in build_agent(); LangGraph's own default is 25, which a SQL turn exceeds.
@@ -162,6 +163,12 @@ class Settings(BaseSettings):
     @classmethod
     def _off_disables_the_audit(cls, v: str) -> str:
         return "" if v.strip().lower() == "off" else v
+
+    @model_validator(mode="after")
+    def _judge_follows_the_utility_tier(self) -> Settings:
+        if not self.source_check_judge_model:
+            self.source_check_judge_model = self.utility_model
+        return self
 
     @model_validator(mode="after")
     def _compat_runs_alone(self) -> Settings:
