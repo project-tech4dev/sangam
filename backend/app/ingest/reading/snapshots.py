@@ -6,6 +6,8 @@ import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from app.db.pool import get_pool
@@ -59,6 +61,38 @@ async def known_fingerprint(archive_key: str) -> str | None:
     except Exception:
         logger.warning("snapshot lookup failed for %s", archive_key, exc_info=True)
         return None
+
+
+@dataclass(frozen=True)
+class SavedReading:
+    archive_key: str
+    researched_on: date
+
+
+# The newest saved research row of this entity whose run read this exact version of the page.
+SAVED_READING_SQL = """
+    SELECT s.id, s.archive_key, r.researched_on
+    FROM source_snapshots s JOIN entity_research r ON s.id = ANY(r.snapshot_ids)
+    WHERE s.url = %s AND s.text_hash = %s AND s.archive_key IS NOT NULL AND r.slug = %s
+    ORDER BY r.researched_on DESC, r.id DESC LIMIT 1
+"""
+
+
+async def saved_reading(url: str, fingerprint: str, slug: str | None) -> SavedReading | None:
+    """This version of url when slug's saved research already read it and this run has not; None outside a Scout
+    top-up. Never raises: on any failure the page is sent as usual."""
+    ids = COLLECTED.get()
+    if ids is None or not slug:
+        return None
+    try:
+        async with get_pool().connection() as conn:
+            row = await (await conn.execute(SAVED_READING_SQL, (url, fingerprint, slug))).fetchone()
+    except Exception:
+        logger.warning("saved reading lookup failed for %s", url, exc_info=True)
+        return None
+    if not row or row["id"] in ids:
+        return None
+    return SavedReading(row["archive_key"], row["researched_on"])
 
 
 async def read_key(conn: Any, snapshot_ids: list[int] | None, url: str) -> str | None:

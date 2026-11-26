@@ -34,6 +34,8 @@ class Draft:
     goals: list[str] = field(default_factory=list)
     # The row that save wrote, merged with today's earlier one: what the judge reads.
     record: dict[str, Any] | None = None
+    # The saved research this run tops up, from research_goals: only its pages answer ALREADY READ.
+    slug: str | None = None
 
 
 # One per launched researcher; ChosenSources opens it beside snapshots.collecting().

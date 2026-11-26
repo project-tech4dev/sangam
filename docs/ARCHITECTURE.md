@@ -127,6 +127,13 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   `ResearchJudge` scores correctness, completeness, relevance, consistency and source quality to Langfuse, from public
   findings only, and never retries. It reads the row as saved, merged with today's earlier one, and runs in the
   background, so the researcher's return never waits on it; the hook's Langfuse run is taken before, since it has ended by then.
+- **Research again reads only what is new.** `read_page` fetches and fingerprints every page, but a version a saved
+  research row of the same entity already read (`source_snapshots` joined to `entity_research.snapshot_ids`, on the
+  slug `research_goals` matched) answers `ALREADY READ` with the date, not its text; a second `read_page` in the same
+  run sends the text, so a researcher who needs it for an open item is never blocked. Another entity's researcher, or a
+  first research, always gets the text. `fetch_document` says the same in its reply. A host that timed
+  out twice in a day is not asked again (in memory: a restart forgets it), and a document gives up after 30 s with
+  no bytes, not 120 s, because NSE held nine reads for 8 minutes in `7925d873`.
 - **A metric's period has four shapes**, because it is part of the metric's key: `FY2024-25`, `CY2025`,
   `cumulative to <date>`, `as of <date>` (`rows.shape_period`). A save rewrites an exact match and refuses the rest;
   research read back for promotion (`STORED` context) is rewritten the same way but never refused, so a rule added

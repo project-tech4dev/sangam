@@ -210,7 +210,7 @@ class TestReadPage:
         assert "off Give.do's allowed paths" in out
 
     async def test_an_unexpected_failure_is_returned(self, monkeypatch):
-        async def boom(url):
+        async def boom(url, subject):
             raise RuntimeError("x")
         monkeypatch.setattr(research_tools, "read_page_text", boom)
         assert await research_tools.read_page.ainvoke({"url": URL}) == "read_page failed: RuntimeError: x"
@@ -263,7 +263,7 @@ class TestFetchDocument:
         assert (await research_tools.fetch_document.ainvoke({"url": URL})).startswith("REFUSED:")
 
     async def test_an_unexpected_failure_is_returned(self, monkeypatch):
-        async def boom(url, name):
+        async def boom(url, name, subject):
             raise OSError("disk full")
         monkeypatch.setattr(research_tools, "fetch_document_file", boom)
         assert await research_tools.fetch_document.ainvoke({"url": URL}) == "fetch_document failed: OSError: disk full"

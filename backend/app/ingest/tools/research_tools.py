@@ -119,7 +119,8 @@ async def read_page(url: str) -> str:
     is checked too: a REFUSED that names a redirect is still final.
     """
     try:
-        return await read_page_text(url)
+        current = draft.CURRENT.get()
+        return await read_page_text(url, current.slug if current else None)
     except Exception as exc:  # noqa: BLE001 - errors are return values
         return f"read_page failed: {type(exc).__name__}: {exc}"
 
@@ -133,7 +134,8 @@ async def fetch_document(url: str, filename: str | None = None) -> str:
     with read_document_pages. Access is checked before anything is fetched.
     """
     try:
-        return await fetch_document_file(url, filename)
+        current = draft.CURRENT.get()
+        return await fetch_document_file(url, filename, current.slug if current else None)
     except Exception as exc:  # noqa: BLE001 - errors are return values
         return f"fetch_document failed: {type(exc).__name__}: {exc}"
 

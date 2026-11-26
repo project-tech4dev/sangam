@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 import trafilatura
@@ -19,7 +21,7 @@ from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.reading.access import canonical_url, check_url, source_banner
 from app.ingest.reading.fingerprint import bytes_hash, text_hash
 from app.ingest.reading.registry import rule_for_url
-from app.ingest.reading.snapshots import known_fingerprint, remember
+from app.ingest.reading.snapshots import SavedReading, known_fingerprint, remember, saved_reading
 from app.integrations import storage
 from app.integrations.storage import safe_name
 
@@ -31,6 +33,12 @@ def downloads_dir() -> Path:
 
 
 MAX_DOWNLOAD_MB = 60
+# Between bytes, not in total: a large report still downloads, a stalled one gives up (NSE held 9 reads for 8 min).
+DOCUMENT_TIMEOUT = 30
+# A host that timed out this often in SLOW_FOR seconds is not asked again; in memory, so a restart forgets it.
+SLOW_AFTER = 2
+SLOW_FOR = 24 * 3600
+_TIMEOUTS: dict[str, list[float]] = {}
 # A longer PDF is fingerprinted by its bytes: parsing all of a 400-page report held the tool's reply for minutes.
 MAX_HASHED_PAGES = 100
 WORD = "wordprocessingml"  # in a .docx's content type
@@ -93,6 +101,7 @@ class Fetched:
     refused: str | None = None  # the whole REFUSED message
     error: str | None = None  # "<ExceptionType>: <message>" when no usable answer came back
     too_large: bool = False
+    timed_out: bool = False
 
 
 async def fetch_page(url: str) -> Fetched:
@@ -107,7 +116,7 @@ async def fetch_page(url: str) -> Fetched:
     except _Stop as stop:
         return Fetched(url, refused=stop.reply)
     except httpx.HTTPError as exc:
-        return Fetched(url, error=f"{type(exc).__name__}: {exc}")
+        return Fetched(url, error=f"{type(exc).__name__}: {exc}", timed_out=isinstance(exc, httpx.TimeoutException))
     content_type = response.headers.get("content-type", "").lower()
     seen = Fetched(url, final_url=str(response.url), status=response.status_code, content_type=content_type,
                    size=len(response.content))
@@ -125,8 +134,43 @@ async def fetch_page(url: str) -> Fetched:
     return replace(seen, text=text)
 
 
-async def read_page_text(url: str) -> str:
+def _host(url: str) -> str:
+    return (urlsplit(url).hostname or "").removeprefix("www.")
+
+
+def slow_host(url: str) -> str | None:
+    """The host, when it timed out SLOW_AFTER times in the last SLOW_FOR seconds."""
+    host, now = _host(url), time.monotonic()
+    recent = [t for t in _TIMEOUTS.get(host, []) if now - t < SLOW_FOR]
+    if recent:
+        _TIMEOUTS[host] = recent
+    else:
+        _TIMEOUTS.pop(host, None)
+    return host if len(recent) >= SLOW_AFTER else None
+
+
+def _note_timeout(got: Fetched) -> None:
+    if got.timed_out:
+        _TIMEOUTS.setdefault(_host(got.url), []).append(time.monotonic())
+
+
+def _slow_reply(url: str, host: str) -> str:
+    return (f"ERROR: {host} timed out {SLOW_AFTER} times in the last day, so {url} was not requested. "
+            "Find the fact on another source, or record a gap that names this one.")
+
+
+def already_read(url: str, seen: SavedReading) -> str:
+    return (f"ALREADY READ: this version of {url} is unchanged since the saved research read it on "
+            f"{seen.researched_on:%d %b %Y}, and its facts are in that research. Not sent again. "
+            "If you need its text for an open item, call read_page again and the text comes back.")
+
+
+async def read_page_text(url: str, subject: str | None = None) -> str:
+    """`subject` is the slug of the saved research a Scout top-up builds on; a page it read is not sent again."""
+    if host := slow_host(canonical_url(url)):
+        return _slow_reply(canonical_url(url), host)
     page = await fetch_page(url)
+    _note_timeout(page)
     url = page.url
     if page.refused:
         return page.refused
@@ -142,8 +186,12 @@ async def read_page_text(url: str) -> str:
     text = page.text
     if not text.strip():
         return f"No readable text could be extracted from {url}."
+    fingerprint = text_hash(text)
+    if seen := await saved_reading(url, fingerprint, subject):
+        await remember(url, "page", fingerprint, seen.archive_key)
+        return already_read(url, seen)
     # Kept as read, so a fact outlives a page that changes; silent like fetch_document's archive.
-    await remember(url, "page", text_hash(text), await archive_page(url, text))
+    await remember(url, "page", fingerprint, await archive_page(url, text))
     # Uncut: a long page is evicted to a file the researcher pages back with read_file.
     return source_banner(page.final_url or url) + text
 
@@ -186,7 +234,7 @@ async def download(url: str, filename: str | None, directory: Path | None = None
         return Fetched(url, refused=f"REFUSED: {refusal}")
     limit = MAX_DOWNLOAD_MB * 1024 * 1024
     try:
-        async with _client(url, timeout=120, headers=PAGE_HEADERS) as client, \
+        async with _client(url, timeout=DOCUMENT_TIMEOUT, headers=PAGE_HEADERS) as client, \
                 client.stream("GET", url) as response:
             response.raise_for_status()
             name = safe_name(filename or url.split("?")[0].rstrip("/").rsplit("/", 1)[-1])
@@ -212,12 +260,15 @@ async def download(url: str, filename: str | None, directory: Path | None = None
     except httpx.HTTPStatusError as exc:
         return Fetched(url, status=exc.response.status_code, error=f"{type(exc).__name__}: {exc}")
     except httpx.HTTPError as exc:
-        return Fetched(url, error=f"{type(exc).__name__}: {exc}")
+        return Fetched(url, error=f"{type(exc).__name__}: {exc}", timed_out=isinstance(exc, httpx.TimeoutException))
     return Fetched(url, final_url=final_url, status=200, content_type=content_type, path=destination, size=size)
 
 
-async def fetch_document_file(url: str, filename: str | None) -> str:
+async def fetch_document_file(url: str, filename: str | None, subject: str | None = None) -> str:
+    if host := slow_host(canonical_url(url)):
+        return _slow_reply(canonical_url(url), host)
     got = await download(url, filename)
+    _note_timeout(got)
     url = got.url
     if got.refused:
         return got.refused
@@ -235,7 +286,12 @@ async def fetch_document_file(url: str, filename: str | None) -> str:
     if key:
         # The key names the bytes, so an unchanged re-fetch reuses the hash rather than parsing the PDF again.
         fingerprint = await known_fingerprint(key) or await asyncio.to_thread(document_hash, destination)
+        seen = await saved_reading(url, fingerprint, subject)
         await remember(url, "document", fingerprint, key)
+        if seen:
+            return (f"Saved {name} ({got.size:,} bytes). It is the version the saved research read on "
+                    f"{seen.researched_on:%d %b %Y}, so its facts are in that research: read its pages only for an "
+                    f"open item, with read_document_pages('{name}').")
     return f"Saved {name} ({got.size:,} bytes). Read it with read_document_pages('{name}')."
 
 

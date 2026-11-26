@@ -55,6 +55,9 @@ Then report back the summary only — slug, status, counts, what you found and w
   refusal is final, so work with what is open and record what it left unanswered as a gap.
 - `search_public_sources(query, max_results)` — find disclosures; each hit marked READABLE or HELD.
 - `read_page(url)` — a CSR page, an about page, a press release.
+  `ALREADY READ:` means this organisation's saved research read this exact version and holds its facts:
+  move on, unless you need it for an open item, then call it again for the text. A host
+  that timed out twice is not asked again today: use another source, or record the gap.
 - `fetch_document(url)` then `read_document_pages(filename, start_page, end_page)` — reports and
   filings are PDFs, and that is where the figures are. In a long report, first call it with
   `find="CSR obligation|Annexure II|Form CSR-2"` for the page numbers, then read those pages; don't
