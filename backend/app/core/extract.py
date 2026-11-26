@@ -179,9 +179,10 @@ def find_in_docx(data: bytes, terms: list[str]) -> tuple[list[tuple[int, str]], 
     return [(n, s) for n, p in enumerate(paras, 1) if (s := _snippet(p, terms)) is not None], len(paras)
 
 
-def extract_pdf_text(source: Path, start_page: int = 1, end_page: int | None = None) -> tuple[str, int]:
+def extract_pdf_text(source: Path, start_page: int = 1, end_page: int | None = None,
+                     max_chars: int | None = PDF_TEXT_CHARS * 2) -> tuple[str, int]:
     """Return (extracted_text, total_pages) for a PDF file. Text may be empty
-    if the PDF has no embedded text layer (scanned/image-only documents)."""
+    if the PDF has no embedded text layer (scanned/image-only documents); max_chars=None reads every page."""
     reader = PdfReader(str(source))
     total = len(reader.pages)
     start = max(start_page, 1)
@@ -192,6 +193,6 @@ def extract_pdf_text(source: Path, start_page: int = 1, end_page: int | None = N
         if page_text:
             page_text = "\n".join(_normalize_line(l) for l in page_text.splitlines())
             parts.append(f"--- page {index + 1} ---\n{page_text}")
-        if sum(len(p) for p in parts) > PDF_TEXT_CHARS * 2:
+        if max_chars is not None and sum(len(p) for p in parts) > max_chars:
             break
     return "\n\n".join(parts), total

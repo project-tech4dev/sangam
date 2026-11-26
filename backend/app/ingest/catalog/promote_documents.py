@@ -25,7 +25,7 @@ from app.ingest.catalog.rows import (
 )
 from app.ingest.catalog.writer import UNWRITTEN, Conflict, Owner, cited_title, ensure_document, write_tags
 from app.ingest.catalog.writer_funder import write_program
-from app.ingest.reading import staff_sources, vault
+from app.ingest.reading import snapshots, staff_sources, vault
 from app.integrations import storage
 
 
@@ -174,9 +174,10 @@ async def _shelve(
             slug, as_of, storage.filename_from_key(key), suffix=(digest or "")[:8],
             prefix=prefix,
         )
-    return destination if await storage.move(
-        storage.SOURCE_ARCHIVE, key, destination
-    ) else key
+    if not await storage.move(storage.SOURCE_ARCHIVE, key, destination):
+        return key
+    snapshots.note_moved(key, destination)
+    return destination
 
 
 # "Mission 2 Million (2019-2025)"; "SLP - Rural Livelihoods"; "Rural Livelihoods (SLP component)".

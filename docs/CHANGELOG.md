@@ -45,6 +45,7 @@ in the PR that ships a change, under its subsystem.
 - 2026-11-02 · #358 · `0054`: `org-vault` takes only PDF, Word, Excel, CSV, Markdown, text and PNG/JPEG/WebP files; the upload routes refuse any other extension (415), and a file whose bytes are not its type is refused at confirm and removed (#307 §4).
 - 2026-11-04 · #361 · `0055`: `org-vault` takes PowerPoint (`.pptx`) too, so earlier slide decks can be imported; its slide text is saved at upload, and Pitch and Scout read it a slide at a time, cited `[vault:<id>#slide<n>]`.
 - (unmerged) · #324 M1 · `0064`: `funders.funder_type` is one of nine types under a CHECK; `funder_group` rolls them up to Corporate / HNI / Philanthropy / Govt. / Other; `money_origin` (default `unknown`) records foreign money for FCRA. The 17 `other` funders are retyped by slug, 11 marked foreign (`docs/FUNDER_TYPES.md`).
+- 2026-11-18 · #428 · `0058`: `source_snapshots`, one row per distinct version (url and text hash) of a page or report Scout read, with its archive key; `entity_research.snapshot_ids` lists the versions a run read. Staff-only.
 
 Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · `0021` #89 · `0022` #74 ·
 `0023`–`0029` #92/#97 · `0030` #98 · `0032` #105 · `0035` #127 · `0036`–`0037` #100 · `0038` #130 ·
@@ -118,6 +119,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-04 · (unmerged) · A programme's tags roll up to its funder or org as `secondary`; a described programme with no theme is refused at save unless a gap names it (#241).
 - 2026-11-05 · #367 · `save_research` repairs a payload instead of refusing it for a split URL, summary counts, a year on a non-yearly gap or an office's mailbox; a refusal for a top-level field also lists the contract's missing fields (#171).
 - 2026-11-17 · (unmerged) · A metric's period is one of four shapes, rewritten when exact and refused otherwise; old research is rewritten, never refused (#200). A programme placed only in a fiscal year starts on its 1 April, `basis: derived` (#199).
+- 2026-11-18 · #428 · Scout records each version it reads: `read_page` and `fetch_document` fingerprint the text (`reading/fingerprint.py`; a PDF by its extracted text, so a re-export is not a change) and keep one `source_snapshots` row per version, and `save_research` saves which ones a run read, so a later run can tell whether a source changed.
 - 2026-11-24 · #481 · A `compat:` model tier calls any OpenAI-compatible endpoint (`COMPAT_BASE_URL`, `COMPAT_API_KEY`) for a trial of an open model; boot refuses unless every tier is `compat:`. The Dockerfile's `uv export` typo from #427 is fixed.
 - 2026-11-24 · #482 · Every agent summarises at a fixed 170k tokens and keeps the last 20k, not 85% of the model's window (850k on a 1M model); the summary keeps each source's full URL.
 - 2026-11-24 · #440 · `read_document_pages(find="CSR obligation|Annexure II")` lists the pages of a long PDF or Word file that name any word, one line each, so a researcher reads those pages instead of guessing ranges; a find spends none of the reading limit, and a scanned PDF is a `blocked` gap.

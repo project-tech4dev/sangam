@@ -1037,6 +1037,8 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         "ingest_source_proposals",
         "entity_research",
         "resolution_queue",
+        # The page and report versions Scout read, for its change check.
+        "source_snapshots",
         # One organisation's Doc Vault findings, quoting its private files.
         "vault_research",
         # Funder Match's saved runs, private to each org; served by /api/funder-matches, read by the page.

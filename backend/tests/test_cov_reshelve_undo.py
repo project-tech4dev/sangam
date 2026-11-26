@@ -70,6 +70,10 @@ async def test_a_dry_run_names_each_move_and_changes_nothing(db, cli, capsys):
 
 async def test_yes_moves_what_it_can_and_reports_what_it_could_not(db, cli, monkeypatch, capsys):
     _, first, stuck = await _documents(db)
+    old_key = f"abcd1234/{'b' * 64}-report.pdf"
+    snap = await one(db, "INSERT INTO source_snapshots (url, kind, text_hash, archive_key) "
+                         "VALUES (%s, 'document', %s, %s) RETURNING id", f"https://zz-{tag()}.example.org/r.pdf",
+                     "d" * 64, old_key)
 
     async def shelve(key, slug, as_of, digest):
         return key if key.startswith("ffff0000/") else f"funders/{slug}/moved-report.pdf"
@@ -80,6 +84,8 @@ async def test_yes_moves_what_it_can_and_reports_what_it_could_not(db, cli, monk
     assert "could not move" in out and "already shelved" in out
     moved = (await one(db, "SELECT storage_path FROM documents WHERE id = %s", first))["storage_path"]
     assert moved.endswith("/moved-report.pdf")
+    followed = await one(db, "SELECT archive_key FROM source_snapshots WHERE id = %s", snap["id"])
+    assert followed["archive_key"].endswith("/moved-report.pdf")
     assert "ffff0000" in (await one(db, "SELECT storage_path FROM documents WHERE id = %s", stuck))["storage_path"]
 
 

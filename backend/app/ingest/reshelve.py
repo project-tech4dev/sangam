@@ -24,6 +24,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from app.ingest.catalog.promote_documents import _shelve
+from app.ingest.reading import snapshots
 from app.integrations import storage
 
 SQL = """
@@ -78,6 +79,7 @@ async def main() -> int:
                     "UPDATE documents SET storage_path = %s WHERE id = %s",
                     (storage.qualify(storage.SOURCE_ARCHIVE, destination), row["id"]),
                 )
+                await conn.execute(snapshots.MOVE_SQL, (destination, key))
         if args.yes:
             await conn.commit()
 

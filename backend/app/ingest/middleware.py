@@ -6,6 +6,7 @@ import json
 import logging
 import re
 from collections.abc import Awaitable, Callable
+from contextlib import nullcontext
 from importlib.resources import files
 from typing import Any
 
@@ -29,7 +30,7 @@ from app.db.checkpointer import thread_bytes
 from app.db.pool import get_pool
 from app.ingest.caller import caller_note, scope
 from app.ingest.catalog.save import write_preview
-from app.ingest.reading import run_sources
+from app.ingest.reading import run_sources, snapshots
 from app.ingest.research.contract import unanswered
 from app.ingest.research.finding_types import FINDING_MODELS, Finding
 from app.ingest.research.findings import EntityResearch, Gap, VaultResearch
@@ -412,7 +413,8 @@ class ChosenSources(AgentMiddleware):
             return sources
         token = run_sources.CURRENT.set(sources) if sources else None
         try:
-            return handler(request)
+            with snapshots.collecting() if sources else nullcontext():
+                return handler(request)
         finally:
             if token:
                 run_sources.CURRENT.reset(token)
@@ -423,7 +425,8 @@ class ChosenSources(AgentMiddleware):
             return sources
         token = run_sources.CURRENT.set(sources) if sources else None
         try:
-            return await handler(request)
+            with snapshots.collecting() if sources else nullcontext():
+                return await handler(request)
         finally:
             if token:
                 run_sources.CURRENT.reset(token)
