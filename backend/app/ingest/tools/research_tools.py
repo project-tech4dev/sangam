@@ -392,10 +392,11 @@ async def save_research(
             findings = EntityResearch.model_validate(payload, context=STORED)
         except ValidationError as exc:
             current.refusals += 1
-            gone = draft.drop_refused(current, exc, payload["findings"], payload["entity_kind"])
+            refused = list(payload["findings"])  # drop_refused shrinks the draft, which this may be
+            gone = draft.drop_refused(current, exc, refused, payload["entity_kind"])
             taken = (f"\nTaken out of this run: {', '.join(gone)}. Record each again with record_findings, fixed, "
                      "or leave it out." if gone else "")
-            return ("REFUSED, nothing saved:\n" + "\n".join(f"- {p}" for p in draft.problems(exc, payload["findings"]))
+            return ("REFUSED, nothing saved:\n" + "\n".join(f"- {p}" for p in draft.problems(exc, refused))
                     + taken + "\nFix this call's own arguments if a problem names them, then call save_research again.")
         # The expected way to finish the contract, so it is not a refusal that moves the run to the strong model.
         if missing := unanswered(findings):

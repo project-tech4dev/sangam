@@ -604,6 +604,16 @@ class TestSaveResearch:
         assert out.startswith("Saved as"), out
         assert [f.get("project_name") or f["name"] for f in self.inserted(saving)] == ["Sports scholarships", "Harit"]
 
+    async def test_a_refused_first_finding_is_named_not_the_one_after_it(self, saving):
+        bad = {**spend(project_name="Broken"), "amount": "lots"}
+        head = {k: v for k, v in research().items() if k not in ("findings", "gaps")}
+        with running_as(STAFF), draft.drafting() as current:
+            current.findings[:] = [bad, spend()]
+            current.gaps[:] = research()["gaps"]
+            out = await research_tools.save_research.ainvoke(head)
+        problems = out.split("Taken out")[0]
+        assert "Broken" in problems and "Sports scholarships" not in problems, out
+
     async def test_one_object_is_recorded_as_a_list_of_one(self):
         schema = research_tools.record_findings.tool_call_schema.model_json_schema()
         assert any(t.get("type") == "object" for t in schema["properties"]["findings"]["anyOf"])
