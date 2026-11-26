@@ -57,19 +57,34 @@ class Judgement(BaseModel):
 
 
 @dataclass(frozen=True)
+class OpenGap:
+    """One gap as the research saved it; the gap search chooses by its reason."""
+
+    name: str
+    concept: str
+    field: str | None
+    fiscal_year: str | None
+    reason: str
+    detail: str
+
+
+@dataclass(frozen=True)
 class Context:
     """What Sangam records for this entity, and what it is still missing."""
 
     fields: tuple[str, ...]
     gaps: tuple[str, ...]
+    open_gaps: tuple[OpenGap, ...] = ()
 
 
 async def load_context(conn: Any, slug: str) -> Context:
     row = await (await conn.execute(CONTEXT_SQL, (slug,))).fetchone()
     if row is None:
         return Context((), ())
-    gaps = dict.fromkeys(gap_name(g) for g in row["gaps"] or [] if g.get("concept"))
-    return Context(concepts_for(row["entity_kind"]), tuple(gaps))
+    saved = [g for g in row["gaps"] or [] if g.get("concept")]
+    open_gaps = tuple(OpenGap(gap_name(g), g["concept"], g.get("field"), g.get("fiscal_year"),
+                              g.get("reason") or "", g.get("detail") or "") for g in saved)
+    return Context(concepts_for(row["entity_kind"]), tuple(dict.fromkeys(g.name for g in open_gaps)), open_gaps)
 
 
 def gap_name(gap: dict[str, Any]) -> str:

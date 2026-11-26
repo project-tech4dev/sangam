@@ -64,6 +64,7 @@ describe("statusOf", () => {
   it("names each status in words", () => {
     expect(statusOf("unverified").label).toBe("Couldn't open");
     expect(statusOf("dead").label).toBe("Page gone");
+    expect(statusOf("gap").label).toBe("Fills a gap");
     expect(statusOf("something-else").label).toBe("something-else");
   });
 
@@ -111,6 +112,12 @@ describe("stepsOf", () => {
     const steps = stepsOf(source({ status: "unverified", detail: "HTTP 403" }), "free", 5);
     expect(steps[0]).toMatchObject({ state: "failed", text: "Couldn't open it (HTTP 403). Not counted as a change." });
     expect(steps.slice(1).every((s) => s.state === "skipped")).toBe(true);
+  });
+
+  it("a source found elsewhere for a gap says which gap, and has nothing to compare", () => {
+    const steps = stepsOf(source({ status: "gap", detail: "fills csr_year: a filing", baseline_snapshot_id: null }), "full", 0);
+    expect(steps[0]).toMatchObject({ state: "flag", text: "Found on another site for a missing fact: fills csr_year: a filing." });
+    expect(steps.slice(1, 4).every((s) => s.state === "skipped")).toBe(true);
   });
 });
 

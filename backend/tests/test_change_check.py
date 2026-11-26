@@ -15,6 +15,7 @@ from app.ingest.refresh import (
     discover,
     evidence,
     fetch_status,
+    gap_search,
     judge,
     save,
     service,
@@ -90,6 +91,7 @@ class TestStages:
         monkeypatch.setattr(change_check, "make_pool", lambda url, max_size: _Pool())
         monkeypatch.setattr(baseline, "load", load)
         monkeypatch.setattr(fetch_status, "fetch_today", fetch_today)
+        monkeypatch.setattr(gap_search, "run", lambda *a: _value(gap_search.GapSearch(searched=2)))
         return fetched
 
     async def test_until_baseline_fetches_nothing(self, run, capsys):
@@ -176,7 +178,7 @@ class TestStages:
         monkeypatch.setattr(discover, "run", lambda *a: _value(discover.Discovery(searched=3)))
         monkeypatch.setattr(save, "archive_all", archive_all)
         monkeypatch.setattr(save, "write", write_rows)
-        await change_check.main(SLUG, "discover", write=write)
+        await change_check.main(SLUG, "gaps", write=write)
         if write:
             assert calls == [("archive", ["changed", "unchanged"]), ("write", SLUG, {"https://a.org/about": "key"}, 3)]
             assert f"{SLUG}: saved 1 source_checks rows · 1 new snapshots" in capsys.readouterr().out
@@ -190,7 +192,7 @@ class TestStages:
         monkeypatch.setattr(service, "resolve_model", lambda spec: SimpleNamespace(
             with_structured_output=lambda schema: _structured(ainvoke)))
         monkeypatch.setattr(discover, "run", lambda *a: _value(discover.Discovery(searched=3)))
-        await change_check.main(SLUG, "discover")
+        await change_check.main(SLUG, "gaps")
         last = capsys.readouterr().out.strip().splitlines()[-1]
         assert last == f"{SLUG}: 2 sources · 1 minor · 1 unchanged → nothing to do"
 
@@ -221,14 +223,14 @@ class TestStages:
         return refreshed
 
     async def test_refresh_runs_only_when_the_decision_is_refresh(self, run, written, monkeypatch, capsys):
-        await change_check.main(SLUG, "discover", write=True, refresh=True)
-        assert len(written) == 1 and written[0][5].snapshot_ids == {"https://a.org/about": 55}
+        await change_check.main(SLUG, "gaps", write=True, refresh=True)
+        assert len(written) == 1 and written[0][6].snapshot_ids == {"https://a.org/about": 55}
         monkeypatch.setattr(decision, "decide", lambda *a: decision.NOTHING)
-        await change_check.main(SLUG, "discover", write=True, refresh=True)
+        await change_check.main(SLUG, "gaps", write=True, refresh=True)
         assert len(written) == 1 and f"{SLUG}: no refresh: the decision is nothing to do" in capsys.readouterr().out
 
     async def test_without_refresh_no_delta(self, run, written):
-        await change_check.main(SLUG, "discover", write=True)
+        await change_check.main(SLUG, "gaps", write=True)
         assert written == []
 
     async def test_write_is_a_recorded_run_like_the_screens(self, run, monkeypatch):

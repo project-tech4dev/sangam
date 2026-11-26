@@ -68,3 +68,18 @@ def test_describe():
     line = decision.describe(SLUG, checks(UNCHANGED, UNCHANGED, CHANGED), FOUND, decision.REFRESH)
     assert line == f"{SLUG}: 3 sources · 1 changed · 2 unchanged · 1 new → refresh"
     assert decision.describe(SLUG, checks(UNCHANGED), Discovery(), decision.NOTHING).endswith("unchanged → nothing to do")
+
+
+def gap_found(read: bool) -> Discovery:
+    lead = Lead.of(RESULTS[2])
+    return Discovery(gap_leads=[(lead, "csr_year", "a filing")], fetched={lead.url: object()} if read else {})
+
+
+@pytest.mark.parametrize(("read", "verdict"), [(True, decision.REFRESH), (False, decision.NOTHING)])
+def test_a_gap_source_alone_refreshes_only_once_it_was_read(read, verdict):
+    assert decision.decide(checks(UNCHANGED), gap_found(read), redesign=False) == verdict
+
+
+def test_describe_counts_gap_sources():
+    line = decision.describe(SLUG, checks(UNCHANGED), gap_found(True), decision.REFRESH)
+    assert line == f"{SLUG}: 1 sources · 1 unchanged · 1 for gaps → refresh"

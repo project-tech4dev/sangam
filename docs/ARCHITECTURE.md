@@ -142,6 +142,16 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
 - **A refresh moves only the baselines it read whole.** A source whose diff or text was cut for the question, or that
   did not fit in it, keeps its old version, and dead sources take only the room left. The refresh row carries the
   newest row's versions forward for every page it did not reread, so promotion archives the version that was read.
+- **A partial update reads off the funder's site only for an open gap.** A full change check searches the web for each
+  `not_stated` or `blocked` gap (at most five; `not_reached` waits for a full run), skipping its own site, social
+  media and the registry's aggregators and media, and not at all when no website is recorded. At most five picks are
+  read (`MAX_PICKS`). A page read that way (`source_checks.status = 'gap'`) may only `add` a fact that fills its gap,
+  year and field included: `delta.apply` refuses any other add and any update from it. A gap closes only when a saved
+  finding fills it, never on the model's word alone. Gap pages never join the baseline, so a partner's page is never
+  rechecked as if it were the funder's own, and a later check skips the ones read before, and any version of one the
+  update already read. A programme's field gap is never searched, since only that programme, already held, fills it;
+  an `unknown` value answers no topic gap, and a yearly gap never reopens a year the record holds. A fact whose
+  sentence is still on its own page is never removed, whatever a gap page says.
 
 ## 5. Funder Match
 

@@ -219,7 +219,7 @@ class TestEachTierGetsItsModel:
 
         c = "compat:open-model"
         url = {"compat_base_url": "https://llm.example/v1", "compat_api_key": "k"}
-        judge = {"source_check_judge_model": c}
+        judge = {"source_check_judge_model": c, "source_check_gap_model": c}
         with pytest.raises(ValidationError, match="MODEL, UTILITY_MODEL, SQL_AUDIT_MODEL"):
             Settings(_env_file=None, research_model=c, **url)
         with pytest.raises(ValidationError, match="SQL_AUDIT_MODEL"):
@@ -231,7 +231,10 @@ class TestEachTierGetsItsModel:
                         **judge, **url)
         # A compat deployment from before the judge existed sets no judge, and still boots: it follows UTILITY_MODEL.
         unset = Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off", **url)
-        assert unset.source_check_judge_model == c
+        assert unset.source_check_judge_model == c and unset.source_check_gap_model == c
+        with pytest.raises(ValidationError, match="SOURCE_CHECK_GAP_MODEL"):
+            Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off",
+                     source_check_gap_model="anthropic:claude-haiku-5-5", **url)
         assert Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model=c,
                         **judge, **url)
 

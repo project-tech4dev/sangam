@@ -16,6 +16,7 @@ import httpx
 
 from app.agentkit.models import resolve_model
 from app.core.config import get_settings
+from app.ingest import brief
 from app.ingest.reading.access import canonical_url
 from app.ingest.refresh import (
     baseline,
@@ -26,6 +27,7 @@ from app.ingest.refresh import (
     discover,
     evidence,
     fetch_status,
+    gap_search,
     judge,
     save,
 )
@@ -76,12 +78,39 @@ class Inputs:
     findings: dict[str, list[str]]
     context: judge.Context
     subject: discover.Subject | None
+    gap_urls: frozenset[str] = frozenset()  # pages an earlier check read off the funder's site for a gap
+    gap_hashes: frozenset[str] = frozenset()  # versions of gap pages an earlier update already read
+
+
+# A gap page stays out of the baseline, so this is how the next check knows it was read already. Only a page a saved
+# research row cites counts: one a look-only check or a refused update read never offered its fact, so it may again.
+GAP_URLS_SQL = """
+    SELECT DISTINCT c.url FROM source_checks c
+     WHERE c.slug = %s AND c.status = 'gap'
+       AND EXISTS (SELECT 1 FROM entity_research r, jsonb_array_elements(r.findings) f
+                    WHERE r.slug = c.slug AND f->>'source_url' = c.url)
+"""
+
+
+# A gap page the update read and took nothing from is not offered again until its text changes.
+READ_BY_UPDATE = " · the update read it"
+MARK_READ_SQL = """
+    UPDATE source_checks SET detail = coalesce(detail, '') || %s
+     WHERE run_id = %s AND status = 'gap' AND url = ANY(%s)
+"""
+GAP_HASHES_SQL = """
+    SELECT DISTINCT s.text_hash FROM source_checks c JOIN source_snapshots s ON s.id = c.new_snapshot_id
+     WHERE c.slug = %s AND c.status = 'gap' AND c.detail LIKE '%%' || %s
+"""
 
 
 async def load_inputs(conn: Any, slug: str) -> Inputs:
     baselines, unrecorded = await baseline.load(conn, slug)
+    gap_urls = frozenset(r["url"] for r in await (await conn.execute(GAP_URLS_SQL, (slug,))).fetchall())
+    gap_hashes = frozenset(r["text_hash"] for r in
+                           await (await conn.execute(GAP_HASHES_SQL, (slug, READ_BY_UPDATE))).fetchall())
     return Inputs(baselines, unrecorded, await evidence.load_findings(conn, slug),
-                  await judge.load_context(conn, slug), await discover.load_subject(conn, slug))
+                  await judge.load_context(conn, slug), await discover.load_subject(conn, slug), gap_urls, gap_hashes)
 
 
 @dataclass(frozen=True)
@@ -172,12 +201,12 @@ async def _check(pool: Any, run_id: UUID, slug: str, depth: str, refresh: bool, 
         say(save.describe(slug, run_id, saved))
     row_id, summary = None, None
     if refresh and depth == FULL and verdict == decision.REFRESH:
-        row_id, summary = await _refresh(pool, slug, checks, found, given.context, saved)
+        row_id, summary = await _refresh(pool, run_id, slug, checks, found, given.context, saved)
         say(summary)
     elif refresh:
         say(f"{slug}: no refresh: the decision is {verdict}")
     return {"decision": verdict, "sources": compare.counts(checks), "new_sources": len(found.new),
-            "source_checks_rows": saved.rows, "refresh_row_id": row_id, "refresh_summary": summary}
+            "gap_sources": decision.gap_sources(found), "source_checks_rows": saved.rows, "refresh_row_id": row_id, "refresh_summary": summary}
 
 
 async def stages(slug: str, depth: str, scratch: Path, given: Inputs, until: str | None = None,
@@ -228,7 +257,18 @@ async def stages(slug: str, depth: str, scratch: Path, given: Inputs, until: str
                                        named(model.with_structured_output(discover.Picks), "discover"),
                                        settings.tavily_api_key,
                                        client, scratch)
-        say(discover.describe(slug, found))
+            say(discover.describe(slug, found))
+            if until == "discover":
+                return None
+            # What discovery just found is known too, so the gap search never reads it twice.
+            known_urls |= {lead.url for lead, _why in found.new} | given.gap_urls
+            known_hashes |= {t.fingerprint for t in found.fetched.values() if t.fingerprint} | given.gap_hashes
+            picker = resolve_model(settings.source_check_gap_model)
+            gaps = await gap_search.run(given.subject, known_urls, known_hashes, given.context,
+                                        named(picker.with_structured_output(gap_search.GapPicks), "gaps"),
+                                        settings.tavily_api_key, client, scratch)
+        say(gap_search.describe(slug, gaps))
+        found = gap_search.merge(found, gaps)
         verdict = decision.decide(checks, found, redesign)
     say(decision.describe(slug, checks, found, verdict))
     return checks, found, verdict
@@ -247,7 +287,7 @@ async def update_refused(pool: Any, slug: str) -> str | None:
     return f"No update: {why}." if why else None
 
 
-async def _refresh(pool: Any, slug: str, checks: list[compare.Check], found: discover.Discovery,
+async def _refresh(pool: Any, run_id: UUID, slug: str, checks: list[compare.Check], found: discover.Discovery,
                    context: judge.Context, saved: save.Saved) -> tuple[int | None, str]:
     """Today's research row from only what changed; it waits in Review & save."""
     settings = get_settings()
@@ -273,13 +313,21 @@ async def _refresh(pool: Any, slug: str, checks: list[compare.Check], found: dis
         proposed, problems = await delta.propose(model, grader, delta.ask(name, srcs, context, kind))
     except Exception as exc:  # noqa: BLE001 — a reply that is no delta saves nothing, and says so
         return None, f"{slug}: refresh not saved: the update model gave no usable delta ({type(exc).__name__})"
-    applied = delta.apply(proposed, srcs, kind)
+    gap_pages = [s.url for s in srcs if s.status == discover.GAP]
+    if gap_pages:
+        async with pool.connection() as conn:
+            await conn.execute(MARK_READ_SQL, (READ_BY_UPDATE, run_id, gap_pages))
+    facts = delta.facts_by_url(rows)
+    held = frozenset(brief.fact_key(f) for fs in facts.values() for f in fs)
+    applied = delta.apply(proposed, srcs, context.open_gaps, kind, held)
     read = [s.url for s in srcs if s.status != "dead" and s.url not in applied.stale]
-    ids = [saved.snapshot_ids[u] for u in read if u in saved.snapshot_ids]
+    # A gap page joins the sources read, not the baseline: rechecked as an ordinary page, it could change own facts.
+    tracked = [u for u in read if u not in {s.url for s in srcs if s.status == discover.GAP}]
+    ids = [saved.snapshot_ids[u] for u in tracked if u in saved.snapshot_ids]
     if not applied.findings and not applied.supersedes:
         async with pool.connection() as conn:
             await delta.note_reread(conn, entity["id"], ids)
         return None, delta.describe(slug, applied, None, problems, nothing=True)
     async with pool.connection() as conn, conn.transaction():
-        row_id = await delta.save_row(conn, entity, applied, proposed, context, ids, read)
+        row_id = await delta.save_row(conn, entity, applied, proposed, context, ids, read, delta.held_years(facts))
     return row_id, delta.describe(slug, applied, row_id, problems)

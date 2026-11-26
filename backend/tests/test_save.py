@@ -172,3 +172,20 @@ class TestWrite:
 def test_describe():
     out = save.describe(SLUG, RUN, save.Saved(rows=5, snapshots=2, archive_failed=1))
     assert out == f"{SLUG}: saved 5 source_checks rows · 2 new snapshots · 1 archive failed (run {RUN})"
+
+
+async def test_a_gap_source_is_archived_and_saved_with_the_gap_it_fills(monkeypatch):
+    lead = Lead.of({"url": "https://csr.gov.in/azim", "title": "t", "content": "c"})
+    today = Today(lead.url, OK, "HTTP 200", text="t", fingerprint="g" * 64)
+    found = Discovery(gap_leads=[(lead, "csr_year", "a filing")], fetched={lead.url: today})
+
+    async def archive(url, kind, t):
+        return "key/gap.md"
+    monkeypatch.setattr(save, "archive", archive)
+    keys = await save.archive_all([], found)
+    assert keys == {lead.url: "key/gap.md"}
+    conn = ScriptConn([("INSERT INTO source_snapshots", {"id": 78})])
+    saved = await save.write(conn, RUN, SLUG, [], found, keys)
+    [(_sql, row)] = conn.sql("INSERT INTO source_checks")
+    assert saved.rows == 1 and saved.snapshot_ids == {lead.url: 78}
+    assert row[2:7] == (lead.url, None, 78, "gap", 0) and row[10] == "fills csr_year: a filing"

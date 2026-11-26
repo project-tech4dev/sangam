@@ -27,6 +27,7 @@ NEW = "new"
 # A page on these is one account among many: searching the host would find other organisations' pages.
 SHARED_HOSTS = ("facebook.com", "instagram.com", "linkedin.com", "twitter.com", "x.com", "youtube.com", "google.com")
 SHARED_ROOTS = ("wordpress.com", "blogspot.com", "medium.com")  # shared bare; a subdomain is one blog
+GAP = "gap"  # a page off the funder's site, read for one open gap
 
 # A narrow re-run can save no website, so it is the newest one any row records.
 SUBJECT_SQL = """
@@ -90,7 +91,8 @@ class Discovery:
     dropped: list[tuple[Lead, str]] = field(default_factory=list)  # picked, then already read, dead or unverified
     failed: list[str] = field(default_factory=list)  # a search or the lead judge that did not answer
     skipped: str = ""
-    fetched: dict[str, fetch_status.Today] = field(default_factory=dict)  # each new source as read, by URL
+    fetched: dict[str, fetch_status.Today] = field(default_factory=dict)  # each new or gap source as read, by URL
+    gap_leads: list[tuple[Lead, str, str]] = field(default_factory=list)  # off-site: (lead, the gap it fills, why)
 
 
 async def load_subject(conn: Any, slug: str) -> Subject | None:
