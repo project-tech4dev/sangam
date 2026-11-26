@@ -227,6 +227,26 @@ def score_answer(name: str, value: float, comment: str | None = None, metadata: 
         logger.debug("could not attach score %r", name, exc_info=True)
 
 
+def jev_generation(name: str, *, state: Any, decision: Any) -> None:
+    """Record one Jev call as a generation with its own cost: Langfuse has no price for jev-* models."""
+    try:
+        from langfuse import get_client
+
+        parent = current_observation() or get_client()
+        with parent.start_as_current_observation(
+            name=name,
+            as_type="generation",
+            model=decision.model,
+            input=state,
+            output=decision.answers,
+            usage_details={"input": decision.input_tokens},
+            cost_details={"input": decision.cost_usd},
+            metadata={"latency_ms": decision.latency_ms, "usage_estimated": decision.estimated},
+        ):
+            pass
+    except Exception:
+        logger.debug("jev generation %r not recorded", name, exc_info=True)
+
 
 def observation_type(name: str, *, is_root: bool, metadata: dict | None) -> str:
     """The graph and each subagent are agents; the audit hook is an evaluator; the rest are chains."""

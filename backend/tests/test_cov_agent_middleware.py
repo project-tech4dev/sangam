@@ -56,12 +56,12 @@ def test_retry_limiter_ends_the_turn_at_the_limit():
 
 # --- model call cap ----------------------------------------------------------
 
-def test_this_turn_without_a_human_message_is_everything():
+def testthis_turn_without_a_human_message_is_everything():
     msgs = [AIMessage("a"), AIMessage("b")]
-    assert mw._this_turn(msgs) == msgs
+    assert mw.this_turn(msgs) == msgs
 
 
-def test_model_call_cap_counts_this_turns_calls():
+def test_model_call_cap_countsthis_turns_calls():
     cap = mw.model_call_cap(2)
     turn = [AIMessage("old"), AIMessage("old"), HumanMessage("q"), AIMessage("one")]
     assert cap.before_model({"messages": turn}, None) is None
