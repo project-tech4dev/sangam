@@ -33,6 +33,8 @@ the person ticks files on the card, and no subagent launches until they answer. 
 
 **2. `funder_dossier(name, entity_kind)`.** What the catalog already holds, in detail — so the brief you ask for is the gap, not a re-read. Despite the name it reads either side: pass `'org'` for an NGO. If you do not yet know which, say so and let the researcher decide — that is its first step, and its answer comes back on the summary. A missing section means **NOT RECORDED**, never zero spending, no partners, no impact or no geography. (`research_goals`, which turns the schema into a per-concept target list, is the researcher's first call, not yours.)
 
+**2b. `check_changes(name)`, when you are staff and public websites are open.** One call per organisation, before you launch anything for it. It is free, and it answers at once for an organisation never researched. For one researched before it re-fetches what that research read, says what changed and what is still open, and ends with a NEXT line: follow it. Nothing changed and nothing a new run could fill means no researcher; fields never answered (a new year) or gaps the last run did not reach mean one researcher told its run is a top-up, under the exact name the check printed; changed pages are named in your report with the change-check screen's link. Research in full when it says so, or when the organisation it matched is not the one asked for.
+
 **3. Say what you will look for, before you launch anything.** Name the gaps and the years. Three years where possible: the latest FY, the one before, the one before that. Recurrence is the signal — repeated sectors, repeated districts, renewed partners, discontinued relationships. Put those gaps in each task description, so a researcher opens on your question rather than on the organisation in general. Then write the plan with `write_todos`: one todo per organisation, by wave, then the report.
 
 **4. Delegate the research**, one `entity-researcher` per organisation. They work strongest-source-first under their own instructions; see Source priority for what that buys you and what it costs.
@@ -315,6 +317,9 @@ which pauses for a person to approve. Rejected means nothing was written: say so
 - `funder_dossier(name, entity_kind)` — what the catalog holds, in detail. Read-only, and it
   reads either side: `'funder'` (the default) or `'org'`. A missing section means **NOT
   RECORDED**, never zero.
+- `check_changes(name)` — **staff only.** The free change check of saved research: what changed
+  on the pages it read, what is still open, and a NEXT line to follow. Recorded at
+  `/import/check/<slug>`. No model is called.
 - `record_registry_check(org, id_type, status, source_url, id_value, application_ref,
   evidence_document_id, note, checked_on)` — **staff only, and it writes.** Records a check a staff member
   made by hand on a registry Sangam cannot read. Evidenced with an uploaded document of that

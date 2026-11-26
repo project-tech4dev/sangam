@@ -20,6 +20,7 @@ from app.ingest.catalog.matcher import resolve_funder, resolve_org
 from app.ingest.catalog.promote import promote
 from app.ingest.catalog.save import ENTITY_KEYS, SaveRefused, held_per_concept, research_rows, save_to_catalog
 from app.ingest.catalog.writer import Gate
+from app.ingest.refresh import compare, decision, service
 from app.ingest.research import coverage, draft
 from app.ingest.research import saved as saved_research
 from app.ingest.research.expectations import (
@@ -29,6 +30,7 @@ from app.ingest.research.expectations import (
     recent_fiscal_years,
 )
 from app.ingest.research.finding_types import FINDING_MODELS, FindingBase
+from app.repositories import source_checks
 
 logger = logging.getLogger(__name__)
 
@@ -515,6 +517,77 @@ async def coverage_report(slug: str) -> str:
     except Exception as exc:
         logger.exception("coverage_report failed")
         return f"coverage_report failed: {type(exc).__name__}: {exc}"
+
+
+def _changes_next(slug: str, verdict: str | None, changed: list[str], saved: Any) -> str:
+    """What the supervisor does with a free check's decision; it never waits on the person."""
+    to_try = len(saved.to_try)
+    top_up = (f"launch ONE entity-researcher, its task naming {saved.name!r} and saying it is a top-up of the "
+              f"{to_try} items research_goals will list") if to_try else ""
+    if verdict == decision.FULL_PULL:
+        return "NEXT: most sources changed at once, so the site was rebuilt: research it in full as usual."
+    if verdict in (decision.REFRESH, service.NEEDS_JUDGE):
+        report = (f"In your report, name what changed ({'; '.join(changed[:8])}) and say /import/check/{slug} "
+                  "updates the saved facts from just those pages.")
+        return f"NEXT: {top_up + '. ' if top_up else 'launch no researcher. '}{report}"
+    if top_up:
+        return f"NEXT: nothing changed; {top_up}. The saved findings are kept."
+    return ("NEXT: nothing changed and nothing a new run could fill is open. Launch no researcher; report that the "
+            "research is current.")
+
+
+@tool
+async def check_changes(name: str) -> str:
+    """Whether an organisation's saved research is still current. Call it BEFORE researching an
+    organisation Sangam researched before, and follow its NEXT line.
+
+    Free: it fetches every page and report the saved research read, compares each with the version
+    read then, and checks every saved fact is still on its page. No model is called; the check is
+    recorded and shown at /import/check/<slug>. Staff only.
+
+    Args:
+        name: the organisation as asked for, or its research slug.
+    """
+    if refusal := staff_only("check_changes"):
+        return refusal
+    caller = scope()
+    try:
+        pool = get_pool()
+        wanted = list(recent_fiscal_years())
+        async with pool.connection() as conn:
+            saved = await saved_research.latest(conn, [name], None, wanted)
+        if saved is None:
+            return f"No saved research matches {name!r}. NEXT: research it in full as usual."
+        slug = saved.slug
+        try:
+            run_id = await service.run(pool, slug, service.FREE, False, caller.user_id, user_email=caller.email)
+        except service.NoBaseline:
+            return (f"{slug}: its research does not record which versions it read, so there is nothing to compare. "
+                    f"NEXT: research {saved.name!r} again; its research_goals lists what is open.")
+        except service.Busy:
+            return f"{slug}: a check is already running. NEXT: wait for it and call check_changes again."
+        async with pool.connection() as conn:
+            run = await source_checks.get_run(conn, run_id)
+        if run is None or run["error"]:
+            return (f"{slug}: the check failed ({run and run['error']}). NEXT: research the open gaps; "
+                    "pages saved research already read answer ALREADY READ.")
+        counts: dict[str, int] = {}
+        for c in run["checks"]:
+            counts[c["status"]] = counts.get(c["status"], 0) + 1
+        changed = [f"{c['url']} ({c['status']})" for c in run["checks"]
+                   if c["status"] in (*decision.ACT_ON, compare.DIFFERS)]
+        sources = ", ".join(f"{n} {status}" for status, n in sorted(counts.items())) or "none"
+        return "\n".join([
+            (f"Change check of the saved research for {saved.name} ({slug}, saved {saved.researched_on:%d %b %Y}, "
+             f"{saved.findings} findings): {run['decision']}. Sources: {sources}. If that is not the organisation "
+             "asked for, ignore this and research it in full."),
+            (f"Open: {len(saved.gaps)} gaps, of which {len(saved.to_try) - len(saved.unanswered)} were not reached; "
+             f"{len(saved.unanswered)} fields unanswered."),
+            _changes_next(slug, run["decision"], changed, saved),
+        ])
+    except Exception as exc:
+        logger.exception("check_changes failed")
+        return f"check_changes failed: {type(exc).__name__}: {exc}"
 
 
 @tool

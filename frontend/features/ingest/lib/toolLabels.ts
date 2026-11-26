@@ -51,6 +51,10 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     label: "Checking what Sangam already has on",
     detail: (a) => a?.name ?? "",
   },
+  check_changes: {
+    label: "Checking what changed since the last research on",
+    detail: (a) => a?.name ?? "",
+  },
   compare_with_catalog: {
     label: "Comparing what was found with what Sangam has",
     detail: () => "",

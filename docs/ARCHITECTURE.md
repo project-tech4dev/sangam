@@ -140,6 +140,14 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   refused for the 26 fields it never looked at, and a first save today starts from the newest earlier row's gaps less
   those this run answered, since the brief shows the newest row's gaps only. A top-up that found nothing keeps the
   saved status rather than `not_found`.
+- **Research again starts with the free change check.** For staff with the web open, the supervisor calls
+  `check_changes(name)` before launching anything: `refresh/service.run` at free depth (fetch, fingerprint, diff,
+  evidence; no model), recorded as a `source_check_runs` row like the screen's, plus the saved research's open items.
+  Its NEXT line decides, with no question to the person: a top-up researcher runs only for what a new run can fill
+  (fields never answered, a new year, gaps `not_reached`), since a `not_stated` or `blocked` gap was already tried;
+  with none, no researcher runs. Changed pages are named in the report with `/import/check/<slug>`, whose update reads
+  only what changed; a redesign or no recorded versions is a full research. The matched name is printed, so a wrong
+  match is researched in full. HCL's check took 8 s for 18 sources.
 - **A metric's period has four shapes**, because it is part of the metric's key: `FY2024-25`, `CY2025`,
   `cumulative to <date>`, `as of <date>` (`rows.shape_period`). A save rewrites an exact match and refuses the rest;
   research read back for promotion (`STORED` context) is rewritten the same way but never refused, so a rule added
