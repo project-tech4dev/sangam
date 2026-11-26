@@ -3,18 +3,26 @@
 from __future__ import annotations
 
 import asyncio
+import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Protocol
 from urllib.parse import urlsplit
 
 from app.ingest.reading.fetch import Fetched, document_hash, document_text, download, fetch_page
 from app.ingest.reading.fingerprint import text_hash
-from app.ingest.refresh.baseline import Baseline
 
 OK, UNVERIFIED, DEAD = "ok", "unverified", "dead"
 GONE = (404, 410)
 # A few at once: far quicker than one by one, and still no burst for a funder's site.
 FETCH_AT_ONCE = 3
+
+
+class Source(Protocol):
+    """A baseline, or a page discovery found: all a fetch needs is where it is and whether it is a document."""
+
+    url: str
+    kind: str | None
 
 
 @dataclass(frozen=True)
@@ -27,32 +35,33 @@ class Today:
     fingerprint: str | None = None  # hashed the way the tools hash it, so it compares with the baseline
 
 
-async def fetch_today(source: Baseline, scratch: Path) -> Today:
-    """Today's text for one source; a document is downloaded into scratch, never the researchers' folder."""
-    if source.kind == "document":
-        got = await download(source.url, None, scratch)
-        text = await asyncio.to_thread(document_text, got.path) if got.path else ""
-        today = classify(got, text, source.text_hash)
-        if today.status != OK or today.path is None:
-            return today
-        # The tools' own rule, page cap included, or a long report would never match its baseline.
-        return replace(today, fingerprint=document_hash(today.path, text))
-    got = await fetch_page(source.url)
-    today = classify(got, got.text, source.text_hash)
-    return replace(today, fingerprint=text_hash(today.text)) if today.status == OK else today
+async def fetch_today(source: Source, scratch: Path) -> Today:
+    """Today's text for one source; a document gets its own folder under scratch, so two annual-report.pdf never collide."""
+    known = getattr(source, "text_hash", None)
+    if source.kind != "document":
+        got = await fetch_page(source.url)
+        # A new lead from /download?id=42 is a page by its URL; read it as the document it serves.
+        if not (got.document and known is None):
+            today = classify(got, got.text, known)
+            return replace(today, fingerprint=text_hash(today.text)) if today.status == OK else today
+    got = await download(source.url, None, Path(tempfile.mkdtemp(dir=scratch)))
+    text = await asyncio.to_thread(document_text, got.path) if got.path else ""
+    today = classify(got, text, known)
+    if today.status != OK or today.path is None:
+        return today
+    # The tools' own rule, page cap included, or a long report would never match its baseline.
+    return replace(today, fingerprint=document_hash(today.path, text))
 
 
-async def fetch_all(sources: list[Baseline], scratch: Path) -> list[Today]:
-    """In the baselines' order; each source gets its own folder, so two annual-report.pdf never collide."""
+async def fetch_all(sources: list[Source], scratch: Path) -> list[Today]:
+    """In the sources' order, a few at a time."""
     gate = asyncio.Semaphore(FETCH_AT_ONCE)
 
-    async def one(index: int, source: Baseline) -> Today:
-        folder = scratch / str(index)
-        folder.mkdir()
+    async def one(source: Source) -> Today:
         async with gate:
-            return await fetch_today(source, folder)
+            return await fetch_today(source, scratch)
 
-    return list(await asyncio.gather(*(one(i, s) for i, s in enumerate(sources))))
+    return list(await asyncio.gather(*(one(s) for s in sources)))
 
 
 def classify(got: Fetched, text: str, known: str | None = None) -> Today:

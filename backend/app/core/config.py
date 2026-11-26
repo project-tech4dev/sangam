@@ -97,6 +97,9 @@ class Settings(BaseSettings):
     # A cheap second opinion on each SQL answer (grain, filters, false zeros, numbers). `off` disables it;
     # it is a real extra model call per SQL turn, so it runs on the cheapest tier.
     sql_audit_model: str = "anthropic:claude-haiku-5-5"
+    # make source-check: decides whether a changed page matters. It reads only the diff, once per changed page.
+    # Blank follows UTILITY_MODEL, so a deployment that moved its tiers to compat: needs no new variable.
+    source_check_judge_model: str = ""
 
     # Graph steps per turn, not tool calls: every middleware hook is its own node, so one model-then-tool
     # cycle costs several. Bound in build_agent(); LangGraph's own default is 25, which a SQL turn exceeds.
@@ -138,6 +141,7 @@ class Settings(BaseSettings):
         "research_model",
         "utility_model",
         "sql_audit_model",
+        "source_check_judge_model",
         "max_parallel_research", "research_page_limit", "research_model_call_limit", "ask_model_call_limit",
         "free_questions",
         "db_pool_max_size", "db_pool_timeout_s", "db_connect_timeout_s", "db_statement_timeout_ms",
@@ -161,11 +165,18 @@ class Settings(BaseSettings):
         return "" if v.strip().lower() == "off" else v
 
     @model_validator(mode="after")
+    def _judge_follows_the_utility_tier(self) -> Settings:
+        if not self.source_check_judge_model:
+            self.source_check_judge_model = self.utility_model
+        return self
+
+    @model_validator(mode="after")
     def _compat_runs_alone(self) -> Settings:
         """One tier on a compat model puts every tier on one, so no model call reaches Claude; the graph keeps OpenAI."""
         tiers = {"MODEL": self.model, "RESEARCH_MODEL": self.research_model, "UTILITY_MODEL": self.utility_model}
         if self.sql_audit_model:
             tiers["SQL_AUDIT_MODEL"] = self.sql_audit_model
+        tiers["SOURCE_CHECK_JUDGE_MODEL"] = self.source_check_judge_model
         others = [name for name, spec in tiers.items() if not spec.startswith("compat:")]
         if others and len(others) < len(tiers):
             raise ValueError(f"a compat: tier needs every tier on compat:, but {', '.join(others)} is not "

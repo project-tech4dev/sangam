@@ -6,12 +6,23 @@ import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from typing import Any
 
 from app.db.pool import get_pool
 from app.ingest.reading import staff_sources, vault
 from app.ingest.reading.access import canonical_url
 
 logger = logging.getLogger(__name__)
+
+# One row per version: re-reading an unchanged source bumps last_seen_at, and keeps the first archived copy.
+RECORD_SQL = """
+    INSERT INTO source_snapshots (url, kind, text_hash, archive_key)
+    VALUES (%s, %s, %s, %s)
+    ON CONFLICT (url, text_hash) DO UPDATE SET
+        last_seen_at = now(),
+        archive_key = COALESCE(source_snapshots.archive_key, EXCLUDED.archive_key)
+    RETURNING id
+"""
 
 # The snapshot ids one researcher read; ChosenSources gives each launched subagent its own list.
 COLLECTED: ContextVar[list[int] | None] = ContextVar("import_snapshot_ids", default=None)
@@ -50,23 +61,27 @@ async def known_fingerprint(archive_key: str) -> str | None:
         return None
 
 
+async def read_key(conn: Any, snapshot_ids: list[int] | None, url: str) -> str | None:
+    """The archived copy of url this research run read, not a newer one a change check archived since."""
+    if not snapshot_ids:
+        return None
+    try:
+        url = canonical_url(url)
+    except Exception:  # noqa: BLE001 — a URL that cannot be parsed falls back to Storage's newest copy
+        return None
+    row = await (await conn.execute(
+        "SELECT archive_key FROM source_snapshots WHERE id = ANY(%s) AND url = %s AND archive_key IS NOT NULL "
+        "ORDER BY last_seen_at DESC LIMIT 1", (snapshot_ids, url))).fetchone()
+    return row["archive_key"] if row else None
+
+
 async def record_snapshot(url: str, kind: str, fingerprint: str, archive_key: str | None) -> int | None:
     """The id of this version of url, from text_hash or document_hash; an unchanged re-read bumps last_seen_at.
     Never raises: a read must not fail because its bookkeeping did."""
     try:
         async with get_pool().connection() as conn:
             row = await (
-                await conn.execute(
-                    """
-                    INSERT INTO source_snapshots (url, kind, text_hash, archive_key)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (url, text_hash) DO UPDATE SET
-                        last_seen_at = now(),
-                        archive_key = COALESCE(source_snapshots.archive_key, EXCLUDED.archive_key)
-                    RETURNING id
-                    """,
-                    (url, kind, fingerprint, archive_key),
-                )
+                await conn.execute(RECORD_SQL, (url, kind, fingerprint, archive_key))
             ).fetchone()
         return row["id"] if row else None
     except Exception:
