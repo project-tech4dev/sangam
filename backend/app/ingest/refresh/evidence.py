@@ -20,10 +20,12 @@ _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 # A changed month, status word or "not" also barely moves it, so every word must be there too.
 _WORD = re.compile(r"\w+")
 # extract_pdf_text's page headers, and a word split at a line end: neither is a change in what the page says.
+# Every hyphen inside a word goes, on both sides alike, so "multi-year" still matches "multi-\nyear" and "2024-25".
 _PAGE = re.compile(r"^--- page \d+ ---$", re.MULTILINE)
-_HYPHEN = re.compile(r"(\w)- (\w)")
+_HYPHEN = re.compile(r"(\w)- ?(\w)")
 
-# Every fact the brief shows comes from these rows, so all of them are checked, not only the baseline's.
+# Every row's facts are loaded, but each is checked against the newest version of its page (baseline.py), so a fact
+# an older row read from a version a later row replaced goes unchecked while the page stays as the later row read it.
 FINDINGS_SQL = """
     SELECT findings FROM entity_research
      WHERE slug = %s AND status <> 'wrong_entity'

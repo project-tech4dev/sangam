@@ -136,6 +136,17 @@ class TestEvidence:
         new = "The Foundation supported 412 organi-\nsations across Assam and Meghalaya in 2024."
         assert evidence.verdict(sentence, sentence, new) == INTACT
 
+    @pytest.mark.parametrize("sentence, new", [
+        ("We make multi-year grants to 40 NGOs.", "We make multi-\nyear grants to 40 NGOs."),
+        ("Its CSR spend in FY 2024-25 was 12 crore.", "Its CSR spend in FY 2024-\n25 was 12 crore."),
+    ])
+    def test_a_hyphenated_word_split_at_its_hyphen_is_not_a_change(self, sentence, new):
+        assert evidence.verdict(sentence, sentence, new) == INTACT
+
+    def test_a_hyphenated_year_that_changed_is_broken(self):
+        sentence = "Its CSR spend in FY 2024-25 was 12 crore."
+        assert evidence.verdict(sentence, sentence, "Its CSR spend in FY 2025-26 was 12 crore.") == BROKEN
+
     def test_a_re_spaced_sentence_with_other_case_is_intact(self):
         sentence = "We work in Karnataka and Uttarakhand."
         assert evidence.verdict(sentence, sentence, "Intro.  WE work   in Karnataka and Uttarakhand.  More.") == INTACT
