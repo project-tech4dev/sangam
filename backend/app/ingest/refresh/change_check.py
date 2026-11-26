@@ -109,13 +109,15 @@ async def _refresh(slug: str, checks: list[compare.Check], found: discover.Disco
         print(f"{slug}: refresh not saved: the update model gave no usable delta ({type(exc).__name__})")
         return
     applied = delta.apply(proposed, srcs, kind)
+    read = [s.url for s in srcs if s.status != "dead" and s.url not in applied.stale]
+    ids = [saved.snapshot_ids[u] for u in read if u in saved.snapshot_ids]
     if not applied.findings and not applied.supersedes:
+        async with _connection() as conn:
+            await delta.note_reread(conn, entity["id"], ids)
         print(delta.describe(slug, applied, None, problems, nothing=True))
         return
-    read = [s.url for s in srcs if s.status != "dead" and s.url not in applied.stale]
     async with _connection() as conn, conn.transaction():
-        row_id = await delta.save_row(conn, entity, applied, proposed, context,
-                                      [saved.snapshot_ids[u] for u in read if u in saved.snapshot_ids], read)
+        row_id = await delta.save_row(conn, entity, applied, proposed, context, ids, read)
     print(delta.describe(slug, applied, row_id, problems))
 
 

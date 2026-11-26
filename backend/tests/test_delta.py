@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import replace
 
@@ -75,6 +76,26 @@ class TestMergeAfterARefresh:
         stale = {**OLD, "source_url": "https://registry.example/funder", "evidence_tier": "evidenced"}
         rows = [{"findings": [OLD, stale]}, {"findings": [self.NEW], "supersedes": [brief.superseded(OLD)]}]
         assert brief.merge_findings(rows) == [self.NEW]
+
+    def test_a_carried_private_copy_never_displaces_a_public_one(self):
+        private = {**OLD, "source_url": staff_sources.source_url("grants.xlsx"), "evidence_tier": "evidenced",
+                   brief.CARRIED: True}
+        assert brief.merge_findings([{"findings": [OLD]}, {"findings": [private]}]) == [OLD]
+
+    def test_promotion_reads_a_carried_private_finding_without_its_mark(self, monkeypatch):
+        private = {**OLD, "source_url": staff_sources.source_url("grants.xlsx")}
+
+        async def read(bucket, key):
+            return None
+        monkeypatch.setattr(brief.storage, "read", read)
+        row = {"slug": SLUG, "findings": [{**private, brief.CARRIED: True}]}
+        out = asyncio.run(brief.promotable(row, [row]))
+        assert out["findings"] == [private]
+
+    def test_a_republished_update_is_listed_once(self):
+        # The brief already holds the new value; merging the rows again must not add it back as a sibling.
+        rows = [{"findings": [OLD]}, {"findings": [self.NEW], "supersedes": [brief.superseded(OLD, updated=True)]}]
+        assert brief.merge_findings(rows, prior=[self.NEW]) == [self.NEW]
 
     def test_removing_one_fact_keeps_its_same_key_sibling_on_that_page(self):
         sibling = {**OLD, "email": "help@funder.example", "evidence": KEPT_SENTENCE}
@@ -215,7 +236,7 @@ class TestApply:
         out = delta.apply(proposed, srcs())
         assert (out.kept, out.updated, out.removed, out.added, out.refused) == (1, 1, 1, 1, [])
         assert [f["evidence"] for f in out.findings] == [NEW_SENTENCE, CALL_SENTENCE]
-        assert out.supersedes == [brief.superseded(OLD), brief.superseded(KEPT)]
+        assert out.supersedes == [brief.superseded(OLD, updated=True), brief.superseded(KEPT)]
 
     def test_a_fact_from_a_page_that_is_gone_is_never_removed(self):
         out = delta.apply(answer(remove=[Removal(id="f3", why="the page 404s")]), srcs())
@@ -324,7 +345,7 @@ class TestSaveRow:
         entity = {**self.ENTITY, "findings": [OLD, private]}
         await delta.save_row(conn, entity, delta.Applied(findings=[CALL]), answer(), CONTEXT, [], [])
         [(_sql, p)] = conn.sql("INSERT INTO entity_research")
-        assert json.loads(p[8]) == [CALL, private] and p[11] == 2
+        assert json.loads(p[8]) == [CALL, {**private, brief.CARRIED: True}] and p[11] == 2
 
     async def test_a_second_refresh_replaces_the_last_refresh_note(self):
         conn = ScriptConn([("INSERT INTO entity_research", {"id": 92})])
@@ -332,6 +353,13 @@ class TestSaveRow:
         await delta.save_row(conn, entity, delta.Applied(), answer(), CONTEXT, [], [URL])
         [(_sql, p)] = conn.sql("INSERT INTO entity_research")
         assert p[7] == "A funder in Karnataka.\n\nRefreshed: The CSR mailbox moved to grants@."
+
+    async def test_a_keep_only_delta_adds_todays_versions_to_the_newest_row(self):
+        conn = ScriptConn()
+        await delta.note_reread(conn, 5, [77, 78])
+        [(sql, params)] = conn.sql("UPDATE entity_research")
+        assert params == ([77, 78], 5) and "snapshot_ids" in sql
+        await delta.note_reread(ScriptConn(), 5, [])  # nothing read, nothing written
 
     async def test_a_row_already_saved_today_is_left_alone(self):
         conn = ScriptConn([("researched_on = current_date", {"?column?": 1})])

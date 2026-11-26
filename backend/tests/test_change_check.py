@@ -284,8 +284,8 @@ def _changed(url: str = "https://a.org/about", status: str = compare.CHANGED) ->
 class TestRefresh:
     @pytest.fixture
     def refresh(self, monkeypatch):
-        state = SimpleNamespace(models=[], saved=[], entity={"slug": SLUG, "entity_name": "Funder",
-                                                             "canonical_name": None, "summary": "s"})
+        state = SimpleNamespace(models=[], saved=[], reread=[], entity={"id": 5, "slug": SLUG, "entity_name": "Funder",
+                                                                        "canonical_name": None, "summary": "s"})
         monkeypatch.setattr(change_check, "make_pool", lambda url, max_size: _Pool())
         monkeypatch.setattr(delta, "load", lambda conn, slug: _value((state.entity, [])))
 
@@ -304,6 +304,7 @@ class TestRefresh:
             state.saved.append(read)
             return 91
         monkeypatch.setattr(delta, "save_row", save_row)
+        monkeypatch.setattr(delta, "note_reread", lambda conn, row_id, ids: _value(state.reread.append((row_id, ids))))
         monkeypatch.setattr(brief, "publish", lambda *a, **kw: pytest.fail("published the brief before review"))
         return state
 
@@ -343,11 +344,13 @@ class TestRefresh:
                                     save.Saved(0, 0, 0))
         assert refresh.saved == [] and "no usable delta (ValueError)" in capsys.readouterr().out
 
-    async def test_a_delta_that_changes_nothing_is_not_saved(self, refresh, monkeypatch, capsys):
+    async def test_a_delta_that_changes_nothing_saves_no_row_but_moves_the_baseline(self, refresh, monkeypatch,
+                                                                                      capsys):
         monkeypatch.setattr(delta, "apply", lambda proposed, srcs, kind: delta.Applied(kept=2))
         await change_check._refresh(SLUG, [_changed()], discover.Discovery(), judge.Context((), ()),
-                                    save.Saved(0, 0, 0))
-        assert refresh.saved == [] and "the delta changes nothing" in capsys.readouterr().out
+                                    save.Saved(0, 0, 0, {"https://a.org/about": 77}))
+        assert refresh.saved == [] and refresh.reread == [(5, [77])]
+        assert "the delta changes nothing" in capsys.readouterr().out
 
     async def test_a_page_with_an_unsettled_broken_fact_keeps_its_baseline(self, refresh, monkeypatch):
         stale = "https://a.org/stale"

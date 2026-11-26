@@ -468,7 +468,8 @@ class TestSaveResearch:
         # A row's supersedes apply before its own findings, so what this run finds again still stands.
         await self.save(research())
         [(sql, _params)] = saving.conn.sql("INSERT INTO entity_research")
-        assert "supersedes" not in sql
+        # A removal stays removed; an update's note goes, or the updated fact would vanish with its new value.
+        assert "WHERE NOT coalesce((e->>'updated')::boolean, false)" in sql
 
     async def test_replace_overwrites_and_says_so(self, saving):
         saving.conn.on("SELECT fact_count", {"fact_count": 15, "researched_by": UUID(int=9), "stopped_reason": None})

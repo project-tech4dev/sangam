@@ -8,12 +8,19 @@ export const kindLabel = (kind: string) => KIND_LABEL[kind] ?? "Organisation";
 
 type Shelf = { label: string; tag: string };
 
+/** How a refresh row's stopped_reason starts: REFRESH_REASON in backend/app/ingest/refresh/delta.py. */
+export const REFRESH_REASON = "A refresh";
+
 /** What happened to one research row, as staff read it. */
 export function researchState(r: ResearchRecord): Shelf {
   if (r.status === "not_found") return { label: "Couldn't find it", tag: "tag-outline" };
   if (r.status === "wrong_entity") return { label: "Found a different organisation", tag: "tag-outline" };
   if (r.saved_at && !savedSinceResearch(r)) return { label: "New research, not saved", tag: "tag-neutral" };
-  if (r.saved_at || r.resolved_funder_id || r.resolved_org_id) return { label: "Saved", tag: "tag-accent-2" };
+  // A refresh row inherits the profile it updates, so only its own save makes it saved.
+  const refresh = r.stopped_reason?.startsWith(REFRESH_REASON) ?? false;
+  if (r.saved_at || (!refresh && (r.resolved_funder_id || r.resolved_org_id))) {
+    return { label: "Saved", tag: "tag-accent-2" };
+  }
   return { label: "Not saved", tag: "tag-neutral" };
 }
 
