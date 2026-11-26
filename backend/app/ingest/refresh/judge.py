@@ -98,6 +98,8 @@ async def run(checks: list[Check], findings: dict[str, list[str]], context: Cont
 async def _judge_one(check: Check, sentences: list[str], context: Context, model: Any) -> Check:
     try:
         answer: Judgement = await model.ainvoke([SystemMessage(PROMPT), HumanMessage(ask(check, sentences, context))])
+        if answer is None:  # a refusal or a cut-off reply parses to nothing
+            raise ValueError("no structured answer")
     except Exception as exc:  # noqa: BLE001 — an unjudged change is a change, never a crash of the whole check
         logger.warning("source-check judge failed on %s: %s", check.baseline.url, exc)
         return replace(check, status=CHANGED, reason=f"{check.reason}; judge failed ({type(exc).__name__})")

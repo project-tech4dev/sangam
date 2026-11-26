@@ -6,6 +6,7 @@ import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from typing import Any
 
 from app.db.pool import get_pool
 from app.ingest.reading import staff_sources, vault
@@ -58,6 +59,16 @@ async def known_fingerprint(archive_key: str) -> str | None:
     except Exception:
         logger.warning("snapshot lookup failed for %s", archive_key, exc_info=True)
         return None
+
+
+async def read_key(conn: Any, snapshot_ids: list[int] | None, url: str) -> str | None:
+    """The archived copy of url this research run read, not a newer one a change check archived since."""
+    if not snapshot_ids:
+        return None
+    row = await (await conn.execute(
+        "SELECT archive_key FROM source_snapshots WHERE id = ANY(%s) AND url = %s AND archive_key IS NOT NULL "
+        "ORDER BY last_seen_at DESC LIMIT 1", (snapshot_ids, canonical_url(url)))).fetchone()
+    return row["archive_key"] if row else None
 
 
 async def record_snapshot(url: str, kind: str, fingerprint: str, archive_key: str | None) -> int | None:

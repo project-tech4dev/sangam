@@ -169,6 +169,7 @@ class Settings(BaseSettings):
         tiers = {"MODEL": self.model, "RESEARCH_MODEL": self.research_model, "UTILITY_MODEL": self.utility_model}
         if self.sql_audit_model:
             tiers["SQL_AUDIT_MODEL"] = self.sql_audit_model
+        tiers["SOURCE_CHECK_JUDGE_MODEL"] = self.source_check_judge_model
         others = [name for name, spec in tiers.items() if not spec.startswith("compat:")]
         if others and len(others) < len(tiers):
             raise ValueError(f"a compat: tier needs every tier on compat:, but {', '.join(others)} is not "

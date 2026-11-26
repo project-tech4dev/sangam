@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlsplit
@@ -28,10 +28,15 @@ NEW = "new"
 SHARED_HOSTS = ("facebook.com", "instagram.com", "linkedin.com", "twitter.com", "x.com", "youtube.com", "google.com")
 SHARED_ROOTS = ("wordpress.com", "blogspot.com", "medium.com")  # shared bare; a subdomain is one blog
 
+# A narrow re-run can save no website, so it is the newest one any row records.
 SUBJECT_SQL = """
-    SELECT coalesce(canonical_name, entity_name) AS name, website FROM entity_research
-     WHERE slug = %s AND status <> 'wrong_entity'
-     ORDER BY researched_on DESC, id DESC
+    SELECT coalesce(r.canonical_name, r.entity_name) AS name,
+           (SELECT w.website FROM entity_research w
+             WHERE w.slug = r.slug AND w.status <> 'wrong_entity' AND w.website IS NOT NULL
+             ORDER BY w.researched_on DESC, w.id DESC LIMIT 1) AS website
+      FROM entity_research r
+     WHERE r.slug = %s AND r.status <> 'wrong_entity'
+     ORDER BY r.researched_on DESC, r.id DESC
      LIMIT 1
 """
 
@@ -162,7 +167,7 @@ async def run(subject: Subject | None, known_urls: set[str], known_hashes: set[s
         if today.fingerprint and today.fingerprint in known_hashes:
             found.dropped.append((lead, "the same text as a source already read"))
         elif today.status == fetch_status.OK:
-            found.new.append((lead, why))
+            found.new.append((replace(lead, kind="document") if today.path else lead, why))
         else:
             found.dropped.append((lead, f"{today.status}: {today.reason}"))
     return found
@@ -175,6 +180,8 @@ async def _pick(leads: list[Lead], subject: Subject, context: Context, model: An
         return []
     try:
         answer: Picks = await model.ainvoke([SystemMessage(PROMPT), HumanMessage(ask(leads, subject, context))])
+        if answer is None:  # a refusal or a cut-off reply parses to nothing
+            raise ValueError("no structured answer")
     except Exception as exc:  # noqa: BLE001 — an unjudged lead waits for the next check
         logger.warning("source-check discovery judge failed for %s: %s", subject.name, exc)
         found.failed.append(f"lead judge ({type(exc).__name__}), {len(leads)} leads not judged")

@@ -54,6 +54,10 @@ class TestRun:
         [out] = await judge.run([differs()], {}, CONTEXT, Model(error))
         assert out.status == CHANGED and f"judge failed ({type(error).__name__})" in out.reason
 
+    async def test_no_structured_answer_is_a_failed_judge_not_a_crash(self):
+        [out] = await judge.run([differs()], {}, CONTEXT, Model(None))
+        assert out.status == CHANGED and "judge failed (ValueError)" in out.reason
+
     async def test_only_a_page_that_still_differs_is_judged(self):
         model = Model(answer(False))
         settled = [replace(differs(), status=s) for s in (UNCHANGED, MINOR, CHANGED, "unverified", "dead")]
