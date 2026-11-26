@@ -83,6 +83,30 @@ class TestRun:
         found = await run(Model(picks((1, "horoscope"))), client)
         assert found.leads[0][1] == CSR.name
 
+    async def test_no_structured_answer_reads_nothing_and_does_not_crash(self, fetched):
+        client, _ = tavily()
+        found = await run(Model(None), client)
+        assert found.leads == [] and fetched == []
+
+    async def test_a_page_with_no_readable_text_is_dropped(self, monkeypatch):
+        async def fetch_today(source, scratch):
+            return fetch_status.Today(source.url, fetch_status.OK, "HTTP 200", text="", fingerprint="f")
+        monkeypatch.setattr(fetch_status, "fetch_today", fetch_today)
+        monkeypatch.setattr(gap_search, "rule_for_url", lambda url: None)
+        client, _ = tavily()
+        found = await run(Model(picks((1, CSR.name))), client)
+        assert found.leads == [] and [why for _, why in found.dropped] == ["no readable text"]
+
+    async def test_a_lead_that_turned_out_a_document_is_kept_as_one(self, monkeypatch, tmp_path):
+        async def fetch_today(source, scratch):
+            return fetch_status.Today(source.url, fetch_status.OK, "HTTP 200", text="Annual report",
+                                      path=tmp_path / "r.pdf", fingerprint="f")
+        monkeypatch.setattr(fetch_status, "fetch_today", fetch_today)
+        monkeypatch.setattr(gap_search, "rule_for_url", lambda url: None)
+        client, _ = tavily()
+        found = await run(Model(picks((1, CSR.name))), client)
+        assert [lead.kind for lead, _, _ in found.leads] == ["document"]
+
     async def test_a_failed_judge_reads_nothing(self, fetched):
         client, _ = tavily()
         found = await run(Model(RuntimeError("overloaded")), client)

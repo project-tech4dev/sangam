@@ -245,7 +245,12 @@ class TestApply:
         """A gap page, or anything else, cannot end a fact its own page still states."""
         out = delta.apply(answer(remove=[Removal(id="f2", why="a partner's report says it ended")]), srcs())
         assert (out.removed, out.supersedes) == (0, [])
-        assert out.refused == ["remove f2: its sentence is still on its page"]
+        assert out.refused[0] == "remove f2: its sentence is still on its page"
+
+    def test_a_refused_removal_holds_its_page_back_for_a_person(self):
+        out = delta.apply(answer(keep=["f1", "f3"], remove=[Removal(id="f2", why="a line now says it ended")]),
+                          srcs())
+        assert "f2" in out.unhandled and URL in out.stale
 
     def test_a_fact_from_a_page_that_is_gone_is_never_removed(self):
         out = delta.apply(answer(remove=[Removal(id="f3", why="the page 404s")]), srcs())
@@ -418,7 +423,8 @@ class TestGapSource:
         assert '<source status="gap"' in delta.ask("Funder", self.srcs(), CONTEXT)
 
     def test_an_add_of_its_gaps_concept_is_taken(self):
-        add = {**CALL, "title": "Fellowship", "evidence": self.SENTENCE, "source_url": self.URL}
+        add = {**CALL, "title": "Fellowship", "evidence": self.SENTENCE, "source_url": self.URL,
+               "url": "https://partner.org/apply"}
         out = delta.apply(answer(add=[json.dumps(add)]), self.srcs())
         assert out.added == 1 and out.refused == []
 
@@ -428,6 +434,13 @@ class TestGapSource:
                           self.srcs())
         assert (out.added, out.updated, out.supersedes) == (0, 0, [])
         assert all("was read only for rfp.how_to_apply" in r for r in out.refused) and len(out.refused) == 2
+
+    def test_a_fact_the_record_already_holds_is_not_replaced_from_another_site(self):
+        add = {**CALL, "title": "Fellowship", "evidence": self.SENTENCE, "source_url": self.URL,
+               "url": "https://partner.org/apply"}
+        held = frozenset({brief.fact_key(add)})
+        out = delta.apply(answer(add=[json.dumps(add)]), self.srcs(), held=held)
+        assert out.added == 0 and "the record already holds this fact" in out.refused[0]
 
     def test_the_prompts_say_so(self):
         assert "`gap` source only fills" in delta.PROMPT and "`gap` source" in delta.RUBRIC
@@ -446,9 +459,43 @@ class TestFills:
         assert not delta.fills({"concept": "rfp", "deadline": None}, "rfp.deadline")
         assert delta.fills({"concept": "rfp", "deadline": "2027-03-31"}, "rfp.deadline")
 
-    def test_a_field_that_names_a_topic_checks_the_concept(self):
-        assert delta.fills({"concept": "rfp", "title": "Fellowship"}, "rfp.how_to_apply")
+    def test_a_topic_closes_only_through_the_field_that_answers_it(self):
+        assert delta.fills({"concept": "rfp", "title": "Fellowship", "url": "https://apply.example"}, "rfp.how_to_apply")
+        assert not delta.fills({"concept": "rfp", "title": "Fellowship", "url": None}, "rfp.how_to_apply")
         assert not delta.fills({"concept": "contact"}, "rfp.how_to_apply")
+
+    def test_a_topic_with_no_answering_field_stays_open(self):
+        assert not delta.fills({"concept": "identity", "name": "X"}, "identity.governance")
+
+    def test_a_programme_field_gap_is_filled_only_by_that_programme(self):
+        gap = OpenGap("program.themes", "program", "themes", None, "not_stated", "Teacher Fellowship lists no themes")
+        mine = {"concept": "program", "name": "Teacher Fellowship", "themes": ["education"]}
+        other = {"concept": "program", "name": "Water for All", "themes": ["water"]}
+        assert delta.fills(mine, "program.themes", (gap,)) and not delta.fills(other, "program.themes", (gap,))
+
+
+async def test_a_yearly_gap_filled_for_one_year_stays_open_for_the_others():
+    entity = {**TestSaveRow.ENTITY, "years": ["FY2022-23", "FY2023-24", "FY2024-25"],
+              "gaps": [{"concept": "csr_spend", "reason": "not_stated", "detail": "no filing"}]}
+    context = Context(("csr_spend",), ("csr_spend",))
+    applied = delta.Applied(findings=[{"concept": "csr_spend", "fiscal_year": "FY2023-24"}])
+    conn = ScriptConn([("INSERT INTO entity_research", {"id": 96})])
+    await delta.save_row(conn, entity, applied, answer(gaps_closed=["csr_spend"]), context, [], [])
+    [(_sql, p)] = conn.sql("INSERT INTO entity_research")
+    assert json.loads(p[14]) == [{"concept": "csr_spend", "reason": "not_stated", "detail": "no filing",
+                                  "fiscal_year": y} for y in ("FY2022-23", "FY2024-25")]
+
+
+async def test_only_the_programme_a_field_gap_names_is_closed():
+    gaps = [{"concept": "program", "field": "themes", "detail": "Teacher Fellowship lists no themes"},
+            {"concept": "program", "field": "themes", "detail": "Water for All lists no themes"}]
+    entity = {**TestSaveRow.ENTITY, "gaps": gaps}
+    applied = delta.Applied(findings=[{"concept": "program", "name": "Teacher Fellowship", "themes": ["education"]}])
+    conn = ScriptConn([("INSERT INTO entity_research", {"id": 97})])
+    await delta.save_row(conn, entity, applied, answer(gaps_closed=["program.themes"]),
+                         Context(("program",), ("program.themes",)), [], [])
+    [(_sql, p)] = conn.sql("INSERT INTO entity_research")
+    assert json.loads(p[14]) == [gaps[1]]
 
 
 async def test_a_gap_stays_open_when_the_saved_finding_is_another_years():

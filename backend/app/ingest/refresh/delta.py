@@ -19,7 +19,7 @@ from app.ingest.refresh.evidence import BROKEN, INTACT, UNANCHORED, on_page
 from app.ingest.refresh.fetch_status import DEAD
 from app.ingest.refresh.judge import DIFF_CHARS, Context, OpenGap, gap_name
 from app.ingest.research import source_guards
-from app.ingest.research.finding_types import SCHEMA_VERSION, Finding
+from app.ingest.research.finding_types import SCHEMA_VERSION, YEARLY, Finding
 from app.ingest.research.findings import untiered_org_fact
 from app.ingest.research.source_guards import is_private_source
 
@@ -257,28 +257,42 @@ async def propose(model: Any, grader: Any, question: str) -> tuple[Delta, list[s
     return revised, grade.problems
 
 
+# A gap's field that no finding of its concept holds (★ in the skills) names a topic. It closes only through the
+# field that answers it; a topic not listed here stays open, since no saved value could show it was found.
+TOPIC_FIELDS = {("rfp", "how_to_apply"): "url", ("identity", "intake_route"): "intake_mode"}
+
+
 def fills(finding: dict[str, Any], name: str, open_gaps: tuple[OpenGap, ...] = ()) -> bool:
-    """A finding fills the gap `name` when its concept matches, and its year and field too where the gap has them.
-    A gap's field that is no field of the finding (rfp.how_to_apply) names a topic, so only the concept is checked."""
-    wanted = [(g.concept, g.field, g.fiscal_year) for g in open_gaps if g.name == name]
+    """A finding fills the gap `name` when its concept matches, and its year, field and programme too where the gap
+    names them."""
+    wanted = [(g.concept, g.field, g.fiscal_year, g.detail) for g in open_gaps if g.name == name]
     if not wanted:
         concept, _, field = name.partition(".")
-        wanted = [(concept, field or None, None)]
+        wanted = [(concept, field or None, None, "")]
     return any(_fills(finding, *w) for w in wanted)
 
 
-def _fills(finding: dict[str, Any], concept: str, field: str | None, fiscal_year: str | None) -> bool:
+def _fills(finding: dict[str, Any], concept: str, field: str | None, fiscal_year: str | None,
+           detail: str | None = "") -> bool:
     if finding.get("concept") != concept:
         return False
-    if field and field in finding and finding[field] in (None, "", [], {}):
-        return False
+    if field:
+        field = field if field in finding else TOPIC_FIELDS.get((concept, field))
+        if not field or finding.get(field) in (None, "", [], {}):
+            return False
+        # A programme's field gap names its programme; another programme's value does not fill it.
+        name = (finding.get("name") or "").strip().casefold()
+        if concept == "program" and detail and name and name not in detail.casefold():
+            return False
     return not fiscal_year or finding.get("fiscal_year") == fiscal_year
 
 
-def apply(delta: Delta, srcs: list[Source], open_gaps: tuple[OpenGap, ...] = (), kind: str | None = None) -> Applied:
+def apply(delta: Delta, srcs: list[Source], open_gaps: tuple[OpenGap, ...] = (), kind: str | None = None,
+          held: frozenset[tuple] = frozenset()) -> Applied:
     """The delta as findings and the facts they replace; anything citing a sentence not on its source, or that a
     research save would refuse for this kind of organisation, is refused."""
     facts = {f.id: f for s in srcs for f in s.facts}
+    source_of = {f.id: s.url for s in srcs for f in s.facts}
     # A changed page is quoted from what it added, so an old, unchanged sentence cannot pass as new.
     texts = {s.url: "\n".join(s.added) if s.status == "changed" and s.added else s.text for s in srcs if s.text}
     gaps_of = {s.url: str((s.hint or {}).get("fills", "")) for s in srcs if s.status == GAP}
@@ -289,6 +303,11 @@ def apply(delta: Delta, srcs: list[Source], open_gaps: tuple[OpenGap, ...] = (),
         url = canonical_url(finding["source_url"])
         if url not in gaps_of:
             return True
+        if verb == "add" and brief.fact_key(finding) in held:
+            # Same fact as one the record holds: from another site it would replace the funder's own copy.
+            out.refused.append(f"add {finding.get('concept')}: {url} is another site, and the record already holds "
+                               "this fact")
+            return False
         if verb == "add" and fills(finding, gaps_of[url], open_gaps):
             return True
         out.refused.append(f"{verb} {finding.get('concept')}: {url} was read only for {gaps_of[url]}")
@@ -340,8 +359,11 @@ def apply(delta: Delta, srcs: list[Source], open_gaps: tuple[OpenGap, ...] = (),
             # A page moving is not the fact ending; a person decides that in Review & save.
             out.refused.append(f"remove {r.id}: its page is gone, which does not end the fact")
         elif old and old.verdict == INTACT:
-            # Its sentence is still on its page, so the page still says it: nothing, a gap page least, ends it.
+            # Its sentence is still on its page, so the page still says it: nothing, a gap page least, ends it. But
+            # the model saw a reason to doubt it, and "intact" misses an added "not", so a person looks next time.
             out.refused.append(f"remove {r.id}: its sentence is still on its page")
+            out.unhandled.append(r.id)
+            out.stale.add(source_of[r.id])
         elif old:
             out.supersedes.append(brief.superseded(old.finding))
             out.removed += 1
@@ -367,9 +389,8 @@ async def save_row(conn: Any, entity: dict[str, Any], applied: Applied, delta: D
     found = {f.get("concept") for f in applied.findings}
     # A gap closes only when a saved finding fills it, its year and field included, not on the model's word alone.
     claimed = set(delta.gaps_closed) & set(context.gaps)
-    gaps = [g for g in _list(entity.get("gaps")) if g.get("concept") and not (
-        gap_name(g) in claimed and any(_fills(f, g["concept"], g.get("field"), g.get("fiscal_year"))
-                                       for f in applied.findings))]
+    gaps = [left for g in _list(entity.get("gaps")) if g.get("concept")
+            for left in _still_open(g, claimed, applied.findings, entity.get("years") or [])]
     base = (entity["summary"] or "").split(REFRESHED)[0]  # one refresh note, not one per refresh
     summary = f"{base}{REFRESHED}{delta.summary}"
     reason = f"{REFRESH_REASON}: {len(sources_read)} changed or new sources reread; the rest stand from earlier research."
@@ -388,6 +409,23 @@ async def save_row(conn: Any, entity: dict[str, Any], applied: Applied, delta: D
     ))).fetchone()
     return row["id"]
 
+
+
+def _still_open(gap: dict[str, Any], claimed: set[str], findings: list[dict[str, Any]],
+                years: list[str]) -> list[dict[str, Any]]:
+    """The gap, nothing when a saved finding filled it, or, for a yearly concept asked of every year, one gap for
+    each year still missing."""
+    if gap_name(gap) not in claimed:
+        return [gap]
+    hits = [f for f in findings if _fills(f, gap["concept"], gap.get("field"), gap.get("fiscal_year"),
+                                          gap.get("detail"))]
+    if not hits:
+        return [gap]
+    if gap["concept"] in YEARLY and not gap.get("fiscal_year") and not gap.get("field"):
+        found = {f.get("fiscal_year") for f in hits}
+        missing = [y for y in years if y not in found]
+        return [{**gap, "fiscal_year": y} for y in missing] if years else [gap]
+    return []
 
 
 def _list(value: Any) -> list[Any]:

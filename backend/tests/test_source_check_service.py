@@ -386,3 +386,6 @@ async def test_the_inputs_include_pages_earlier_checks_read_for_a_gap(monkeypatc
     conn = ScriptConn([("status = 'gap'", [{"url": "https://partner.org/a"}, {"url": "https://csr.gov.in/b"}])])
     given = await service.load_inputs(conn, SLUG)
     assert given.gap_urls == {"https://partner.org/a", "https://csr.gov.in/b"}
+    # Only a page a saved research row cites counts as read; a look-only check's page may be offered again.
+    sql = next(s for s, _ in conn.calls if "status = 'gap'" in s)
+    assert "jsonb_array_elements(r.findings)" in sql and "f->>'source_url' = c.url" in sql

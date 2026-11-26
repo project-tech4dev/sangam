@@ -141,8 +141,12 @@ async def run(subject: Subject | None, known_urls: set[str], known_hashes: set[s
         today = await fetch_status.fetch_today(lead, scratch)
         if today.fingerprint and today.fingerprint in known_hashes:
             found.dropped.append((lead, "the same text as a source already read"))
+        elif today.status == fetch_status.OK and not today.text.strip():
+            # A scan or a Word file gives no text to quote, so reading it could fill nothing.
+            found.dropped.append((lead, "no readable text"))
         elif today.status == fetch_status.OK:
-            found.leads.append((lead, gap, why))
+            # A link with no extension can serve a document: it is archived and recorded as one.
+            found.leads.append((replace(lead, kind="document") if today.path else lead, gap, why))
             found.fetched[lead.url] = today
         else:
             found.dropped.append((lead, f"{today.status}: {today.reason}"))
@@ -156,6 +160,8 @@ async def _pick(listed: list[tuple[str, Lead]], subject: Subject, gaps: list[Ope
         return []
     try:
         answer: GapPicks = await model.ainvoke([SystemMessage(PROMPT), HumanMessage(ask(listed, subject, gaps))])
+        if answer is None:  # a refusal or a cut-off reply parses to nothing
+            raise ValueError("no structured answer")
     except Exception as exc:  # noqa: BLE001 — no picks is the safe answer off the funder's site
         logger.warning("source-check gap search judge failed for %s: %s", subject.name, exc)
         return []

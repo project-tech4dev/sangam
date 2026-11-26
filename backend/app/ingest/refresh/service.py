@@ -16,6 +16,7 @@ import httpx
 
 from app.agentkit.models import resolve_model
 from app.core.config import get_settings
+from app.ingest import brief
 from app.ingest.reading.access import canonical_url
 from app.ingest.refresh import (
     baseline,
@@ -80,8 +81,14 @@ class Inputs:
     gap_urls: frozenset[str] = frozenset()  # pages an earlier check read off the funder's site for a gap
 
 
-# A gap page stays out of the baseline, so this is how the next check knows it was read already.
-GAP_URLS_SQL = "SELECT DISTINCT url FROM source_checks WHERE slug = %s AND status = 'gap'"
+# A gap page stays out of the baseline, so this is how the next check knows it was read already. Only a page a saved
+# research row cites counts: one a look-only check or a refused update read never offered its fact, so it may again.
+GAP_URLS_SQL = """
+    SELECT DISTINCT c.url FROM source_checks c
+     WHERE c.slug = %s AND c.status = 'gap'
+       AND EXISTS (SELECT 1 FROM entity_research r, jsonb_array_elements(r.findings) f
+                    WHERE r.slug = c.slug AND f->>'source_url' = c.url)
+"""
 
 
 async def load_inputs(conn: Any, slug: str) -> Inputs:
@@ -291,7 +298,8 @@ async def _refresh(pool: Any, slug: str, checks: list[compare.Check], found: dis
         proposed, problems = await delta.propose(model, grader, delta.ask(name, srcs, context, kind))
     except Exception as exc:  # noqa: BLE001 — a reply that is no delta saves nothing, and says so
         return None, f"{slug}: refresh not saved: the update model gave no usable delta ({type(exc).__name__})"
-    applied = delta.apply(proposed, srcs, context.open_gaps, kind)
+    held = frozenset(brief.fact_key(f) for fs in delta.facts_by_url(rows).values() for f in fs)
+    applied = delta.apply(proposed, srcs, context.open_gaps, kind, held)
     read = [s.url for s in srcs if s.status != "dead" and s.url not in applied.stale]
     # A gap page joins the sources read, not the baseline: rechecked as an ordinary page, it could change own facts.
     tracked = [u for u in read if u not in {s.url for s in srcs if s.status == discover.GAP}]
