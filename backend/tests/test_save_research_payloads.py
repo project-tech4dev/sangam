@@ -306,3 +306,26 @@ class TestWhatTheModelIsSent:
 
     def test_stopped_reason_says_when_it_is_required(self):
         assert "REQUIRED for 'partial' and 'wrong_entity'" in save_research.description
+
+
+class TestTheDraftKeepsTwoFactsFromOnePage:
+    def test_two_unnamed_contacts_on_one_page_are_both_kept(self):
+        page = "https://acme.org/contact"
+        mail = {"concept": "contact", "name": "Acme Foundation", "email": "info@acme.org", "is_role_mailbox": True, "source_url": page, "confidence": "high",
+                "evidence": "Write to us at info@acme.org for any query."}
+        help_line = {**mail, "email": None, "phone": "1800 123 456", "evidence": "Call our helpline on 1800 123 456."}
+        current = draft.Draft()
+        draft.record(current, [mail, help_line], None, None)
+        assert len(current.findings) == 2
+        draft.record(current, [{**mail, "email": "hello@acme.org"}], None, None)
+        assert len(current.findings) == 2 and current.findings[0]["email"] == "hello@acme.org"
+
+
+class TestAFieldGapClosesOnlyWhenEveryFindingHasTheField:
+    GAP = {"concept": "program", "field": "themes", "reason": "not_stated", "detail": "Udaan's page names no theme"}
+
+    def test_one_untagged_programme_keeps_the_gap(self):
+        tagged, untagged = {"concept": "program", "themes": ["education"]}, {"concept": "program", "themes": []}
+        assert not draft.answered(self.GAP, [tagged, untagged])
+        assert draft.answered(self.GAP, [tagged])
+        assert not draft.answered(self.GAP, [])

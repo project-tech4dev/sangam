@@ -34,6 +34,7 @@ from app.ingest.reading.fetch import downloads_dir, fetch_document_file, read_pa
 from app.ingest.reading.staff_sources import is_staff_source_url
 from app.ingest.research import draft
 from app.ingest.research.contract import quoted_only, unanswered
+from app.ingest.research.expectations import concepts_for
 from app.ingest.research.finding_types import SCHEMA_VERSION, STORED
 from app.ingest.research.findings import EntityResearch
 from app.integrations.storage import safe_name
@@ -252,12 +253,24 @@ def _json(value: Any) -> list[dict[str, Any]]:
     return value if isinstance(value, list) else json.loads(value or "[]")
 
 
+def _fitting(gaps: list[dict[str, Any]], head: dict[str, Any]) -> list[dict[str, Any]]:
+    """A gap the save's kind is not researched for is dropped, since record_findings cannot take one back."""
+    if head["entity_kind"] == "unknown":
+        return gaps
+    allowed = set(concepts_for(head["entity_kind"]))
+    return [g for g in gaps if g.get("concept") in allowed]
+
+
 def _merged(head: dict[str, Any], current: draft.Draft,
             prior: dict[str, Any] | None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """This run's draft over the row saved today, so a second save adds to the first and never shrinks it; and the
     refresh's carried findings, which were checked when first saved and are kept beside it unchecked."""
-    if not prior or head["status"] == "wrong_entity":
+    if head["status"] == "wrong_entity":
         return {**head, "findings": current.findings, "gaps": current.gaps, "unplaced": current.unplaced}, []
+    if not prior or prior["status"] == "wrong_entity":
+        # A wrong_entity row is another organisation: nothing of it is carried into the right one.
+        return {**head, "findings": current.findings, "unplaced": current.unplaced,
+                "gaps": _fitting(draft.merged_gaps([], current.gaps, current.findings), head)}, []
     before = _json(prior["findings"])
     findings = merge_findings([{"findings": before}, {"findings": current.findings}])
     kept = {fact_key(f) for f in findings}
@@ -265,7 +278,7 @@ def _merged(head: dict[str, Any], current: draft.Draft,
     return {
         **head,
         "findings": findings,
-        "gaps": draft.merged_gaps(_json(prior["gaps"]), current.gaps, findings),
+        "gaps": _fitting(draft.merged_gaps(_json(prior["gaps"]), current.gaps, findings), head),
         "sources_read": list(dict.fromkeys([*(prior["sources_read"] or []), *head["sources_read"]])),
         "unplaced": current.unplaced,
     }, carried
@@ -326,7 +339,7 @@ async def save_research(
                 return _NGO_REFUSAL
             prior = await (
                 await conn.execute(
-                    "SELECT fact_count, researched_by, findings, gaps, sources_read, snapshot_ids "
+                    "SELECT fact_count, status, researched_by, findings, gaps, sources_read, snapshot_ids "
                     "FROM entity_research WHERE slug = %s AND researched_on = current_date",
                     (slug,),
                 )
@@ -335,6 +348,10 @@ async def save_research(
         if prior and not caller.is_staff and prior["researched_by"] != caller.user_id:
             return (f"REFUSED: {slug} was already researched and saved today. Report back with "
                     f"slug={slug!r} and saved=true, and say the research on file is today's.")
+        if status == "wrong_entity" and prior and prior["status"] != "wrong_entity" and prior["fact_count"]:
+            return (f"REFUSED, nothing saved: {slug} already holds {prior['fact_count']} findings on the right "
+                    f"organisation today, which a wrong_entity save would erase. Report back status wrong_entity "
+                    f"with saved=false.")
         payload, carried = _merged(head, current, prior)
         try:
             findings = EntityResearch.model_validate(payload, context=STORED)
@@ -422,7 +439,8 @@ async def save_research(
             published = None
 
         found = ", ".join(findings.concepts_found()) or "nothing"
-        merged = f" Merged with the {prior['fact_count']} findings saved earlier today." if prior else ""
+        merged = (f" Merged with the {prior['fact_count']} findings saved earlier today."
+                  if prior and prior["status"] != "wrong_entity" and status != "wrong_entity" else "")
         # Only claim what happened. With Storage unconfigured the brief exists
         # nowhere until someone renders it on the host. "brief is published" is
         # matched by the Import UI's milestone strip — a test pins the phrase.

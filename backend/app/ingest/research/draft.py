@@ -103,7 +103,8 @@ def _put(items: list[dict[str, Any]], item: dict[str, Any], key: Any) -> None:
 
 
 def _finding_key(f: dict[str, Any]) -> tuple:
-    return fact_key(f), f.get("source_url")
+    # The quote too: one page can hold two facts with one key (two unnamed contacts), and both are kept.
+    return fact_key(f), f.get("source_url"), f.get("evidence")
 
 
 def _gap_key(g: dict[str, Any]) -> tuple:
@@ -169,12 +170,13 @@ def _filled(v: Any) -> bool:
 
 
 def answered(gap: dict[str, Any], findings: list[dict[str, Any]]) -> bool:
-    """A gap a finding now fills; one covering every year of a yearly concept is never closed by a single year."""
+    """A gap a finding now fills; one covering every year of a yearly concept is never closed by a single year,
+    and a field gap only once every such finding has the field (one untagged programme keeps its themes gap)."""
     concept, year, name = gap.get("concept"), gap.get("fiscal_year"), gap.get("field")
     if concept in YEARLY and not year and not name:
         return False
     same = [f for f in findings if f.get("concept") == concept and (not year or f.get("fiscal_year") == year)]
-    return any(_filled(f.get(name)) for f in same) if name else bool(same)
+    return bool(same) and all(_filled(f.get(name)) for f in same) if name else bool(same)
 
 
 def merged_gaps(prior: list[dict[str, Any]], mine: list[dict[str, Any]],

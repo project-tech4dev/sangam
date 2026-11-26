@@ -141,15 +141,21 @@ class TestTwoContentRefusalsMoveTheRunToTheStrongModel:
 
 
 class TestQualityIsJudgedNotGraded:
-    def test_the_judge_runs_on_the_utility_tier_and_only_on_the_researcher(self, built):
-        (judge,) = of(built.researcher, ResearchJudge)
-        assert judge.model.name == "m:cheap"
-        assert not of(built.writer, ResearchJudge) and not of(built.main, ResearchJudge)
+    LANGFUSE = {"langfuse_public_key": "pk", "langfuse_secret_key": "sk"}
 
-    def test_off_turns_it_off(self, build_import):
-        seen = build_import(**TIERS, research_judge_model="off")
-        researcher = next(s for s in seen["subagents"] if s["name"] == "entity-researcher")["middleware"]
-        assert not of(researcher, ResearchJudge)
+    def researcher(self, build_import, **over):
+        seen = build_import(**TIERS, **over)
+        return next(s for s in seen["subagents"] if s["name"] == "entity-researcher")["middleware"]
+
+    def test_the_judge_runs_on_the_utility_tier_and_only_on_the_researcher(self, build_import):
+        seen = build_import(**TIERS, **self.LANGFUSE)
+        (judge,) = of(self.researcher(build_import, **self.LANGFUSE), ResearchJudge)
+        assert judge.model.name == "m:cheap"
+        assert not of(seen["middleware"], ResearchJudge)
+
+    def test_off_or_no_langfuse_turns_it_off(self, build_import):
+        assert not of(self.researcher(build_import, research_judge_model="off", **self.LANGFUSE), ResearchJudge)
+        assert not of(self.researcher(build_import, langfuse_public_key="", langfuse_secret_key=""), ResearchJudge)
 
     def test_old_tool_results_are_cleared_on_the_researcher(self, built):
         (clearing,) = of(built.researcher, ContextEditingMiddleware)

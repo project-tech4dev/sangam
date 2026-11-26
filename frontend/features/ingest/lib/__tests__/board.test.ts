@@ -100,6 +100,11 @@ describe("boardOf", () => {
     expect(boardOf([t, goals, step("save_research", { entity_name: "A" },
       "Saved as entity_research #4 (a): 0 findings across nothing; status not_found.", { lane: "L" })], true)
       .events.find((e) => e.text.startsWith("found"))?.text).toBe("found 0 answers");
+    // A refused save found nothing yet; it is not "found 0 answers".
+    const refused = step("save_research", { entity_name: "A" }, "REFUSED, nothing saved: every field gets a finding",
+      { lane: "L" });
+    expect(boardOf([t, goals, noted, refused], true).events.map((e) => e.text))
+      .toContain("is fixing what the save refused");
   });
 
   it("lists documents, keeping only a scan or failure of a downloaded file", () => {

@@ -512,7 +512,8 @@ class TestASubagentLeavesNoFiles:
         from app.core.config import get_settings
         from app.ingest.agent import build_ingest_agent
 
-        researcher = _subagent_graphs(build_ingest_agent(get_settings(), None))["entity-researcher"]
+        settings = get_settings().model_copy(update={"langfuse_public_key": "pk", "langfuse_secret_key": "sk"})
+        researcher = _subagent_graphs(build_ingest_agent(settings, None))["entity-researcher"]
         edges = {(e.source, e.target) for e in researcher.get_graph().edges}
         # Quality is a Langfuse score, not a gate: the judge's only way out is onward.
         assert {t for s, t in edges if s == "ResearchJudge.after_agent"} == {"DropFilesOnExit.after_agent"}

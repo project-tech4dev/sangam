@@ -511,10 +511,41 @@ class TestSaveResearch:
         # A removal stays removed; an update's note goes, or the updated fact would vanish with its new value.
         assert "WHERE NOT coalesce((e->>'updated')::boolean, false)" in sql
 
-    async def test_a_wrong_entity_does_not_merge_with_the_right_one(self, saving):
+    WRONG = {"findings": [], "status": "wrong_entity", "stopped_reason": "A different trust."}
+
+    async def test_a_wrong_entity_never_erases_todays_right_one(self, saving):
         saving.conn.on("SELECT fact_count", prior_row([spend(project_name="Other")]))
-        out = await self.save(research(findings=[], status="wrong_entity", stopped_reason="A different trust."))
+        out = await self.save(research(**self.WRONG))
+        assert out.startswith("REFUSED, nothing saved: example-foundation already holds 1 findings")
+        assert not saving.conn.sql("INSERT") and self.run.refusals == 0
+
+    async def test_a_wrong_entity_over_an_empty_row_is_saved_alone(self, saving):
+        saving.conn.on("SELECT fact_count", prior_row(gaps=[{"concept": "rfp", "reason": "blocked", "detail": "403"}]))
+        out = await self.save(research(**self.WRONG))
         assert out.startswith("Saved as") and self.inserted(saving) == []
+
+    async def test_a_wrong_entity_row_is_never_merged_into_the_right_one(self, saving):
+        # Its findings are another organisation's: Tata Trust Ltd's CSR figures are not Tata Trusts'.
+        other = spend(project_name="Other", evidence="Another company spent Rs 9 crore on its own project.")
+        saving.conn.on("SELECT fact_count", prior_row([other], status="wrong_entity"))
+        out = await self.save(research())
+        assert "Merged" not in out and [f.get("project_name") for f in self.inserted(saving)] == ["Sports scholarships"]
+
+    async def test_a_first_save_drops_a_gap_its_own_finding_fills(self, saving):
+        filled = {"concept": "csr_spend", "reason": "blocked", "detail": "the first PDF was a 403",
+                  "fiscal_year": spend()["fiscal_year"]}
+        await self.save(research(gaps=[*research()["gaps"], filled]))
+        [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        assert filled["detail"] not in params[14]
+
+    async def test_a_gap_of_the_other_kind_is_dropped_not_refused_for_ever(self, saving):
+        # record_findings cannot take a gap back, so one the kind is not researched for must not block every save.
+        stray = {"concept": "org_identifier", "reason": "not_stated", "detail": "no registration on the site"}
+        saving.conn.on("SELECT fact_count", prior_row(gaps=[stray]))
+        out = await self.save(research(gaps=[*research()["gaps"], stray]))
+        assert out.startswith("Saved as")
+        [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        assert "org_identifier" not in params[14]
 
     async def test_a_members_own_earlier_save_may_be_added_to(self, saving):
         saving.conn.on("SELECT fact_count", prior_row(researched_by=MEMBER.user_id))

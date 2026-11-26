@@ -325,7 +325,9 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             *_call_limit(settings.research_model_call_limit),
             *([EscalateAfterFailedSave(strong)] if research_spec != settings.model else []),
             *fallback(research_spec, settings.model),
-            *([ResearchJudge(resolve_model(settings.research_judge_model))] if settings.research_judge_model else []),
+            # A score with nowhere to go is not worth a call.
+            *([ResearchJudge(resolve_model(settings.research_judge_model))]
+              if settings.research_judge_model and settings.langfuse_enabled else []),
             # Pages already recorded are dead weight; the findings live in the draft, not the messages.
             clear_old_tool_results(),
             cheap_summarizer(utility, backend),
