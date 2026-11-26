@@ -37,6 +37,20 @@ describe("verdictOf", () => {
     expect(v).toEqual({ title: "No update saved", text: "apf: no refresh: it was already researched today", next: "none" });
   });
 
+  it("does not say the facts still hold when a source could not be opened", () => {
+    const c = (status: string) => ({ status }) as SourceCheck;
+    const some = verdictOf({ ...run(), checks: [c("unchanged"), c("unverified"), c("unverified")] });
+    expect(some).toEqual({
+      title: "Nothing changed on the sources Sangam could open",
+      text: "2 sources could not be opened, so not everything was checked. Try again later.",
+      next: "none",
+    });
+    const all = verdictOf({ ...run(), checks: [c("unverified")] });
+    expect(all.title).toBe("No source could be opened");
+    expect(all.text).toBe("1 source could not be opened, so nothing was checked. Try again later.");
+    expect(verdictOf({ ...run(), checks: [c("unchanged")] }).title).toBe("Nothing to do");
+  });
+
   it("a run with no decision yet is still checking", () => {
     expect(verdictOf(run({ decision: null, finished_at: null }))).toEqual({ title: "Checking…", text: "", next: "none" });
   });

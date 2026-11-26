@@ -93,11 +93,21 @@ export function runState(run: CheckRun, now = Date.now()): string {
 export type Verdict = { title: string; text: string; next: "none" | "judge" | "update" | "research" };
 
 /** What the decision means for the person, and the one thing to do next. */
-export function verdictOf(run: CheckRun): Verdict {
+export function verdictOf(run: CheckRun & { checks?: SourceCheck[] }): Verdict {
   if (run.error) return { title: "The check failed", text: run.error, next: "none" };
   switch (run.decision) {
-    case "nothing to do":
-      return { title: "Nothing to do", text: "Everything Sangam holds from these sources is still on them.", next: "none" };
+    case "nothing to do": {
+      // A source that could not be opened was never a change, but it was not read either.
+      const unread = (run.checks ?? []).filter((c) => c.status === "unverified").length;
+      if (unread === 0)
+        return { title: "Nothing to do", text: "Everything Sangam holds from these sources is still on them.", next: "none" };
+      const all = unread === (run.checks ?? []).length;
+      return {
+        title: all ? "No source could be opened" : "Nothing changed on the sources Sangam could open",
+        text: `${plural(unread, "source")} could not be opened, so ${all ? "nothing" : "not everything"} was checked. Try again later.`,
+        next: "none",
+      };
+    }
     case "needs the judge":
       return {
         title: "Some text changed, every fact is still there",
