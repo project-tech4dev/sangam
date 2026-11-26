@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from app.ingest.brief import fact_key
+from app.ingest.research import source_guards
 from app.ingest.research.finding_types import FINDING_MODELS, YEARLY
 from app.ingest.research.findings import Gap, Unplaced
 
@@ -106,12 +107,40 @@ def _put(items: list[dict[str, Any]], item: dict[str, Any], key: Any) -> None:
 
 # One page can hold two of these under one key (a mailbox and a helpline), so the quote tells them apart.
 _BY_QUOTE = frozenset({"contact"})
+# What a finding says beyond its key; two that differ here under one key may be two facts, not a correction.
+_META = frozenset({"evidence", "source_url", "confidence", "page", "basis", "notes"})
 
 
 def _finding_key(f: dict[str, Any]) -> tuple:
     """A fact sent again from its page replaces the earlier copy, so a corrected figure or a reworded quote is one."""
     quote = f.get("evidence") if f.get("concept") in _BY_QUOTE else None
     return fact_key(f), f.get("source_url"), quote
+
+
+def _replaces(items: list[dict[str, Any]], item: dict[str, Any]) -> bool:
+    """Whether item overwrites a copy that said something else, which the reply names."""
+    old = next((f for f in items if _finding_key(f) == _finding_key(item)), None)
+    return old is not None and {k: v for k, v in old.items() if k not in _META} != {
+        k: v for k, v in item.items() if k not in _META}
+
+
+def _guarded(f: dict[str, Any], entity_kind: str | None) -> bool:
+    model = FINDING_MODELS.get(f.get("concept"))
+    return bool(model and source_guards.problems(f["concept"], f, frozenset(model.model_fields), entity_kind,
+                                                 at="save"))
+
+
+def drop_refused(draft: Draft, exc: ValidationError, findings: list[dict[str, Any]],
+                 entity_kind: str | None) -> list[str]:
+    """Takes the findings a whole save refused out of the run, so recording them again, fixed, is not a second copy:
+    those its errors point at, and those the source guards refuse, which the save names but cannot point at."""
+    bad = {_finding_key(findings[e["loc"][1]]) for e in exc.errors()
+           if len(e["loc"]) >= 2 and e["loc"][0] == "findings" and isinstance(e["loc"][1], int)
+           and e["loc"][1] < len(findings)}
+    bad |= {_finding_key(f) for f in draft.findings if _guarded(f, entity_kind)}
+    gone = [label(f) for f in draft.findings if _finding_key(f) in bad]
+    draft.findings[:] = [f for f in draft.findings if _finding_key(f) not in bad]
+    return gone
 
 
 def _gap_key(g: dict[str, Any]) -> tuple:
@@ -146,6 +175,7 @@ def record(draft: Draft, findings: Any, gaps: Any, unplaced: Any) -> str:
     accepted = {"findings": 0, "gaps": 0, "unplaced": 0}
     refused: list[str] = []
     dropped: list[str] = []
+    replaced: list[str] = []
     targets = {"findings": (draft.findings, _finding_key), "gaps": (draft.gaps, _gap_key),
                "unplaced": (draft.unplaced, _unplaced_key)}
     for kind, value in (("findings", findings), ("gaps", gaps), ("unplaced", unplaced)):
@@ -160,11 +190,17 @@ def record(draft: Draft, findings: Any, gaps: Any, unplaced: Any) -> str:
                 refused.append(why)
                 continue
             target, key = targets[kind]
+            if kind == "findings" and _replaces(target, stored):
+                replaced.append(label(stored))
             _put(target, stored, key)
             accepted[kind] += 1
     out = [(f"Recorded {accepted['findings']} findings, {accepted['gaps']} gaps, {accepted['unplaced']} unplaced. "
             f"This run holds {len(draft.findings)} findings, {len(draft.gaps)} gaps, {len(draft.unplaced)} unplaced; "
             "nothing recorded needs sending again.")]
+    if replaced:
+        out.append(f"Replaced an earlier finding from the same page with other values: {', '.join(replaced)}. Fine "
+                   "for a correction; if they are two facts, send both again, each with the name, programme, project, "
+                   "place or year that tells them apart.")
     if dropped:
         out.append(f"Dropped keys that are not fields (the rest of each item was kept): {', '.join(dropped)}.")
     if refused:

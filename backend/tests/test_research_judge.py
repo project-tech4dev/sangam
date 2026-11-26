@@ -42,7 +42,7 @@ class Model:
 @pytest.fixture
 def scores(monkeypatch):
     sent: list[tuple] = []
-    monkeypatch.setattr(judge, "score_answer", lambda name, value, comment=None, metadata=None:
+    monkeypatch.setattr(judge, "score_answer", lambda name, value, comment=None, metadata=None, run=None:
                         sent.append((name, value, comment, metadata)))
     return sent
 
@@ -115,3 +115,15 @@ class TestTheJudgeScores:
             current.record, current.saved = record(finding(), finding(url=f"{PUBLIC}/2")), SAVED
             await judged(model, current)
         assert f"{PUBLIC}/2" in model.asked[0] and "not_stated" not in model.asked[0]
+
+
+async def test_the_score_goes_to_the_run_the_hook_saw_since_it_has_ended_by_then(monkeypatch):
+    runs = []
+    monkeypatch.setattr(judge, "current_observation", lambda: "hook-run")
+    monkeypatch.setattr(judge, "score_answer", lambda *a, run=None, **k: runs.append(run))
+    with draft.drafting() as current:
+        current.saved, current.record = SAVED, record(finding())
+        assert await ResearchJudge(Model(QUALITY)).aafter_agent({}, None) is None
+        monkeypatch.setattr(judge, "current_observation", lambda: None)
+    await asyncio.gather(*judge._PENDING)
+    assert runs and set(runs) == {"hook-run"}

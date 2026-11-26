@@ -121,12 +121,12 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   cleared tool results cannot lose it; a crash loses it, as it lost everything before. `save_research` merges into
   today's row (`brief.merge_findings`, `snapshot_ids` unioned), so a short re-run no longer needs a shrink refusal or a
   `replace` flag. A fact sent again from its page replaces the earlier copy (a contact is keyed by its quote too, since
-  one page lists a mailbox and a helpline), and a refresh's `updated` notes stay while the row still holds their facts.
+  one page lists a mailbox and a helpline); the reply names a replacement whose values changed, so two facts under one key are not lost in silence. A save refused for a finding takes that finding out of the draft, guard refusals included, so its fix is not a second copy. A refresh's `updated` notes stay while the row still holds their facts. A save of the other kind replaces today's row only when it holds findings of its own.
   Only a refusal for what a save contains counts towards `MODEL`; "these fields have neither a finding nor a gap" is
   the expected way to finish. The Haiku rubric that gated each save was removed: it sent correct saves back ($0.27 on `c2b6973d`).
   `ResearchJudge` scores correctness, completeness, relevance, consistency and source quality to Langfuse, from public
   findings only, and never retries. It reads the row as saved, merged with today's earlier one, and runs in the
-  background, so the researcher's return never waits on it.
+  background, so the researcher's return never waits on it; the hook's Langfuse run is taken before, since it has ended by then.
 - **A metric's period has four shapes**, because it is part of the metric's key: `FY2024-25`, `CY2025`,
   `cumulative to <date>`, `as of <date>` (`rows.shape_period`). A save rewrites an exact match and refuses the rest;
   research read back for promotion (`STORED` context) is rewritten the same way but never refused, so a rule added

@@ -331,6 +331,17 @@ class TestTheDraftKeepsTwoFactsFromOnePage:
         assert [f["evidence"] for f in current.findings] == ["Planatearth works with HCLFoundation on Harit."]
 
 
+    def test_a_replacement_that_changed_the_values_is_named(self):
+        page = "https://acme.org/impact"
+        first = {"concept": "metric", "name": "students reached", "value": 1200, "period": "FY2024-25",
+                 "source_url": page, "confidence": "high", "evidence": "1,200 students in Maharashtra."}
+        current = draft.Draft()
+        assert "Replaced" not in draft.record(current, [first, {**first, "evidence": "1,200 students."}], None, None)
+        reply = draft.record(current, [{**first, "value": 900, "evidence": "900 students in Karnataka."}], None, None)
+        assert "Replaced an earlier finding from the same page with other values: metric 'students reached'" in reply
+        assert "send both again" in reply and len(current.findings) == 1
+
+
 class TestAFieldGapClosesOnlyWhenEveryFindingHasTheField:
     GAP = {"concept": "program", "field": "themes", "reason": "not_stated", "detail": "Udaan's page names no theme"}
 

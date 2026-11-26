@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.ingest.research import draft
 from app.ingest.research.source_guards import is_private_source
-from app.integrations.tracing import score_answer
+from app.integrations.tracing import current_observation, score_answer
 
 logger = logging.getLogger(__name__)
 
@@ -77,12 +77,13 @@ class ResearchJudge(AgentMiddleware):
         research = judge_input(current.record, current.goals)
         if research is None:
             return
-        # A score is never read by the run, so the researcher returns without waiting for it.
-        task = asyncio.create_task(self.score(current.saved["slug"], research))
+        # A score is never read by the run, so the researcher returns without waiting for it; the hook's run is
+        # taken now, since it has ended by the time the score is sent.
+        task = asyncio.create_task(self.score(current.saved["slug"], research, current_observation()))
         _PENDING.add(task)
         task.add_done_callback(_PENDING.discard)
 
-    async def score(self, slug: str, research: str) -> None:
+    async def score(self, slug: str, research: str, run: Any = None) -> None:
         try:
             judge = self.model.with_structured_output(ResearchQuality, method="json_schema")
             quality: ResearchQuality = await judge.ainvoke(PROMPT.format(entity=slug, research=research))
@@ -91,4 +92,4 @@ class ResearchJudge(AgentMiddleware):
             return
         for name in DIMENSIONS:
             score_answer(f"research_{name}", getattr(quality, name), comment=quality.notes or None,
-                         metadata={"slug": slug})
+                         metadata={"slug": slug}, run=run)

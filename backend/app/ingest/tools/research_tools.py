@@ -239,7 +239,8 @@ async def record_findings(
     unplaced: {field, value, evidence, source_url} for a stated fact no concept has a key for.
 
     Each item is checked on its own: valid ones are kept, the reply names only the refused ones, and a
-    key that is not a field is dropped. Sending a fact again replaces its earlier copy from that source.
+    key that is not a field is dropped. Sending a fact again from that source replaces its earlier copy,
+    and the reply names a replacement that changed its values.
     """
     try:
         current = draft.CURRENT.get()
@@ -375,6 +376,11 @@ async def save_research(
                     f"with saved=false.")
         replaced = ""
         if prior and "unknown" not in (prior["entity_kind"], entity_kind) and prior["entity_kind"] != entity_kind:
+            if prior["fact_count"] and not current.findings:
+                return (f"REFUSED, nothing saved: {slug} already holds {prior['fact_count']} findings saved today as "
+                        f"a {prior['entity_kind']}, and this run recorded none to replace them. Report back with "
+                        f"slug={slug!r} and saved=false, and say today's research on file is as a "
+                        f"{prior['entity_kind']}.")
             # One slug is one organisation, researched as one kind: the other kind's findings would fail its checks.
             replaced = (f" It replaced the {prior['fact_count']} findings saved earlier today as a "
                         f"{prior['entity_kind']}; say so in your summary.")
@@ -386,9 +392,11 @@ async def save_research(
             findings = EntityResearch.model_validate(payload, context=STORED)
         except ValidationError as exc:
             current.refusals += 1
+            gone = draft.drop_refused(current, exc, payload["findings"], payload["entity_kind"])
+            taken = (f"\nTaken out of this run: {', '.join(gone)}. Record each again with record_findings, fixed, "
+                     "or leave it out." if gone else "")
             return ("REFUSED, nothing saved:\n" + "\n".join(f"- {p}" for p in draft.problems(exc, payload["findings"]))
-                    + "\nFix a finding by recording it again with record_findings (it replaces the earlier copy), "
-                      "or fix this call's own arguments, then call save_research again.")
+                    + taken + "\nFix this call's own arguments if a problem names them, then call save_research again.")
         # The expected way to finish the contract, so it is not a refusal that moves the run to the strong model.
         if missing := unanswered(findings):
             return (

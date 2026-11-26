@@ -15,6 +15,7 @@ import pytest
 
 from app.ingest.catalog.matcher import Match
 from app.ingest.reading import fetch, snapshots
+from app.ingest.research import draft
 from app.ingest.research.expectations import concepts_for
 from app.ingest.tools import research_tools
 from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, prior_row, running_as, save_in_run
@@ -578,6 +579,30 @@ class TestSaveResearch:
         out = await self.save(research())
         assert "Merged" not in out and "replaced the 1 findings saved earlier today as a org" in out
         assert [f["project_name"] for f in self.inserted(saving)] == ["Sports scholarships"]
+
+    async def test_a_run_of_the_other_kind_that_found_nothing_does_not_erase_the_row(self, saving):
+        saving.conn.on("SELECT fact_count", prior_row([spend(project_name="Morning")], entity_kind="org"))
+        out = await self.save(research(findings=[], status="not_found", stopped_reason=None))
+        assert out.startswith("REFUSED, nothing saved: example-foundation already holds 1 findings saved today "
+                              "as a org, and this run recorded none"), out
+        assert saving.conn.sql("INSERT INTO entity_research") == []
+
+    async def test_a_finding_a_save_refuses_is_taken_out_so_its_fix_saves(self, saving):
+        # The guard says cite the research repository; a fix under that URL must not leave the bad copy behind.
+        bad = {"concept": "program", "name": "Harit", "source_type": "prior_research", "evidence_tier": "claimed",
+               "source_url": URL,
+               "confidence": "medium", "evidence": "HCLFoundation runs Harit, its environment programme."}
+        head = {k: v for k, v in research().items() if k not in ("findings", "gaps")}
+        with running_as(STAFF), draft.drafting() as current:
+            draft.record(current, [spend(), bad], research()["gaps"], None)
+            out = await research_tools.save_research.ainvoke(head)
+            assert out.startswith("REFUSED, nothing saved") and "Taken out of this run: program 'Harit'" in out
+            assert [f["concept"] for f in current.findings] == ["csr_spend"]
+            fixed = {**bad, "source_url": "https://github.com/project-tech4dev/org-grant-intelligence/blob/main/x.md"}
+            draft.record(current, [fixed], None, None)
+            out = await research_tools.save_research.ainvoke(head)
+        assert out.startswith("Saved as"), out
+        assert [f.get("project_name") or f["name"] for f in self.inserted(saving)] == ["Sports scholarships", "Harit"]
 
     async def test_one_object_is_recorded_as_a_list_of_one(self):
         schema = research_tools.record_findings.tool_call_schema.model_json_schema()
