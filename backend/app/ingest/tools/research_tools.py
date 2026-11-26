@@ -309,6 +309,10 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                         gaps = EXCLUDED.gaps,
                         years = EXCLUDED.years,
                         snapshot_ids = EXCLUDED.snapshot_ids,
+                        -- A removal stays removed; an update's note goes with the finding this save replaces.
+                        supersedes = (SELECT coalesce(jsonb_agg(e), '[]'::jsonb)
+                                        FROM jsonb_array_elements(entity_research.supersedes) e
+                                       WHERE NOT coalesce((e->>'updated')::boolean, false)),
                         researched_by = EXCLUDED.researched_by,
                         researched_at = now()
                     RETURNING *

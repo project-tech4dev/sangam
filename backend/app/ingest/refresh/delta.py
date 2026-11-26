@@ -120,6 +120,20 @@ async def load(conn: Any, slug: str) -> tuple[dict[str, Any] | None, list[dict[s
     return (dict(row) if row else None), await brief.rows_for(conn, slug)
 
 
+# Today's versions join the newest row's reads, so the baseline moves although no new row is saved.
+REREAD_SQL = """
+    UPDATE entity_research
+       SET snapshot_ids = (SELECT array_agg(DISTINCT id) FROM unnest(coalesce(snapshot_ids, '{}') || %s::bigint[]) id)
+     WHERE id = %s
+"""
+
+
+async def note_reread(conn: Any, row_id: int, snapshot_ids: list[int]) -> None:
+    """A delta that keeps every fact still read today's versions; recorded, they stop the next check re-paying."""
+    if snapshot_ids:
+        await conn.execute(REREAD_SQL, (snapshot_ids, row_id))
+
+
 def cannot_refresh(entity: dict[str, Any]) -> str | None:
     """A refresh carries a row's findings forward, so research that found nothing, or no kind, has none to carry."""
     if entity.get("status") == "not_found":
@@ -285,7 +299,7 @@ def apply(delta: Delta, srcs: list[Source], kind: str | None = None) -> Applied:
     for u in delta.update:
         if ((old := known(u.id, "update")) and (new := parsed(u.finding, f"update {u.id}"))
                 and quoted(new, f"update {u.id} →")):
-            out.supersedes.append(brief.superseded(old.finding))
+            out.supersedes.append(brief.superseded(old.finding, updated=True))
             out.findings.append(new)
             out.updated += 1
             settled.add(u.id)
@@ -325,7 +339,8 @@ async def save_row(conn: Any, entity: dict[str, Any], applied: Applied, delta: D
     reason = f"{REFRESH_REASON}: {len(sources_read)} changed or new sources reread; the rest stand from earlier research."
     # Private findings were never offered for review, so they stand: the brief still hides a summary they
     # informed, and promotion, which reads them from the newest row, still sees them.
-    private = [f for f in _list(entity.get("findings")) if is_private_source(f.get("source_url"))]
+    private = [{**f, brief.CARRIED: True} for f in _list(entity.get("findings"))
+               if is_private_source(f.get("source_url"))]
     findings = [*applied.findings, *private]
     row = await (await conn.execute(INSERT_SQL, (
         entity["entity_name"], entity.get("canonical_name"), entity["entity_kind"], entity["slug"],
@@ -354,7 +369,8 @@ def describe(slug: str, applied: Applied, row_id: int | None, problems: list[str
     counts = (f"{applied.kept} kept · {applied.updated} updated · {applied.removed} removed · "
               f"{applied.added} added")
     if nothing:
-        head = f"{slug}: refresh not saved: the delta changes nothing ({counts})"
+        head = (f"{slug}: refresh not saved: the delta changes nothing ({counts}); "
+                "today's versions are the baseline now")
     elif row_id:
         head = f"{slug}: refresh saved as entity_research #{row_id} ({counts}); it waits in Review & save"
     else:

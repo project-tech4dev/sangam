@@ -214,10 +214,20 @@ def fact_key(f: dict[str, Any]) -> tuple:
     return (concept, *(_norm(f.get(k)) for k in fields))
 
 
-def superseded(f: dict[str, Any]) -> dict[str, Any]:
+def superseded(f: dict[str, Any], *, updated: bool = False) -> dict[str, Any]:
     """How a refresh names a fact it replaced: its key, its source and its sentence, since one page can hold two
-    facts with one key and only this one ended."""
-    return {"key": list(fact_key(f)), "source_url": f.get("source_url"), "evidence": f.get("evidence")}
+    facts with one key and only this one ended. `updated` marks one the row's own findings replace."""
+    entry = {"key": list(fact_key(f)), "source_url": f.get("source_url"), "evidence": f.get("evidence")}
+    return {**entry, "updated": True} if updated else entry
+
+
+# A private finding a refresh row carries unchanged: it hides the summary and reaches promotion, but it is not new
+# research, so it never displaces another copy in the merge.
+CARRIED = "carried"
+
+
+def _same(f: dict[str, Any], g: dict[str, Any]) -> bool:
+    return f.get("source_url") == g.get("source_url") and (f.get("evidence") or "") == (g.get("evidence") or "")
 
 
 def _gone(f: dict[str, Any], entry: dict[str, Any]) -> bool:
@@ -266,7 +276,8 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
                 by_key.pop(key, None)
         mine: dict[tuple, list[dict[str, Any]]] = {}
         for f in findings:
-            mine.setdefault(fact_key(f), []).append(f)
+            if not f.get(CARRIED):
+                mine.setdefault(fact_key(f), []).append(f)
         for key, group in mine.items():
             if key not in by_key:
                 by_key[key] = group
@@ -274,7 +285,8 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
             if key in replaced:
                 # An update outranks the copies it was checked against: a stale copy from another source, however
                 # strong, was not reread. Same-page siblings the refresh kept stay beside it.
-                by_key[key] = group + [f for f in by_key[key] if f.get("source_url") in replaced[key]]
+                by_key[key] = group + [f for f in by_key[key] if f.get("source_url") in replaced[key]
+                                       and not any(_same(f, g) for g in group)]
                 continue
             win, lose = (group, by_key[key]) if _strength(group) >= _strength(by_key[key]) else (by_key[key], group)
             # Promotion unions identity lists, so a weaker copy of the page stays while it adds a tag or alias.
@@ -555,7 +567,8 @@ async def promotable(row: dict[str, Any], rows: list[dict[str, Any]]) -> dict[st
     merged = merge_findings(rows or [row], [{k: v for k, v in f.items() if k != STATE} for f in facts])
     # A pre-typed fact has no concept, so nothing could write it.
     public = [f for f in merged if f.get("concept") and not is_private_source(f.get("source_url"))]
-    private = [f for f in _findings(row) if is_private_source(f.get("source_url"))]
+    private = [{k: v for k, v in f.items() if k != CARRIED}
+               for f in _findings(row) if is_private_source(f.get("source_url"))]
     return {**row, "findings": [*public, *private], "unplaced": unplaced}
 
 
