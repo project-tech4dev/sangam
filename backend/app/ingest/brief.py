@@ -215,8 +215,15 @@ def fact_key(f: dict[str, Any]) -> tuple:
 
 
 def superseded(f: dict[str, Any]) -> dict[str, Any]:
-    """How a refresh names a fact it replaced: its key and the source it was read from, as one group holds copies."""
-    return {"key": list(fact_key(f)), "source_url": f.get("source_url")}
+    """How a refresh names a fact it replaced: its key, its source and its sentence, since one page can hold two
+    facts with one key and only this one ended."""
+    return {"key": list(fact_key(f)), "source_url": f.get("source_url"), "evidence": f.get("evidence")}
+
+
+def _gone(f: dict[str, Any], entry: dict[str, Any]) -> bool:
+    # An entry saved before it named its sentence ends every copy from its source.
+    return f.get("source_url") == entry["source_url"] and (
+        "evidence" not in entry or (f.get("evidence") or "") == (entry["evidence"] or ""))
 
 
 def _json_list(value: Any) -> list[dict[str, Any]]:
@@ -248,9 +255,11 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
     for findings, superseded in runs:
         # A refresh that removed a fact names it, so neither an older row nor the brief brings it back; a copy
         # cited from another source was not rechecked, so it stays.
+        replaced: dict[tuple, set[str]] = {}
         for gone in superseded:
             key = tuple(gone["key"])
-            left = [f for f in by_key.get(key, []) if f.get("source_url") != gone["source_url"]]
+            replaced.setdefault(key, set()).add(gone["source_url"])
+            left = [f for f in by_key.get(key, []) if not _gone(f, gone)]
             if left:
                 by_key[key] = left
             else:
@@ -261,6 +270,11 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
         for key, group in mine.items():
             if key not in by_key:
                 by_key[key] = group
+                continue
+            if key in replaced:
+                # An update outranks the copies it was checked against: a stale copy from another source, however
+                # strong, was not reread. Same-page siblings the refresh kept stay beside it.
+                by_key[key] = group + [f for f in by_key[key] if f.get("source_url") in replaced[key]]
                 continue
             win, lose = (group, by_key[key]) if _strength(group) >= _strength(by_key[key]) else (by_key[key], group)
             # Promotion unions identity lists, so a weaker copy of the page stays while it adds a tag or alias.
