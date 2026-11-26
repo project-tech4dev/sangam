@@ -7,7 +7,8 @@ import { navigation } from "@/tests/setup";
 import { registryRow } from "./fixtures";
 
 const fetchPage = vi.hoisted(() => vi.fn());
-vi.mock("@/features/registry/api", () => ({ fetchRegistryPage: fetchPage }));
+const fetchTracked = vi.hoisted(() => vi.fn(async () => [] as unknown[]));
+vi.mock("@/features/registry/api", () => ({ fetchRegistryPage: fetchPage, fetchTracked }));
 
 // setUrlParams writes jsdom's history, which the shared setup does not reset.
 afterEach(() => window.history.replaceState(null, "", "/"));
@@ -50,6 +51,35 @@ const names = () => screen.queryAllByRole("link").map((a) => a.querySelector(".r
 const asked = () => Object.fromEntries(new URLSearchParams(fetchPage.mock.lastCall?.[0]));
 
 describe("RegistryClient", () => {
+  it("staff see a change check beside each tracked row, and only there", async () => {
+    fetchTracked.mockResolvedValueOnce([{ slug: "kabil", kind: "org", id: 1, sources: 4, last_checked: "2026-11-19T09:28:00Z" }]);
+    render(<RegistryClient first={page(rows)} staff />);
+    const link = await screen.findByRole("link", { name: /Check for changes · 4 sources tracked · last checked 19 Nov/ });
+    expect(link).toHaveAttribute("href", "/import/check/kabil");
+    expect(screen.getAllByRole("link", { name: /Check for changes/ })).toHaveLength(1);
+  });
+
+  it("a visitor who is not staff never asks for the change checks", async () => {
+    fetchTracked.mockClear();
+    render(<RegistryClient first={page(rows)} />);
+    expect(await screen.findByText("3 in the Registry")).toBeInTheDocument();
+    expect(fetchTracked).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: /Check for changes/ })).not.toBeInTheDocument();
+  });
+
+  it("matches a check to the row its research was saved to, not to a row with the same slug", async () => {
+    // Research slugs and Registry slugs are made apart: KABIL researched as kabil-trust, and a "seva" research
+    // that was saved to another org (id 99) must not show under this Seva.
+    fetchTracked.mockResolvedValueOnce([
+      { slug: "kabil-trust", kind: "org", id: 1, sources: 2, last_checked: null },
+      { slug: "seva", kind: "org", id: 99, sources: 3, last_checked: null },
+    ]);
+    render(<RegistryClient first={page(rows)} staff />);
+    const link = await screen.findByRole("link", { name: /Check for changes · 2 sources tracked/ });
+    expect(link).toHaveAttribute("href", "/import/check/kabil-trust");
+    expect(screen.getAllByRole("link", { name: /Check for changes/ })).toHaveLength(1);
+  });
+
   it("lists everyone with counts per bucket and links to each profile", () => {
     render(<RegistryClient first={page(rows)} />);
     expect(screen.getByRole("button", { name: /3\s*All/ })).toHaveAttribute("aria-pressed", "true");

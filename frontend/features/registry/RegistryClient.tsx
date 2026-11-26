@@ -7,7 +7,7 @@ import { BucketCards, FilterRow, initialsOf, ListMore, SearchBox, usePagedList, 
 import { displayName, funderTypeLabel } from "@/lib/format";
 import type { RegistryPage, RegistryRow } from "@/lib/api";
 import { setUrlParams } from "@/lib/url";
-import { fetchRegistryPage } from "./api";
+import { fetchRegistryPage, fetchTracked, type Tracked } from "./api";
 import { filterParams, filtersFrom, PAGE, registryQuery } from "./filtersUrl";
 import { SDG_NAME } from "./sdg";
 import { DEFAULTS, kindLine, NORTH_EAST, signal, type Filters } from "./rows";
@@ -27,14 +27,14 @@ function More({ n }: { n: number }) {
   return n > 0 ? <span className="reg-more">+{n} more</span> : null;
 }
 
-function Row({ r, f }: { r: RegistryRow; f: Filters }) {
+function Row({ r, f, tracked }: { r: RegistryRow; f: Filters; tracked?: Tracked }) {
   const name = displayName(r.name);
   const domains = domainsOf(r);
   // With a Theme filter set, the row names the sub-themes that put it in the results.
   const matched = f.theme === "all" ? [] : r.themes.filter((t) => t.domain === f.theme).map((t) => t.label);
   const serves = f.population !== "all" && r.populations.includes(f.population)
     ? [f.population, ...r.populations.filter((p) => p !== f.population)] : r.populations;
-  return (
+  const row = (
     <Link href={r.kind === "org" ? `/registry/${r.slug}` : `/registry/funders/${r.slug}`} className="reg-row">
       <span className="reg-mark" data-kind={r.kind} aria-hidden="true">{initialsOf(name)}</span>
       <span className="reg-row-body">
@@ -71,14 +71,36 @@ function Row({ r, f }: { r: RegistryRow; f: Filters }) {
       </span>
     </Link>
   );
+  if (!tracked) return row;
+  // Beside the row, not in it: a link can't hold another link.
+  return (
+    <div className="reg-row-wrap">
+      {row}
+      <Link href={`/import/check/${encodeURIComponent(tracked.slug)}`} className="reg-check">
+        Check for changes · {tracked.sources} {tracked.sources === 1 ? "source" : "sources"} tracked
+        {tracked.last_checked && ` · last checked ${new Date(tracked.last_checked).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`}
+      </Link>
+    </div>
+  );
 }
 
-export function RegistryClient({ first }: { first: RegistryPage }) {
+/** `staff` decides whether the change-check links are asked for at all: no one else may see them. */
+export function RegistryClient({ first, staff = false }: { first: RegistryPage; staff?: boolean }) {
   const fromUrl = filtersFrom(useSearchParams());
   // Typed text stays local so the caret never waits on the address; the address gets a copy.
   const [q, setQ] = useState(fromUrl.q);
   const f: Filters = { ...fromUrl, q };
   const [asked, setAsked] = useState<Filters>(fromUrl);
+  const [tracked, setTracked] = useState<Map<string, Tracked>>(new Map());
+  useEffect(() => {
+    if (!staff) return;
+    let live = true;
+    // By the row research was saved to: a research slug and a Registry slug can differ.
+    fetchTracked().then((list) => live && setTracked(new Map(list.map((t) => [`${t.kind}-${t.id}`, t]))));
+    return () => {
+      live = false;
+    };
+  }, [staff]);
   // A replace: Back leaves the Registry, it does not undo each filter. A pick or a Clear is asked at once.
   const set = (patch: Partial<Filters>) => {
     if (patch.q !== undefined) setQ(patch.q);
@@ -192,7 +214,7 @@ export function RegistryClient({ first }: { first: RegistryPage }) {
       </div>
 
       <div className="reg-list">
-        {list.items.map((r) => <Row key={`${r.kind}-${r.id}`} r={r} f={f} />)}
+        {list.items.map((r) => <Row key={`${r.kind}-${r.id}`} r={r} f={f} tracked={tracked.get(`${r.kind}-${r.id}`)} />)}
         {!list.busy && list.total === 0 && <div className="muted reg-none">No entries match these filters.</div>}
         {list.error && <div className="muted reg-none" role="alert">{list.error}</div>}
         <ListMore shown={list.fetched} total={list.total} onMore={() => list.more?.()} page={PAGE} busy={list.busy} />

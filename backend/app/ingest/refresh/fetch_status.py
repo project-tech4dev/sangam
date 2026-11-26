@@ -50,7 +50,7 @@ async def fetch_today(source: Source, scratch: Path) -> Today:
     if today.status != OK or today.path is None:
         return today
     # The tools' own rule, page cap included, or a long report would never match its baseline.
-    return replace(today, fingerprint=document_hash(today.path, text))
+    return replace(today, fingerprint=await asyncio.to_thread(document_hash, today.path, text))
 
 
 async def fetch_all(sources: list[Source], scratch: Path) -> list[Today]:

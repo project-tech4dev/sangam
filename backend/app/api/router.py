@@ -24,6 +24,7 @@ from app.api.routes import (
     registry,
     rfps,
     scores,
+    source_checks,
     threads,
 )
 
@@ -66,6 +67,7 @@ for _router in (
     news_stories.router,
     documents.router,
     ingest.router,
+    source_checks.router,
     news_runs.router,
     me.router,
     threads.router,

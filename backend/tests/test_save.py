@@ -125,7 +125,9 @@ class TestWrite:
         first, second = self.rows(conn)
         assert first[:9] == (RUN, SLUG, URL, 7, 55, CHANGED, 1, 1, 1)
         assert isinstance(first[9], Jsonb) and first[9].obj == {"meaningful": True}
-        assert second == (RUN, SLUG, OTHER, 8, None, UNCHANGED, 0, 0, 0, None, "HTTP 200")
+        assert second == (RUN, SLUG, OTHER, 8, None, UNCHANGED, 0, 0, 0, None, "HTTP 200", [], [], None)
+        assert first[13].obj == [{"verdict": INTACT, "sentence": "a"}, {"verdict": BROKEN, "sentence": "b"},
+                                 {"verdict": UNANCHORED, "sentence": "c"}]
 
     async def test_a_failed_archive_records_no_snapshot_and_says_so(self):
         conn = ScriptConn()
@@ -134,6 +136,13 @@ class TestWrite:
         assert saved.archive_failed == 1 and saved.snapshots == 0 and conn.sql("INSERT INTO source_snapshots") == []
         [row] = self.rows(conn)
         assert row[4] is None and row[10] == "only the order changed; archive failed"
+
+    async def test_a_nul_in_a_pdfs_text_is_dropped_before_postgres_sees_it(self):
+        conn = ScriptConn()
+        nul = replace(check(status=CHANGED), removed=("old\x00 line",), added=("new\x00\x00 line",))
+        await save.write(conn, RUN, SLUG, [nul], Discovery(), {})
+        [row] = self.rows(conn)
+        assert (row[11], row[12]) == (["old line"], ["new line"])
 
     async def test_an_unverified_source_keeps_its_fetch_reason(self):
         conn = ScriptConn()
@@ -157,7 +166,7 @@ class TestWrite:
         saved = await save.write(conn, RUN, SLUG, [], found, {})
         [row] = self.rows(conn)
         assert saved.rows == 1 and row == (RUN, SLUG, Lead.of(RESULTS[2]).url, None, None, "new", 0, 0, 0, None,
-                                           "programme: a fellowship")
+                                           "programme: a fellowship", [], [], None)
 
 
 def test_describe():
