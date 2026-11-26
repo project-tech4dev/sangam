@@ -44,6 +44,7 @@ ENTITY_SQL = """
      ORDER BY researched_on DESC, id DESC
      LIMIT 1
 """
+CARRY_SQL = "SELECT id, url FROM source_snapshots WHERE id = ANY(%s)"
 TODAY_SQL = "SELECT 1 FROM entity_research WHERE slug = %s AND researched_on = current_date"
 INSERT_SQL = """
     INSERT INTO entity_research (
@@ -108,6 +109,7 @@ class Applied:
     refused: list[str] = field(default_factory=list)
     unhandled: list[str] = field(default_factory=list)  # a broken fact no accepted keep, update or remove settled
     stale: set[str] = field(default_factory=set)  # their sources, whose baseline must not move
+    cut: list[str] = field(default_factory=list)  # sources longer than the question shows; stale as well
     kept: int = 0
     updated: int = 0
     removed: int = 0
@@ -200,6 +202,13 @@ def _cut(lines: tuple[str, ...]) -> list[str]:
     return [text if len(text) <= DIFF_CHARS else text[:DIFF_CHARS] + "\n… (cut)"]
 
 
+def was_cut(s: Source) -> bool:
+    """Whether `ask` showed less of this source than today holds, so its baseline may not move past it."""
+    if s.status == "changed" and (s.removed or s.added):
+        return any(len("\n".join(side)) > DIFF_CHARS for side in (s.removed, s.added))
+    return s.status != "dead" and len(s.text) > NEW_TEXT
+
+
 def ask(name: str, srcs: list[Source], context: Context, kind: str | None = None) -> str:
     """Page text sits in tags the prompt calls data; a changed page shows only its diff unless it has none."""
     blocks = []
@@ -222,9 +231,10 @@ def ask(name: str, srcs: list[Source], context: Context, kind: str | None = None
 def fit(name: str, srcs: list[Source], context: Context, kind: str | None = None) -> list[Source]:
     """The sources one question can hold, in order; the rest wait for the next check, their baselines unmoved."""
     shown: list[Source] = []
-    for s in srcs:
+    # A dead page's baseline never moves, so it takes only the room the pages that can move leave.
+    for s in sorted(srcs, key=lambda s: s.status == "dead"):
         if shown and len(ask(name, [*shown, s], context, kind)) > MAX_QUESTION:
-            break
+            continue
         shown.append(s)
     return shown
 
@@ -350,10 +360,13 @@ def apply(delta: Delta, srcs: list[Source], open_gaps: tuple[OpenGap, ...] = (),
     for u in delta.update:
         if ((old := known(u.id, "update")) and (new := parsed(u.finding, f"update {u.id}"))
                 and quoted(new, f"update {u.id} →") and own_gap(new, f"update {u.id} →")):
-            out.supersedes.append(brief.superseded(old.finding, updated=True))
             out.findings.append(new)
-            out.updated += 1
             settled.add(u.id)
+            if brief.fact_key(new) == brief.fact_key(old.finding):
+                out.supersedes.append(brief.superseded(old.finding, updated=True))
+                out.updated += 1
+            else:  # another year or another programme: the old fact still stands beside it
+                out.added += 1
     for r in delta.remove:
         if (old := known(r.id, "remove")) and old.verdict == PAGE_GONE:
             # A page moving is not the fact ending; a person decides that in Review & save.
@@ -378,6 +391,8 @@ def apply(delta: Delta, srcs: list[Source], open_gaps: tuple[OpenGap, ...] = (),
         if (new := parsed(a, "add")) and quoted(new, "add") and own_gap(new, "add"):
             out.findings.append(new)
             out.added += 1
+    out.cut = [s.url for s in srcs if was_cut(s)]
+    out.stale.update(out.cut)
     return out
 
 
@@ -399,6 +414,12 @@ async def save_row(conn: Any, entity: dict[str, Any], applied: Applied, delta: D
     private = [{**f, brief.CARRIED: True} for f in _list(entity.get("findings"))
                if is_private_source(f.get("source_url"))]
     findings = [*applied.findings, *private]
+    # Promotion archives a page from the newest row's versions, so a page not reread keeps the one it was read at.
+    reread = {canonical_url(u) for u in sources_read}
+    kept = await (await conn.execute(CARRY_SQL, (entity["snapshot_ids"],))).fetchall() \
+        if entity.get("snapshot_ids") else []
+    snapshot_ids = [*snapshot_ids, *(r["id"] for r in kept
+                                     if canonical_url(r["url"]) not in reread and r["id"] not in snapshot_ids)]
     row = await (await conn.execute(INSERT_SQL, (
         entity["entity_name"], entity.get("canonical_name"), entity["entity_kind"], entity["slug"],
         entity.get("website"), entity.get("status") or "complete", reason, summary, json.dumps(findings),
@@ -445,6 +466,9 @@ def describe(slug: str, applied: Applied, row_id: int | None, problems: list[str
     lines = [head]
     lines += [f"  reviewer: {p}" for p in problems]
     lines += [f"  refused: {r}" for r in applied.refused]
+    if applied.cut:
+        lines.append(f"  too long to show in full: {', '.join(applied.cut)} keep their old version; "
+                     "research it again to read them whole")
     if applied.unhandled:
         lines.append(f"  not settled: {', '.join(applied.unhandled)} broken and not updated or removed; "
                      f"{', '.join(sorted(applied.stale))} keep their old version, so the next check flags them again")

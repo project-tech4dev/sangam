@@ -260,6 +260,8 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
     before it.
     """
     by_key: dict[tuple, list[dict[str, Any]]] = {}
+    # Copies a stronger one displaced: a removal names only its own source, so another's copy comes back.
+    aside: dict[tuple, list[dict[str, Any]]] = {}
     runs = [(list(prior), []), *((_findings(r), _json_list(r.get("supersedes"))) for r in rows
                                  if r.get("status") != "wrong_entity")]
     for findings, superseded in runs:
@@ -270,6 +272,10 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
             key = tuple(gone["key"])
             replaced.setdefault(key, set()).add(gone["source_url"])
             left = [f for f in by_key.get(key, []) if not _gone(f, gone)]
+            aside[key] = [f for f in aside.get(key, []) if not _gone(f, gone)]
+            if not left and aside[key]:
+                left = _strongest_source(aside[key])
+                aside[key] = [f for f in aside[key] if not any(f is g for g in left)]
             if left:
                 by_key[key] = left
             else:
@@ -285,13 +291,22 @@ def merge_findings(rows: list[dict[str, Any]], prior: list[dict[str, Any]] = ())
             if key in replaced:
                 # An update outranks the copies it was checked against: a stale copy from another source, however
                 # strong, was not reread. Same-page siblings the refresh kept stay beside it.
-                by_key[key] = group + [f for f in by_key[key] if f.get("source_url") in replaced[key]
-                                       and not any(_same(f, g) for g in group)]
-                continue
-            win, lose = (group, by_key[key]) if _strength(group) >= _strength(by_key[key]) else (by_key[key], group)
-            # Promotion unions identity lists, so a weaker copy of the page stays while it adds a tag or alias.
-            by_key[key] = win + [f for f in lose if key[0] in _UNIONED_IDENTITY and _adds(f, win)]
+                kept = group + [f for f in by_key[key] if f.get("source_url") in replaced[key]
+                                and not any(_same(f, g) for g in group)]
+            else:
+                win, lose = (group, by_key[key]) if _strength(group) >= _strength(by_key[key]) else (by_key[key], group)
+                # Promotion unions identity lists, so a weaker copy of the page stays while it adds a tag or alias.
+                kept = win + [f for f in lose if key[0] in _UNIONED_IDENTITY and _adds(f, win)]
+            aside.setdefault(key, []).extend(f for f in by_key[key] + group if not any(f is g for g in kept))
+            by_key[key] = kept
     return [f for group in by_key.values() for f in group]
+
+
+def _strongest_source(copies: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_source: dict[Any, list[dict[str, Any]]] = {}
+    for f in copies:
+        by_source.setdefault(f.get("source_url"), []).append(f)
+    return max(by_source.values(), key=_strength)
 
 
 _UNIONED_IDENTITY = frozenset({"identity", "org_identity"})
