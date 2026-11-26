@@ -457,20 +457,18 @@ class TestSaveResearch:
         assert "already has 15 findings saved today" in out
         assert not saving.conn.sql("INSERT")
 
-    async def test_a_refresh_today_counts_as_the_whole_record_it_stands_for(self, saving, monkeypatch):
-        saving.conn.on("SELECT fact_count", {"fact_count": 2, "researched_by": None,
+    async def test_a_refresh_today_is_weighed_by_its_own_delta_not_the_whole_record(self, saving):
+        # Older rows still merge into the brief, so overwriting a 1-fact refresh loses 1 fact, not the record.
+        saving.conn.on("SELECT fact_count", {"fact_count": 1, "researched_by": None,
                                              "stopped_reason": f"{REFRESH_REASON}: 1 changed or new sources reread"})
-
-        async def rows_for(c, slug):
-            return [{"findings": [spend(evidence=f"The company spent Rs {n} crore on CSR.") for n in range(5)]}]
-        monkeypatch.setattr(research_tools, "rows_for", rows_for)
         out = await self.save(research(findings=[spend(), spend(evidence="The company spent Rs 9 crore on CSR.")]))
-        assert "already has 5 findings saved today" in out and not saving.conn.sql("INSERT")
+        assert out.startswith("Saved as") and saving.conn.sql("INSERT INTO entity_research")
 
-    async def test_a_save_over_todays_row_clears_its_supersedes(self, saving):
+    async def test_a_save_over_todays_row_keeps_what_a_refresh_removed(self, saving):
+        # A row's supersedes apply before its own findings, so what this run finds again still stands.
         await self.save(research())
         [(sql, _params)] = saving.conn.sql("INSERT INTO entity_research")
-        assert "supersedes = '[]'::jsonb" in sql
+        assert "supersedes" not in sql
 
     async def test_replace_overwrites_and_says_so(self, saving):
         saving.conn.on("SELECT fact_count", {"fact_count": 15, "researched_by": UUID(int=9), "stopped_reason": None})

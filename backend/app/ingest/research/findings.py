@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -67,6 +67,15 @@ class Unplaced(BaseModel):
     @classmethod
     def _http(cls, v: str) -> str:
         return FindingBase._http(v)
+
+
+# An org's shared concepts are ranked at promotion, so these need a source_type and evidence_tier at save.
+ORG_TIERED = ("program", "metric", "contact", "partner")
+
+
+def untiered_org_fact(f: Any) -> bool:
+    return f.concept in ORG_TIERED and (getattr(f, "source_type", None) is None
+                                        or getattr(f, "evidence_tier", None) is None)
 
 
 class EntityResearch(BaseModel):
@@ -144,9 +153,7 @@ class EntityResearch(BaseModel):
             )
         if self.entity_kind == "org":
             # An org's shared concepts are ranked at promotion, so the tier is required at save.
-            tierless = sorted({f.concept for f in self.findings if f.concept in ("program", "metric", "contact", "partner")
-                               and (getattr(f, "source_type", None) is None
-                                    or getattr(f, "evidence_tier", None) is None)})
+            tierless = sorted({f.concept for f in self.findings if untiered_org_fact(f)})
             if tierless:
                 raise ValueError(f"an org's {tierless} findings need source_type and evidence_tier")
         return self

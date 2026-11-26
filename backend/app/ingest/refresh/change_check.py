@@ -91,14 +91,28 @@ async def _refresh(slug: str, checks: list[compare.Check], found: discover.Disco
     if today:
         print(f"{slug}: no refresh: it was already researched today")
         return
-    srcs = delta.sources(checks, found, delta.facts_by_url(rows))
+    if why := delta.cannot_refresh(entity):
+        print(f"{slug}: no refresh: {why}")
+        return
+    name, kind = entity["canonical_name"] or entity["entity_name"], entity.get("entity_kind")
+    srcs = delta.fit(name, delta.sources(checks, found, delta.facts_by_url(rows)), context, kind)
+    if not any(s.status != "dead" for s in srcs):
+        # A dead page's facts are never removed by a refresh, so a model would be paid to change nothing.
+        print(f"{slug}: no refresh: only gone pages changed, and a person decides whether their facts still hold")
+        return
     # Sonnet refuses a forced tool call for structured output, so the delta asks for a JSON schema.
     model = resolve_model(settings.research_model).with_structured_output(delta.Delta, method="json_schema")
     grader = resolve_model(settings.utility_model).with_structured_output(delta.Grade)
-    proposed, problems = await delta.propose(model, grader, delta.ask(entity["canonical_name"] or entity["entity_name"],
-                                                                       srcs, context))
-    applied = delta.apply(proposed, srcs)
-    read = [s.url for s in srcs if s.status != "dead"]
+    try:
+        proposed, problems = await delta.propose(model, grader, delta.ask(name, srcs, context, kind))
+    except Exception as exc:  # noqa: BLE001 — a reply that is no delta saves nothing, and says so
+        print(f"{slug}: refresh not saved: the update model gave no usable delta ({type(exc).__name__})")
+        return
+    applied = delta.apply(proposed, srcs, kind)
+    if not applied.findings and not applied.supersedes:
+        print(delta.describe(slug, applied, None, problems, nothing=True))
+        return
+    read = [s.url for s in srcs if s.status != "dead" and s.url not in applied.stale]
     async with _connection() as conn, conn.transaction():
         row_id = await delta.save_row(conn, entity, applied, proposed, context,
                                       [saved.snapshot_ids[u] for u in read if u in saved.snapshot_ids], read)

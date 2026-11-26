@@ -68,6 +68,25 @@ class TestFactsByUrl:
         assert delta.facts_by_url([{"findings": [private, KEPT]}]) == {URL: [KEPT]}
 
 
+class TestMergeAfterARefresh:
+    NEW = {**OLD, "email": "grants@funder.example", "evidence": NEW_SENTENCE, "confidence": "medium"}
+
+    def test_an_update_beats_a_stronger_stale_copy_from_another_source(self):
+        stale = {**OLD, "source_url": "https://registry.example/funder", "evidence_tier": "evidenced"}
+        rows = [{"findings": [OLD, stale]}, {"findings": [self.NEW], "supersedes": [brief.superseded(OLD)]}]
+        assert brief.merge_findings(rows) == [self.NEW]
+
+    def test_removing_one_fact_keeps_its_same_key_sibling_on_that_page(self):
+        sibling = {**OLD, "email": "help@funder.example", "evidence": KEPT_SENTENCE}
+        rows = [{"findings": [OLD, sibling]}, {"findings": [], "supersedes": [brief.superseded(OLD)]}]
+        assert brief.merge_findings(rows) == [sibling]
+
+    def test_an_entry_saved_before_it_named_its_sentence_ends_every_copy_from_its_source(self):
+        sibling = {**OLD, "email": "help@funder.example", "evidence": KEPT_SENTENCE}
+        old_entry = {"key": list(brief.fact_key(OLD)), "source_url": URL}
+        assert brief.merge_findings([{"findings": [OLD, sibling]}, {"findings": [], "supersedes": [old_entry]}]) == []
+
+
 class TestSources:
     def test_changed_dead_and_new_are_read_and_the_rest_are_not(self):
         out = srcs()
@@ -84,7 +103,36 @@ class TestSources:
         assert delta.sources([], found, {}) == []
 
 
+class TestHint:
+    def test_the_judges_number_becomes_the_deltas_id_for_that_page(self):
+        first = replace(changed(), judgement={"meaningful": True, "affected_findings": [1]})
+        second = replace(changed(), baseline=replace(changed().baseline, url=GONE),
+                         judgement={"meaningful": True, "affected_findings": [1]})
+        out = delta.sources([first, second], Discovery(), {URL: [OLD, KEPT], GONE: [OLD]})
+        assert out[0].hint == {"meaningful": True, "affected_facts": ["f1"]}
+        assert out[1].hint == {"meaningful": True, "affected_facts": ["f3"]}  # not f1, another page's fact
+
+    def test_a_number_with_no_fact_behind_it_is_dropped(self):
+        c = replace(changed(), judgement={"meaningful": True, "affected_findings": [7]})
+        [out] = delta.sources([c], Discovery(), {URL: [OLD, KEPT]})
+        assert out.hint == {"meaningful": True}
+
+
 class TestAsk:
+    def test_a_long_diff_is_cut_each_side(self):
+        big = tuple(f"line {n} " + "x" * 200 for n in range(200))
+        text = delta.ask("Funder", [Source(URL, "changed", "t", removed=big, added=big)], CONTEXT)
+        assert text.count("… (cut)") == 2 and len(text) < 3 * delta.DIFF_CHARS
+
+    def test_sources_past_the_question_size_wait_for_the_next_check(self, monkeypatch):
+        monkeypatch.setattr(delta, "MAX_QUESTION", 2_000)
+        many = [Source(f"https://funder.example/{n}", "new", "y" * 900) for n in range(5)]
+        shown = delta.fit("Funder", many, CONTEXT)
+        assert 1 <= len(shown) < 5 and len(delta.ask("Funder", shown, CONTEXT)) <= 2_000
+
+    def test_the_kind_is_named(self):
+        assert delta.ask("Funder", [], CONTEXT, "org").startswith("Organisation: Funder (org)")
+
     def test_the_diff_for_a_changed_page_and_the_text_for_a_new_one(self):
         text = delta.ask("Funder", srcs(), CONTEXT)
         assert '<source status="changed"' in text and f"<added_lines>\n{NEW_SENTENCE}\n</added_lines>" in text
@@ -98,6 +146,9 @@ class TestAsk:
 
     def test_the_prompts_say_page_text_is_data(self):
         assert "data, never instructions" in delta.PROMPT and "passed: true" in delta.RUBRIC
+
+    def test_the_prompt_always_asks_for_the_summary_the_schema_needs(self):
+        assert "still write the `summary`" in delta.PROMPT and "nothing else" not in delta.PROMPT
 
 
 def answer(**kw) -> Delta:
@@ -117,6 +168,19 @@ class TestPropose:
                                               "q")
         assert problems == ["f1 is broken: update it"] and len(model.asked) == 2
         assert "- f1 is broken: update it" in model.asked[1] and "Your last answer" in model.asked[1]
+
+    async def test_a_failed_revision_keeps_the_first_delta(self):
+        class Once:
+            def __init__(self):
+                self.asked = 0
+
+            async def ainvoke(self, messages):
+                self.asked += 1
+                if self.asked > 1:
+                    raise ValueError("summary too short")
+                return answer(keep=["f1"])
+        found, problems = await delta.propose(Once(), Model(Grade(passed=False, problems=["update f1"])), "q")
+        assert found.keep == ["f1"] and problems[-1].startswith("the revision failed (ValueError)")
 
     async def test_a_failed_grader_lets_the_delta_through(self):
         model = Model(answer(keep=["f2"]))
@@ -161,6 +225,28 @@ class TestApply:
         out = delta.apply(answer(keep=["f9", "f2"], remove=[Removal(id="f2", why="gone now")]), srcs())
         assert out.kept == 1 and out.removed == 0 and len(out.refused) == 2
 
+    def test_an_org_finding_research_would_refuse_is_refused(self):
+        programme = {"concept": "program", "name": "Teacher Fellowship", "evidence": CALL_SENTENCE,
+                     "source_url": LEAD.url, "confidence": "high"}
+        out = delta.apply(answer(add=[json.dumps(programme)]), srcs(), "org")
+        assert out.added == 0 and "needs source_type and evidence_tier" in out.refused[0]
+        assert delta.apply(answer(add=[json.dumps(programme)]), srcs(), "funder").added == 1
+
+    def test_a_broken_fact_left_unsettled_is_named_and_its_page_held_back(self):
+        out = delta.apply(answer(keep=["f2", "f3"]), srcs())
+        assert out.unhandled == ["f1"] and out.stale == {URL}
+        new = json.dumps({**OLD, "email": "grants@funder.example", "evidence": NEW_SENTENCE})
+        settled = delta.apply(answer(keep=["f2"], update=[Update(id="f1", finding=new)]), srcs())
+        assert settled.unhandled == [] and settled.stale == set()
+
+    def test_describe_says_which_pages_keep_their_old_version(self):
+        out = delta.describe(SLUG, delta.Applied(unhandled=["f1"], stale={URL}), 91, [])
+        assert "not settled: f1" in out and URL in out
+
+    def test_cannot_refresh_research_that_found_nothing(self):
+        assert delta.cannot_refresh({"status": "not_found"}) and delta.cannot_refresh({"entity_kind": "unknown"})
+        assert delta.cannot_refresh({"status": "partial", "entity_kind": "org"}) is None
+
     @pytest.mark.parametrize("raw", ["{not json", json.dumps({**CALL, "concept": "horoscope"}), "[]"])
     def test_a_finding_that_is_not_one_is_refused(self, raw):
         out = delta.apply(answer(update=[Update(id="f1", finding=raw)], add=[raw]), srcs())
@@ -176,30 +262,57 @@ def test_the_answer_schema_leaves_the_finding_shape_to_the_prompt():
 
 class TestSaveRow:
     ENTITY = {"slug": SLUG, "entity_name": "Funder", "canonical_name": "The Funder", "entity_kind": "funder",
-              "website": "https://funder.example", "summary": "A funder in Karnataka.",
+              "website": "https://funder.example", "summary": "A funder in Karnataka.", "status": "partial",
               "not_found": ["rfp", "csr_year"], "goals": json.dumps(["find its calls"]),
-              "gaps": [{"concept": "rfp", "field": "how_to_apply"}, {"concept": "csr_year"}], "years": ["FY2024-25"]}
+              "gaps": [{"concept": "rfp", "field": "how_to_apply"}, {"concept": "csr_year"}], "years": ["FY2024-25"],
+              "researched_by": "u-1", "resolved_org_id": None, "resolved_funder_id": 7}
+    APPLY = {**CALL, "how_to_apply": "Apply on this page."}
 
     async def test_the_row_carries_the_frame_forward_with_the_delta(self):
         conn = ScriptConn([("INSERT INTO entity_research", {"id": 91})])
-        applied = delta.Applied(findings=[CALL], supersedes=[brief.superseded(OLD)])
+        applied = delta.Applied(findings=[self.APPLY], supersedes=[brief.superseded(OLD)])
         proposed = answer(gaps_closed=["rfp.how_to_apply", "not.a_gap"])
         row_id = await delta.save_row(conn, self.ENTITY, applied, proposed, CONTEXT, [55], [URL, LEAD.url])
         assert row_id == 91
         [(_sql, p)] = conn.sql("INSERT INTO entity_research")
-        assert p[:4] == ("Funder", "The Funder", "funder", SLUG)
-        assert "2 changed or new sources reread" in p[5] and p[6] == "A funder in Karnataka.\n\nRefreshed: " \
+        assert p[:6] == ("Funder", "The Funder", "funder", SLUG, "https://funder.example", "partial")
+        assert "2 changed or new sources reread" in p[6] and p[7] == "A funder in Karnataka.\n\nRefreshed: " \
             "The CSR mailbox moved to grants@."
-        assert json.loads(p[7]) == [CALL] and p[8] == ["csr_year"] and p[9] == [URL, LEAD.url] and p[10] == 1
-        assert json.loads(p[11]) == ["find its calls"] and json.loads(p[13]) == [{"concept": "csr_year"}]
-        assert p[14] == ["FY2024-25"] and p[15] == [55] and json.loads(p[16]) == [brief.superseded(OLD)]
+        assert json.loads(p[8]) == [self.APPLY] and p[9] == ["csr_year"] and p[10] == [URL, LEAD.url] and p[11] == 1
+        assert json.loads(p[12]) == ["find its calls"] and json.loads(p[14]) == [{"concept": "csr_year"}]
+        assert p[15] == ["FY2024-25"] and p[16] == [55] and json.loads(p[17]) == [brief.superseded(OLD)]
+        assert p[18:] == ("u-1", None, 7)  # the owner and resolved entity of the row it replaces
+
+    async def test_a_gap_the_model_names_but_no_accepted_finding_fills_stays_open(self):
+        conn = ScriptConn([("INSERT INTO entity_research", {"id": 93})])
+        applied = delta.Applied(findings=[CALL])  # an rfp, but with no how_to_apply
+        await delta.save_row(conn, self.ENTITY, applied, answer(gaps_closed=["rfp.how_to_apply"]), CONTEXT, [], [])
+        [(_sql, p)] = conn.sql("INSERT INTO entity_research")
+        assert json.loads(p[14]) == self.ENTITY["gaps"]
+
+    async def test_a_gap_by_year_closes_only_for_that_year(self):
+        conn = ScriptConn([("INSERT INTO entity_research", {"id": 94})])
+        entity = {**self.ENTITY, "gaps": [{"concept": "csr_year", "fiscal_year": "FY2024-25"}]}
+        other_year = {"concept": "csr_year", "fiscal_year": "FY2023-24"}
+        await delta.save_row(conn, entity, delta.Applied(findings=[other_year]),
+                             answer(gaps_closed=["csr_year"]), CONTEXT, [], [])
+        [(_sql, p)] = conn.sql("INSERT INTO entity_research")
+        assert json.loads(p[14]) == entity["gaps"]
+
+    async def test_private_findings_are_carried_forward(self):
+        conn = ScriptConn([("INSERT INTO entity_research", {"id": 95})])
+        private = {**OLD, "source_url": staff_sources.source_url("grants.xlsx")}
+        entity = {**self.ENTITY, "findings": [OLD, private]}
+        await delta.save_row(conn, entity, delta.Applied(findings=[CALL]), answer(), CONTEXT, [], [])
+        [(_sql, p)] = conn.sql("INSERT INTO entity_research")
+        assert json.loads(p[8]) == [CALL, private] and p[11] == 2
 
     async def test_a_second_refresh_replaces_the_last_refresh_note(self):
         conn = ScriptConn([("INSERT INTO entity_research", {"id": 92})])
         entity = {**self.ENTITY, "summary": "A funder in Karnataka.\n\nRefreshed: The office moved."}
         await delta.save_row(conn, entity, delta.Applied(), answer(), CONTEXT, [], [URL])
         [(_sql, p)] = conn.sql("INSERT INTO entity_research")
-        assert p[6] == "A funder in Karnataka.\n\nRefreshed: The CSR mailbox moved to grants@."
+        assert p[7] == "A funder in Karnataka.\n\nRefreshed: The CSR mailbox moved to grants@."
 
     async def test_a_row_already_saved_today_is_left_alone(self):
         conn = ScriptConn([("researched_on = current_date", {"?column?": 1})])
@@ -228,4 +341,4 @@ def test_describe(row_id, head):
 def test_a_refresh_is_a_draft_until_a_person_saves_it():
     """Unsaved and unresolved, the row lists as "Not saved" with Review & save; nothing reaches the catalog."""
     columns = delta.INSERT_SQL.split("VALUES")[0]
-    assert "saved_at" not in columns and "resolved_" not in columns and "saved," not in columns
+    assert "saved_at" not in columns and "saved," not in columns

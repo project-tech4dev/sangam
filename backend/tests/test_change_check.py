@@ -11,6 +11,7 @@ from app.ingest import brief
 from app.ingest.refresh import (
     baseline,
     change_check,
+    compare,
     decision,
     delta,
     diff,
@@ -275,11 +276,16 @@ class TestDescribe:
         assert "(3 research rows predate snapshots" in out
 
 
+def _changed(url: str = "https://a.org/about", status: str = compare.CHANGED) -> compare.Check:
+    base = baseline.Baseline(url, 7, "page", "a" * 64, "k", 31, date(2026, 11, 14))
+    return compare.Check(base, fetch_status.Today(url, fetch_status.OK, "HTTP 200", text="Grants of 500."), status)
+
+
 class TestRefresh:
     @pytest.fixture
     def refresh(self, monkeypatch):
-        state = SimpleNamespace(models=[], entity={"slug": SLUG, "entity_name": "Funder",
-                                                                 "canonical_name": None, "summary": "s"})
+        state = SimpleNamespace(models=[], saved=[], entity={"slug": SLUG, "entity_name": "Funder",
+                                                             "canonical_name": None, "summary": "s"})
         monkeypatch.setattr(change_check, "make_pool", lambda url, max_size: _Pool())
         monkeypatch.setattr(delta, "load", lambda conn, slug: _value((state.entity, [])))
 
@@ -292,12 +298,18 @@ class TestRefresh:
             state.question, state.model, state.grader = question, model, grader
             return delta.Delta(summary="The CSR mailbox moved."), ["f1 should be an update"]
         monkeypatch.setattr(delta, "propose", propose)
-        monkeypatch.setattr(delta, "save_row", lambda conn, *a: _value(91))
+        monkeypatch.setattr(delta, "apply", lambda proposed, srcs, kind: delta.Applied(added=1, findings=[{"x": 1}]))
+
+        async def save_row(conn, entity, applied, proposed, context, snapshot_ids, read):
+            state.saved.append(read)
+            return 91
+        monkeypatch.setattr(delta, "save_row", save_row)
         monkeypatch.setattr(brief, "publish", lambda *a, **kw: pytest.fail("published the brief before review"))
         return state
 
     async def test_the_delta_is_asked_of_the_research_model_and_saved(self, refresh, capsys):
-        await change_check._refresh(SLUG, [], discover.Discovery(), judge.Context((), ()), save.Saved(0, 0, 0))
+        await change_check._refresh(SLUG, [_changed()], discover.Discovery(), judge.Context((), ()),
+                                    save.Saved(0, 0, 0))
         settings = change_check.get_settings()
         assert refresh.models == [settings.research_model, settings.utility_model]
         assert refresh.model == (delta.Delta, {"method": "json_schema"}) and refresh.grader == (delta.Grade, {})
@@ -309,6 +321,41 @@ class TestRefresh:
         monkeypatch.setattr(delta, "researched_today", lambda conn, slug: _value(True))
         await change_check._refresh(SLUG, [], discover.Discovery(), judge.Context((), ()), save.Saved(0, 0, 0))
         assert refresh.models == [] and "already researched today" in capsys.readouterr().out
+
+    @pytest.mark.parametrize("entity, why", [
+        ({"status": "not_found"}, "found nothing"), ({"entity_kind": "unknown"}, "funder or an NGO")])
+    async def test_research_with_nothing_to_carry_is_not_refreshed(self, refresh, capsys, entity, why):
+        refresh.entity = {**refresh.entity, **entity}
+        await change_check._refresh(SLUG, [_changed()], discover.Discovery(), judge.Context((), ()),
+                                    save.Saved(0, 0, 0))
+        assert refresh.models == [] and why in capsys.readouterr().out
+
+    async def test_only_gone_pages_ask_no_model(self, refresh, capsys):
+        await change_check._refresh(SLUG, [_changed(status=fetch_status.DEAD)], discover.Discovery(),
+                                    judge.Context((), ()), save.Saved(0, 0, 0))
+        assert refresh.models == [] and "only gone pages changed" in capsys.readouterr().out
+
+    async def test_a_model_failure_saves_nothing_and_says_so(self, refresh, monkeypatch, capsys):
+        async def propose(model, grader, question):
+            raise ValueError("summary too short")
+        monkeypatch.setattr(delta, "propose", propose)
+        await change_check._refresh(SLUG, [_changed()], discover.Discovery(), judge.Context((), ()),
+                                    save.Saved(0, 0, 0))
+        assert refresh.saved == [] and "no usable delta (ValueError)" in capsys.readouterr().out
+
+    async def test_a_delta_that_changes_nothing_is_not_saved(self, refresh, monkeypatch, capsys):
+        monkeypatch.setattr(delta, "apply", lambda proposed, srcs, kind: delta.Applied(kept=2))
+        await change_check._refresh(SLUG, [_changed()], discover.Discovery(), judge.Context((), ()),
+                                    save.Saved(0, 0, 0))
+        assert refresh.saved == [] and "the delta changes nothing" in capsys.readouterr().out
+
+    async def test_a_page_with_an_unsettled_broken_fact_keeps_its_baseline(self, refresh, monkeypatch):
+        stale = "https://a.org/stale"
+        monkeypatch.setattr(delta, "apply", lambda proposed, srcs, kind: delta.Applied(
+            added=1, findings=[{"x": 1}], unhandled=["f2"], stale={stale}))
+        await change_check._refresh(SLUG, [_changed(), _changed(stale)], discover.Discovery(),
+                                    judge.Context((), ()), save.Saved(0, 0, 0))
+        assert refresh.saved == [["https://a.org/about"]]
 
     async def test_no_row_to_carry_forward_asks_nothing(self, refresh, capsys):
         refresh.entity = None
