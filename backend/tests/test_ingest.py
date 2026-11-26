@@ -1018,22 +1018,15 @@ class TestTheCatalogWriterCannotResearch:
         assert report.rows_written == 0 and report.held_back
 
 
-class TestSavingCannotQuietlyShrinkAResult:
-    """save_research upserts on (slug, date). A short re-run replacing a long
-    one is how fifteen findings were lost; it now has to be deliberate."""
+class TestASaveMergesWithTodaysRow:
+    """A short re-run once replaced a long one and lost fifteen findings; a save now merges instead."""
 
-    def test_the_tool_takes_an_explicit_replace_flag(self):
-        assert "replace" in save_research.args_schema.model_fields
+    def test_the_save_takes_no_findings_and_no_replace(self):
+        fields = save_research.args_schema.model_fields
+        assert "findings" not in fields and "replace" not in fields
 
-    def test_the_refusal_explains_itself(self):
-        # @tool wraps the function, so read the module rather than the object.
-        from app.ingest.tools import research_tools
-
-        source = inspect.getsource(research_tools)
-        assert "REFUSED" in source and "replace=true" in source
-
-    def test_the_docstring_says_what_replace_costs(self):
-        assert "overwrite" in (save_research.description or "").lower()
+    def test_the_docstring_says_it_merges(self):
+        assert "merge" in (save_research.description or "").lower()
 
 
 class TestNothingResearchedIsSilentlyDropped:

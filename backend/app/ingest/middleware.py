@@ -1,16 +1,13 @@
-"""Import's LangChain middleware: fallbacks, the researcher's budgets, escalation, rubric and summarizer."""
+"""Import's LangChain middleware: the researcher's budgets, escalation, sources and the run's summary counts."""
 
 from __future__ import annotations
 
 import json
 import logging
-import re
 from collections.abc import Awaitable, Callable
-from contextlib import nullcontext
-from importlib.resources import files
+from contextlib import ExitStack
 from typing import Any
 
-from deepagents.middleware.rubric import GraderResponse, RubricEvaluation, RubricMiddleware
 from langchain.agents.middleware import (
     AgentMiddleware,
     HumanInTheLoopMiddleware,
@@ -19,11 +16,11 @@ from langchain.agents.middleware import (
     ModelResponse,
     TodoListMiddleware,
 )
-from langchain.agents.middleware.types import hook_config
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AnyMessage, BaseMessage, SystemMessage, ToolMessage
 from langgraph.config import get_config
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from langgraph.types import Command
+from pydantic import BaseModel, ValidationError
 
 from app.agentkit.middleware import AgUiState
 from app.db.checkpointer import thread_bytes
@@ -31,9 +28,9 @@ from app.db.pool import get_pool
 from app.ingest.caller import caller_note, scope
 from app.ingest.catalog.save import write_preview
 from app.ingest.reading import run_sources, snapshots
-from app.ingest.research.contract import unanswered
-from app.ingest.research.finding_types import FINDING_MODELS, Finding
-from app.ingest.research.findings import EntityResearch, Gap, VaultResearch
+from app.ingest.research import draft
+from app.ingest.research.finding_types import FINDING_MODELS
+from app.ingest.research.findings import VaultResearch
 from app.integrations.tracing import score_answer
 
 logger = logging.getLogger(__name__)
@@ -46,16 +43,13 @@ def _reads(call: dict) -> bool:
     finding = call["name"] == "read_document_pages" and (call.get("args") or {}).get("find")
     return call["name"] in READING_TOOLS and not finding
 
-SAVE_TOOL = "save_research"
 CHECKPOINT_SIZE_WAIT_S = 2
 # The phrase the researcher copies into stopped_reason; the Working board matches it.
 READING_LIMIT = "reading limit"
 READING_LIMIT_MESSAGE = (
-    f"Refused: the {READING_LIMIT} for this organisation is reached. Read nothing more. Call save_research "
-    f"now with what you have, and set stopped_reason to 'Stopped at the {READING_LIMIT}' plus what was left unread."
+    f"Refused: the {READING_LIMIT} for this organisation is reached. Read nothing more. Record what you have, then "
+    f"call save_research with stopped_reason 'Stopped at the {READING_LIMIT}' plus what was left unread."
 )
-# What ModelCallLimitMiddleware's exit_behavior="end" says as it stops a run.
-CALL_LIMIT_PREFIX = "Model call limits exceeded"
 # The library's own write_todos prompt and description run ~2k tokens on every supervisor call.
 PLAN_PROMPT = (
     "## `write_todos`\n\nThe run's plan, kept in state so it survives a summary. Write it once, after the dossier "
@@ -66,9 +60,6 @@ PLAN_PROMPT = (
 )
 PLAN_TOOL = ("Write or replace the run's plan: every todo, each pending, in_progress or completed. "
              "See `write_todos` in your instructions.")
-
-RUBRIC = (files("app.ingest") / "prompts" / "research_rubric.md").read_text(encoding="utf-8")
-
 
 def append_to_system_message(system: SystemMessage | None, text: str) -> SystemMessage:
     """A text block after the system message's own; ours, since deepagents keeps its copy private."""
@@ -112,21 +103,9 @@ def _messages(state: Any) -> list[AnyMessage]:
     return (state.get("messages") if isinstance(state, dict) else getattr(state, "messages", None)) or []
 
 
-def save_failed(messages: list[AnyMessage]) -> bool:
-    """A save_research call came back as an argument error: the payload, not the database, was wrong."""
-    return any(
-        isinstance(m, ToolMessage)
-        and m.name == SAVE_TOOL
-        and (m.status == "error" or str(m.content).startswith("Error invoking tool"))
-        for m in messages
-    )
-
-
-SAVE_SCHEMAS: dict[str, type[BaseModel]] = {SAVE_TOOL: EntityResearch, "save_vault_findings": VaultResearch}
+SAVE_SCHEMAS: dict[str, type[BaseModel]] = {"save_vault_findings": VaultResearch}
 # ToolNode echoes the whole payload before the error, so a big save's reason was evicted and cut off.
 REFUSAL_LINES = 25
-_FINDINGS: TypeAdapter[list[Any]] = TypeAdapter(list[Finding])
-_GAPS: TypeAdapter[list[Gap]] = TypeAdapter(list[Gap])
 _LABELS = ("partner_name", "program_name", "project_name", "title", "name", "id_type", "state", "fiscal_year")
 
 
@@ -146,26 +125,14 @@ def _problem(error: dict[str, Any], payload: dict[str, Any], schema: type[BaseMo
         return f"{where}{f' {field}' if field else ''}: {msg}"
     field = ".".join(str(p) for p in loc)
     if error["type"] == "extra_forbidden":
-        if field == "replace":
-            return "top level: `replace` is an argument beside `findings`, never inside it"
         return f"top level: `{field}` is not a field. Allowed: {', '.join(schema.model_fields)}"
     return f"top level{f' {field}' if field else ''}: {msg}"
 
 
 def parse_payload(text: str) -> dict[str, Any] | None:
-    """A payload sent as a JSON string. Only surplus closers and a URL split at its colon are forgiven."""
-    # "source_url":"https":"//x" is never meant as a key and a value: a quote was dropped mid-URL.
-    text = _SPLIT_URL.sub(r'"\1://', text.strip())
-    try:
-        value, end = json.JSONDecoder().raw_decode(text)
-    except ValueError:
-        return None
-    if text[end:].strip(" \t\r\n}]"):
-        return None
+    """A payload sent as a JSON string, read as draft.parse_json forgives it; None unless it is an object."""
+    value = draft.parse_json(text)
     return value if isinstance(value, dict) else None
-
-
-_SPLIT_URL = re.compile(r'"(https?)"\s*:\s*"//')
 
 
 def _not_json(name: str, text: str) -> str:
@@ -195,23 +162,8 @@ def refusal_text(name: str, payload: Any) -> str | None:
     lines = [f"- {_problem(e, data, schema)}" for e in errors[:REFUSAL_LINES]]
     if len(errors) > REFUSAL_LINES:
         lines.append(f"- and {len(errors) - REFUSAL_LINES} more of the same kinds")
-    needed = _also_unanswered(data, errors) if name == SAVE_TOOL else []
-    if needed and len(lines) < REFUSAL_LINES:
-        lines += ["Also, a finding or a gap for each of these:"] + [f"- {m}" for m in needed][:REFUSAL_LINES - len(lines)]
     return (f"Error invoking tool '{name}': refused, nothing saved. Fix these {len(errors)} and call {name} "
             "again with the whole payload:\n" + "\n".join(lines))
-
-
-def _also_unanswered(data: dict[str, Any], errors: list[Any]) -> list[str]:
-    """What the contract refuses next, asked only when every finding and gap is valid and a top-level field is not."""
-    if any(e["loc"][:1] in (("findings",), ("gaps",)) for e in errors):
-        return []
-    try:
-        findings = _FINDINGS.validate_python(data.get("findings") or [])
-        gaps = _GAPS.validate_python(data.get("gaps") or [])
-        return unanswered(EntityResearch.model_construct(**{**data, "findings": findings, "gaps": gaps}))
-    except Exception:  # noqa: BLE001 - an unreadable payload keeps the schema's own lines
-        return []
 
 
 class SaveRefusal(AgentMiddleware):
@@ -248,15 +200,21 @@ class SaveRefusal(AgentMiddleware):
         return self._short(request, await handler(request))
 
 
+# Two saves refused for what they hold, not their shape, and the rest of the run is on the strong model.
+ESCALATE_AFTER = 2
+
+
 class EscalateAfterFailedSave(AgentMiddleware):
-    """After a failed save, the rest of the run is on the strong model: one invalid payload loses the research."""
+    """After ESCALATE_AFTER content refusals the run moves to the strong model; a format slip never escalates."""
 
     def __init__(self, strong: BaseChatModel) -> None:
         super().__init__()
         self.strong = strong
 
     def _route(self, request: ModelRequest) -> ModelRequest:
-        return request.override(model=self.strong) if save_failed(request.messages) else request
+        current = draft.CURRENT.get()
+        stuck = current is not None and current.refusals >= ESCALATE_AFTER
+        return request.override(model=self.strong) if stuck else request
 
     def wrap_model_call(self, request: ModelRequest, handler: Callable[[ModelRequest], Any]) -> Any:
         return handler(self._route(request))
@@ -392,6 +350,31 @@ def _not_chosen(call: dict[str, Any], text: str) -> ToolMessage:
     return ToolMessage(content=text, tool_call_id=call.get("id") or "", name=call.get("name"), status="error")
 
 
+def _open_run(stack: ExitStack) -> draft.Draft:
+    """Each launched subagent gets its own snapshot list and findings draft."""
+    stack.enter_context(snapshots.collecting())
+    return stack.enter_context(draft.drafting())
+
+
+def with_saved_counts(result: Any, current: draft.Draft | None) -> Any:
+    """The researcher's summary with its counts taken from what was saved, not from what the model wrote."""
+    if current is None or current.saved is None or not isinstance(result, Command):
+        return result
+    update = result.update if isinstance(result.update, dict) else {}
+    messages = list(update.get("messages") or [])
+    if not messages or not isinstance(messages[-1], ToolMessage):
+        return result
+    try:
+        summary = json.loads(messages[-1].content)
+    except (TypeError, ValueError):
+        summary = None
+    if not isinstance(summary, dict) or "fact_count" not in summary:
+        return result
+    saved = {k: v for k, v in current.saved.items() if k != "status"}
+    messages[-1] = messages[-1].model_copy(update={"content": json.dumps({**summary, **saved, "saved": True})})
+    return Command(graph=result.graph, update={**update, "messages": messages}, resume=result.resume, goto=result.goto)
+
+
 class ChosenSources(AgentMiddleware):
     """The supervisor's half: no subagent before the person answers choose_sources, and each one launched
     carries that answer, so the subagent's own RunSources can enforce it."""
@@ -413,8 +396,9 @@ class ChosenSources(AgentMiddleware):
             return sources
         token = run_sources.CURRENT.set(sources) if sources else None
         try:
-            with snapshots.collecting() if sources else nullcontext():
-                return handler(request)
+            with ExitStack() as stack:
+                current = _open_run(stack) if sources else None
+                return with_saved_counts(handler(request), current)
         finally:
             if token:
                 run_sources.CURRENT.reset(token)
@@ -425,8 +409,9 @@ class ChosenSources(AgentMiddleware):
             return sources
         token = run_sources.CURRENT.set(sources) if sources else None
         try:
-            with snapshots.collecting() if sources else nullcontext():
-                return await handler(request)
+            with ExitStack() as stack:
+                current = _open_run(stack) if sources else None
+                return with_saved_counts(await handler(request), current)
         finally:
             if token:
                 run_sources.CURRENT.reset(token)
@@ -447,111 +432,6 @@ class RunSources(AgentMiddleware):
         return self._refusal(request) or await handler(request)
 
 
-class ResearchRubric(RubricMiddleware):
-    """RubricMiddleware with a fixed rubric, so the task tool needn't pass one.
-
-    Supplied to the hooks, never written to state: a public `rubric` key would flow back into the parent.
-    """
-
-    def _with_rubric(self, state: Any) -> dict:
-        return {**state, "rubric": RUBRIC}
-
-    def before_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
-        return super().before_agent(self._with_rubric(state), runtime)
-
-    async def abefore_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
-        return await super().abefore_agent(self._with_rubric(state), runtime)
-
-    # Redeclared: an override without it loses the edge back to the model, and a revision never runs.
-    @hook_config(can_jump_to=["model"])
-    def after_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
-        return None if stopped_by_call_limit(state) else super().after_agent(self._with_rubric(state), runtime)
-
-    @hook_config(can_jump_to=["model"])
-    async def aafter_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
-        if stopped_by_call_limit(state):
-            return None
-        return await super().aafter_agent(self._with_rubric(state), runtime)
-
-    def _handle_grader_exception(self, runtime: Any, state: Any, grading_run_id: str, iteration: int,
-                                 exc: Exception) -> dict[str, Any]:
-        # Haiku sometimes says needs_revision while passing every criterion; with every criterion passed, it is satisfied.
-        if (graded := all_passed(exc)) is not None:
-            return self._finalize_evaluation(graded, state, runtime, grading_run_id, iteration)
-        return super()._handle_grader_exception(runtime, state, grading_run_id, iteration, exc)
-
-
-def all_passed(exc: BaseException) -> GraderResponse | None:
-    """The grader's verdict as 'satisfied' when its only fault was 'needs_revision' with no criterion failing."""
-    seen: set[int] = set()
-    current: BaseException | None = exc
-    while current is not None and id(current) not in seen:
-        seen.add(id(current))
-        if isinstance(current, ValidationError):
-            for error in current.errors():
-                verdict = error.get("input")
-                if "every criterion has passed=True" in error.get("msg", "") and isinstance(verdict, dict):
-                    try:
-                        return GraderResponse.model_validate({**verdict, "result": "satisfied"})
-                    except ValidationError:
-                        return None
-        current = current.__cause__ or current.__context__
-    return None
-
-
-def stopped_by_call_limit(state: Any) -> bool:
-    """call_limit ended the run: a revision would only be ended again, so there is nothing to grade."""
-    last = next((m for m in reversed(_messages(state)) if isinstance(m, AIMessage)), None)
-    return bool(last) and isinstance(last.content, str) and last.content.startswith(CALL_LIMIT_PREFIX)
-
-
-def digest_saves(messages: list[AnyMessage]) -> list[AnyMessage]:
-    """The grader sees a save_research call as its counts and concepts: the full payload is cut at 4,000 chars."""
-    out: list[AnyMessage] = []
-    for m in messages:
-        calls = getattr(m, "tool_calls", None) or []
-        if isinstance(m, AIMessage) and any(c["name"] == SAVE_TOOL for c in calls):
-            text = m.text if isinstance(m.text, str) else ""
-            calls = [{**c, "args": _digest(c["args"])} if c["name"] == SAVE_TOOL else c for c in calls]
-            m = AIMessage(content=text, tool_calls=calls, id=m.id)
-        out.append(m)
-    return out
-
-
-def _digest(args: dict) -> dict:
-    research = args.get("findings") or {}
-    if isinstance(research, str):
-        research = parse_payload(research) or {}
-    findings = research.get("findings") or []
-    return {
-        "status": research.get("status"),
-        "stopped_reason": research.get("stopped_reason"),
-        "goals": research.get("goals") or [],
-        "finding_count": len(findings),
-        "concepts_found": sorted({f.get("concept") for f in findings if f.get("concept")}),
-        "programs_untagged": [f.get("name") for f in findings
-                              if f.get("concept") == "program" and not f.get("themes")],
-        "gaps": [
-            {k: g.get(k) for k in ("concept", "fiscal_year", "field", "reason", "detail")}
-            for g in research.get("gaps") or []
-        ],
-    }
-
-
-def _log_evaluation(evaluation: RubricEvaluation) -> None:
-    logger.info("research rubric: %s (iteration %s)", evaluation["result"], evaluation["iteration"])
-
-
-def research_rubric(grader: BaseChatModel) -> ResearchRubric:
-    """Grades the researcher's save and summary before it reports; at most one revision."""
-    return ResearchRubric(
-        model=grader,
-        max_iterations=2,
-        prepare_messages_for_grader=digest_saves,
-        on_evaluation=_log_evaluation,
-    )
-
-
 def call_limit(limit: int) -> ModelCallLimitMiddleware:
     """A hard stop on a looping run. Ending leaves no structured summary; the task tool falls back to its text."""
     return ModelCallLimitMiddleware(run_limit=limit, exit_behavior="end")
@@ -565,7 +445,7 @@ def run_plan() -> TodoListMiddleware:
 # outbound tool runs, so an injected instruction cannot carry a row out in a URL or query.
 STAFF_TOOL = "read_source_rows"
 # An allowlist, so an outbound tool added to the researcher later is closed by default.
-OPEN_AFTER_STAFF = frozenset({STAFF_TOOL, "save_research", "read_document_pages", "research_goals",
+OPEN_AFTER_STAFF = frozenset({STAFF_TOOL, "record_findings", "save_research", "read_document_pages", "research_goals",
                               "funder_dossier", "read_file"})
 STAFF_LOCK_REPLY = "web tools are closed for this run: staff rows have been read. Save what you have."
 

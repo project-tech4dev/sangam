@@ -46,6 +46,9 @@ describe("humanizeTool", () => {
     expect(humanizeTool("record_registry_check").detail({ org: "KABIL", status: "ok" })).toBe("KABIL · ok");
     expect(humanizeTool("read_vault_document").detail({ document_id: 3 })).toBe("document 3");
     expect(humanizeTool("save_research").detail({ findings: { entity_name: "KABIL" } })).toBe("KABIL");
+    expect(humanizeTool("save_research").detail({ entity_name: "KABIL" })).toBe("KABIL");
+    expect(humanizeTool("record_findings").detail({ findings: [{}, {}] })).toBe("2 facts");
+    expect(humanizeTool("record_findings").detail({ findings: "[]" })).toBe("");
     expect(humanizeTool("read_file").detail({ file_path: "/skills/entity-record/SKILL.md" })).toBe("entity-record");
     expect(humanizeTool("search_public_sources").detail({ query: "tata csr" })).toBe("tata csr");
   });
@@ -56,7 +59,7 @@ describe("every known tool", () => {
     "search_public_sources read_page fetch_document read_document_pages read_source_rows choose_sources " +
     "list_library_documents read_library_document read_workbook funder_dossier compare_with_catalog coverage_report " +
     "list_import_sources plan_import run_import_now import_run_summary pending_resolutions record_registry_check " +
-    "write_todos research_goals list_vault_documents read_vault_document save_vault_findings save_research " +
+    "write_todos research_goals list_vault_documents read_vault_document save_vault_findings record_findings save_research " +
     "publish_brief promote_research read_file ls task"
   ).split(" ");
 

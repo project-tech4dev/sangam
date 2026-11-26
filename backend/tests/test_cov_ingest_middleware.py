@@ -6,16 +6,16 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from deepagents.middleware.rubric import GraderResponse, RubricMiddleware
 from langchain.agents.middleware import ModelResponse
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-from pydantic import ValidationError
+from langgraph.types import Command
 
 from app.agentkit import middleware as kit
 from app.ingest import middleware as mw
-from app.ingest.reading import run_sources
+from app.ingest.reading import run_sources, snapshots
 from app.ingest.reading.run_sources import Sources
+from app.ingest.research import draft
 from tests.cov_ingest_fakes import running_as
 from tests.test_import_roles import MEMBER, STAFF
 
@@ -53,93 +53,95 @@ class TestReadingLimit:
         assert mw._messages(None) == []
 
 
-class TestSaveFailed:
-    def test_an_error_status_or_text(self):
-        bad = ToolMessage("Error invoking tool 'save_research'", tool_call_id="s", name="save_research")
-        assert mw.save_failed([bad])
-        assert mw.save_failed([ToolMessage("x", tool_call_id="s", name="save_research", status="error")])
-        assert not mw.save_failed([ToolMessage("Saved", tool_call_id="s", name="save_research")])
-
-
 URL = "https://example.org/a"
+VAULT = "save_vault_findings"
 
 
-def research(**over) -> dict:
-    return {"entity_name": "Acme Foundation", "entity_kind": "funder", "status": "not_found",
-            "summary": "Nothing public about this one in any source read.", **over}
+def vault(**over) -> dict:
+    return {"entity_name": "Acme Foundation", "entity_kind": "funder", "org_id": 7, "documents_read": [3], **over}
 
 
 class TestRefusalText:
     def test_a_valid_payload_has_none(self):
-        assert mw.refusal_text("save_research", research()) is None
+        assert mw.refusal_text(VAULT, vault()) is None
 
     def test_an_unknown_finding_key_names_the_allowed_ones(self):
         finding = {"concept": "rfp", "title": "Call 2026", "source_url": URL, "confidence": "high",
                    "evidence": "The call for 2026 opens in May for NGOs.", "colour": "red"}
-        out = mw.refusal_text("save_research", research(status="partial", stopped_reason="x", findings=[finding]))
+        out = mw.refusal_text(VAULT, vault(findings=[finding]))
         assert "finding 0 (rfp 'Call 2026'): `colour` is not a field of rfp. Allowed:" in out
 
     def test_top_level_extras(self):
-        assert "`replace` is an argument beside `findings`" in mw.refusal_text(
-            "save_research", research(replace=True))
-        assert "top level: `colour` is not a field. Allowed:" in mw.refusal_text(
-            "save_research", research(colour="red"))
+        assert "top level: `colour` is not a field. Allowed:" in mw.refusal_text(VAULT, vault(colour="red"))
 
     def test_a_non_dict_finding_and_a_missing_field(self):
-        out = mw.refusal_text("save_research", research(findings=["x"], summary=None))
-        assert "finding 0 (?)" in out and "top level summary" in out
+        out = mw.refusal_text(VAULT, vault(findings=["x"], org_id=None))
+        assert "finding 0 (?)" in out and "top level org_id" in out
 
     def test_long_lists_are_cut(self, monkeypatch):
         monkeypatch.setattr(mw, "REFUSAL_LINES", 1)
-        out = mw.refusal_text("save_research", {"entity_kind": "x"})
+        out = mw.refusal_text(VAULT, {"entity_kind": "x"})
         assert "- and" in out and "more of the same kinds" in out
 
     def test_a_string_that_is_not_json(self):
-        assert "not valid JSON" in mw.refusal_text("save_research", "{oops")
-
-    def test_vault_saves_use_their_own_schema(self):
-        assert "Fix these" in mw.refusal_text("save_vault_findings", {"entity_name": "A"})
+        assert "not valid JSON" in mw.refusal_text(VAULT, "{oops")
 
 
 class TestSaveRefusal:
     def error(self):
-        return ToolMessage("Error invoking tool 'save_research': long echo", tool_call_id="s",
-                           name="save_research", status="error")
+        return ToolMessage(f"Error invoking tool '{VAULT}': long echo", tool_call_id="s", name=VAULT, status="error")
 
     def test_sync_rewrites_a_refused_save(self):
-        req = tool_request("save_research", {"findings": {"entity_kind": "x"}})
+        req = tool_request(VAULT, {"findings": {"entity_kind": "x"}})
         out = mw.SaveRefusal().wrap_tool_call(req, lambda r: self.error())
-        assert out.content.startswith("Error invoking tool 'save_research': refused, nothing saved.")
+        assert out.content.startswith(f"Error invoking tool '{VAULT}': refused, nothing saved.")
+
+    def test_a_string_payload_is_parsed_first(self):
+        seen = []
+        mw.SaveRefusal().wrap_tool_call(tool_request(VAULT, {"findings": json.dumps(vault()) + "}"}),
+                                        lambda r: seen.append(r) or "ok")
+        assert seen[0].tool_call["args"]["findings"] == vault()
 
     def test_an_unparseable_string_is_left_to_the_tool(self):
-        req = tool_request("save_research", {"findings": "{nope"})
+        req = tool_request(VAULT, {"findings": "{nope"})
         seen = []
         mw.SaveRefusal().wrap_tool_call(req, lambda r: seen.append(r) or "ok")
         assert seen[0].tool_call["args"]["findings"] == "{nope"
 
     def test_a_rewrite_that_fails_keeps_the_original(self, monkeypatch):
         monkeypatch.setattr(mw, "refusal_text", lambda name, payload: 1 / 0)
-        req = tool_request("save_research", {"findings": {}})
+        req = tool_request(VAULT, {"findings": {}})
         assert mw.SaveRefusal().wrap_tool_call(req, lambda r: self.error()).content.endswith("long echo")
 
     def test_other_tools_pass_untouched(self):
         assert mw.SaveRefusal().wrap_tool_call(tool_request("read_page"), lambda r: "page") == "page"
+        assert mw.SaveRefusal().wrap_tool_call(tool_request("save_research"), lambda r: "saved") == "saved"
 
 
 class TestEscalation:
-    def test_after_a_failed_save_the_strong_model_runs(self):
-        bad = ToolMessage("x", tool_call_id="s", name="save_research", status="error")
+    def test_only_two_content_refusals_move_the_run(self):
         esc = mw.EscalateAfterFailedSave("strong")
-        assert esc.wrap_model_call(Request(messages=[bad], model="weak"), lambda r: r.model) == "strong"
         assert esc.wrap_model_call(Request(messages=[], model="weak"), lambda r: r.model) == "weak"
+        with draft.drafting() as current:
+            current.refusals = 1
+            assert esc.wrap_model_call(Request(messages=[], model="weak"), lambda r: r.model) == "weak"
+            current.refusals = mw.ESCALATE_AFTER
+            assert esc.wrap_model_call(Request(messages=[], model="weak"), lambda r: r.model) == "strong"
+
+    def test_a_format_error_never_escalates(self):
+        # c2b6973d: one string payload moved the run to Opus for $1.72.
+        bad = ToolMessage("Error invoking tool 'save_research'", tool_call_id="s", name="save_research", status="error")
+        with draft.drafting():
+            esc = mw.EscalateAfterFailedSave("strong")
+            assert esc.wrap_model_call(Request(messages=[bad], model="weak"), lambda r: r.model) == "weak"
 
     async def test_async(self):
-        bad = ToolMessage("x", tool_call_id="s", name="save_research", status="error")
-
         async def handler(r):
             return r.model
-        assert await mw.EscalateAfterFailedSave("strong").awrap_model_call(
-            Request(messages=[bad], model="weak"), handler) == "strong"
+        with draft.drafting() as current:
+            current.refusals = 2
+            assert await mw.EscalateAfterFailedSave("strong").awrap_model_call(
+                Request(messages=[], model="weak"), handler) == "strong"
 
 
 class TestDropFiles:
@@ -259,99 +261,59 @@ class TestChosenAndRunSources:
         assert mw.RunSources().wrap_tool_call(tool_request("save_research"), lambda r: "saved") == "saved"
 
 
-def grader_error(criteria) -> ValidationError:
-    try:
-        GraderResponse.model_validate({"result": "needs_revision", "explanation": "fine", "criteria": criteria})
-    except ValidationError as exc:
-        return exc
-    raise AssertionError("validated")
+def task_result(content: str) -> Command:
+    return Command(update={"messages": [ToolMessage(content, tool_call_id="t")], "files": {}})
 
 
-class TestRubric:
-    def test_all_passed_turns_a_contradiction_into_satisfied(self):
-        exc = grader_error([{"name": "cited", "passed": True}])
-        wrapped = RuntimeError("structured output failed")
-        wrapped.__cause__ = exc
-        verdict = mw.all_passed(wrapped)
-        assert verdict.result == "satisfied" and verdict.criteria == [{"name": "cited", "passed": True}]
+SAVED = {"slug": "acme", "entity_kind": "funder", "status": "partial", "fact_count": 41, "source_count": 6,
+         "concepts_found": ["csr_spend", "rfp"], "not_found": ["metric"]}
 
-    def test_any_other_error_is_none(self):
-        assert mw.all_passed(RuntimeError("x")) is None
-        try:
-            GraderResponse.model_validate({"result": "maybe"})
-        except ValidationError as exc:
-            assert mw.all_passed(exc) is None
 
-    def test_a_cycle_of_causes_ends(self):
-        a, b = RuntimeError("a"), RuntimeError("b")
-        a.__cause__, b.__cause__ = b, a
-        assert mw.all_passed(a) is None
+class TestTheSummaryCountsComeFromTheSave:
+    def summary(self, **over) -> str:
+        return json.dumps({"slug": "acme", "entity_name": "Acme", "status": "partial", "entity_kind": "unknown",
+                           "fact_count": 3, "concepts_found": [], "saved": False, **over})
 
-    def test_stopped_by_call_limit(self):
-        assert mw.stopped_by_call_limit({"messages": [AIMessage(f"{mw.CALL_LIMIT_PREFIX} (3)"), HumanMessage("x")]})
-        assert not mw.stopped_by_call_limit({"messages": [AIMessage("done")]})
-        assert not mw.stopped_by_call_limit({"messages": []})
+    def test_the_counts_the_model_wrote_are_replaced(self):
+        current = draft.Draft(saved=SAVED)
+        out = mw.with_saved_counts(task_result(self.summary()), current)
+        summary = json.loads(out.update["messages"][-1].content)
+        assert (summary["fact_count"], summary["entity_kind"], summary["saved"]) == (41, "funder", True)
+        assert summary["concepts_found"] == ["csr_spend", "rfp"] and summary["entity_name"] == "Acme"
+        assert summary["status"] == "partial" and out.update["files"] == {}
 
-    @pytest.fixture
-    def rubric(self, monkeypatch):
+    @pytest.mark.parametrize("result", [
+        "plain",
+        task_result("not json"),
+        task_result(json.dumps({"entities": []})),
+        Command(update={"messages": []}),
+    ])
+    def test_anything_else_passes_untouched(self, result):
+        assert mw.with_saved_counts(result, draft.Draft(saved=SAVED)) is result
+
+    def test_nothing_saved_changes_nothing(self):
+        result = task_result(self.summary())
+        assert mw.with_saved_counts(result, draft.Draft()) is result
+        assert mw.with_saved_counts(result, None) is result
+
+    def test_each_task_gets_its_own_draft_and_snapshot_list(self):
         seen = {}
 
-        def before(self, state, runtime):
-            seen["before"] = state
-            return {"before": True}
+        def handler(r):
+            seen["draft"], seen["ids"] = draft.CURRENT.get(), snapshots.COLLECTED.get()
+            seen["draft"].saved = SAVED
+            return task_result(self.summary())
+        out = mw.ChosenSources().wrap_tool_call(tool_request("task", messages=answered({"web": True})), handler)
+        assert isinstance(seen["draft"], draft.Draft) and seen["ids"] == []
+        assert json.loads(out.update["messages"][-1].content)["fact_count"] == 41
+        assert draft.CURRENT.get() is None and snapshots.COLLECTED.get() is None
 
-        async def abefore(self, state, runtime):
-            seen["abefore"] = state
-            return {"abefore": True}
-
-        def after(self, state, runtime):
-            return {"graded": state["rubric"] == mw.RUBRIC}
-
-        async def aafter(self, state, runtime):
-            return {"agraded": True}
-
-        def handle(self, runtime, state, run_id, iteration, exc):
-            return {"super": str(exc)}
-        for name, fn in [("before_agent", before), ("abefore_agent", abefore), ("after_agent", after),
-                         ("aafter_agent", aafter), ("_handle_grader_exception", handle)]:
-            monkeypatch.setattr(RubricMiddleware, name, fn)
-        r = mw.research_rubric(FakeListChatModel(responses=["x"]))
-        monkeypatch.setattr(r, "_finalize_evaluation",
-                            lambda graded, state, runtime, run_id, iteration: {"final": graded.result})
-        return r, seen
-
-    async def test_the_rubric_is_supplied_never_stored(self, rubric):
-        r, seen = rubric
-        assert r.before_agent({"messages": []}, None) == {"before": True}
-        assert await r.abefore_agent({"messages": []}, None) == {"abefore": True}
-        assert seen["before"]["rubric"] == mw.RUBRIC and seen["abefore"]["rubric"] == mw.RUBRIC
-
-    async def test_a_run_ended_by_the_call_limit_is_not_graded(self, rubric):
-        r, _ = rubric
-        stopped = {"messages": [AIMessage(f"{mw.CALL_LIMIT_PREFIX}.")]}
-        assert r.after_agent(stopped, None) is None and await r.aafter_agent(stopped, None) is None
-        assert r.after_agent({"messages": []}, None) == {"graded": True}
-        assert await r.aafter_agent({"messages": []}, None) == {"agraded": True}
-
-    def test_a_contradictory_verdict_is_finalised_as_satisfied(self, rubric):
-        r, _ = rubric
-        exc = grader_error([{"name": "cited", "passed": True}])
-        assert r._handle_grader_exception(None, {}, "g", 1, exc) == {"final": "satisfied"}
-        assert r._handle_grader_exception(None, {}, "g", 1, RuntimeError("down")) == {"super": "down"}
-
-    def test_the_log_line(self, caplog):
-        with caplog.at_level("INFO"):
-            mw._log_evaluation({"result": "satisfied", "iteration": 1})
-        assert "research rubric: satisfied" in caplog.text
-
-    def test_a_string_save_is_digested(self):
-        payload = json.dumps({"status": "partial", "findings": [{"concept": "program", "name": "Water"}],
-                              "gaps": [{"concept": "rfp", "reason": "not_stated", "detail": "none"}]})
-        save = {"name": mw.SAVE_TOOL, "args": {"findings": payload}, "id": "s"}
-        [out] = mw.digest_saves([AIMessage("", tool_calls=[save])])
-        args = out.tool_calls[0]["args"]
-        assert args["finding_count"] == 1 and args["programs_untagged"] == ["Water"]
-        assert args["gaps"][0]["concept"] == "rfp"
+    async def test_async_task_too(self):
+        async def handler(r):
+            draft.CURRENT.get().saved = SAVED
+            return task_result(self.summary())
+        out = await mw.ChosenSources().awrap_tool_call(tool_request("task", messages=answered({"web": True})), handler)
+        assert json.loads(out.update["messages"][-1].content)["saved"] is True
 
 
 class TestBuilders:

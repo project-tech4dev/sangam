@@ -114,6 +114,14 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
 - **A save is repaired only where nothing is lost, and refused once.** A URL split at its colon, the summary's
   counts and a year on a gap that is not by year are fixed in place; a refusal for the schema also lists what the
   contract would refuse next (#171).
+- **Code checks the shape; a model judges the quality, as a score.** `record_findings` validates each finding, gap and
+  unplaced fact on its own, drops (and names) unknown keys, and refuses only the bad items, so only those are sent
+  again. The draft lives in a ContextVar beside `snapshots.COLLECTED`, outside the messages, so summarisation and
+  cleared tool results cannot lose it; a crash loses it, as it lost everything before. `save_research` merges into
+  today's row (`brief.merge_findings`, `snapshot_ids` unioned), so a short re-run no longer needs a shrink refusal or a
+  `replace` flag. The Haiku rubric that gated each save was removed: it sent correct saves back ($0.27 on `c2b6973d`).
+  `ResearchJudge` scores correctness, completeness, relevance, consistency and source quality to Langfuse, from public
+  findings only, and never retries.
 - **A metric's period has four shapes**, because it is part of the metric's key: `FY2024-25`, `CY2025`,
   `cumulative to <date>`, `as of <date>` (`rows.shape_period`). A save rewrites an exact match and refuses the rest;
   research read back for promotion (`STORED` context) is rewritten the same way but never refused, so a rule added

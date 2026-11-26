@@ -85,6 +85,23 @@ describe("boardOf", () => {
     expect([saving.now, saving.pct, saving.found]).toEqual(["Writing up", 90, 1]);
   });
 
+  it("counts what record_findings noted, and the answers a slim save reports", () => {
+    const t = researcher("A — x", null);
+    const goals = step("research_goals", { name: "A" }, "x -> y\nz -> w\n", { lane: "L" });
+    const noted = step("record_findings", { findings: [{ concept: "x" }, { concept: "z" }] }, "Recorded 2", { lane: "L" });
+    // A model sometimes sends the list as a JSON string; it still counts.
+    const asText = step("record_findings", { findings: JSON.stringify([{ concept: "w" }]) }, "Recorded 1", { lane: "L" });
+    const save = step("save_research", { entity_name: "A", status: "complete" },
+      "Saved as entity_research #4 (a): 3 findings across w, x, z; status complete.", { lane: "L", doneAt: 2 });
+    const board = boardOf([t, goals, noted, asText, save], true);
+
+    expect(board.rows[0]!.found).toBe(3);
+    expect(board.events.find((e) => e.text.startsWith("found"))?.text).toBe("found 3 answers");
+    expect(boardOf([t, goals, step("save_research", { entity_name: "A" },
+      "Saved as entity_research #4 (a): 0 findings across nothing; status not_found.", { lane: "L" })], true)
+      .events.find((e) => e.text.startsWith("found"))?.text).toBe("found 0 answers");
+  });
+
   it("lists documents, keeping only a scan or failure of a downloaded file", () => {
     const t = researcher("A — x", null);
     const board = boardOf(

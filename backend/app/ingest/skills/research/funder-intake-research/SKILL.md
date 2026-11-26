@@ -13,7 +13,7 @@ below ends as one of two things:**
   silent (name it), `blocked` when you could not read it (name the page or registry), `not_reached`
   when the run stopped first (name what was left unread).
 
-`save_research` refuses a save that leaves a concept, an asked year or an identity field with neither.
+Record each with `record_findings` as you go. `save_research` refuses a save that leaves a concept, an asked year or an identity field with neither, and names only those.
 
 Marks in the tables:
 - **★** — Sangam has no column yet. Save it in `unplaced` as `{field, value, evidence, source_url, page}`,

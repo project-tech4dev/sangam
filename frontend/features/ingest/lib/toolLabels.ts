@@ -98,9 +98,13 @@ const TOOL_LABELS: Record<string, ToolLabel> = {
     label: "Saving what your documents say about",
     detail: (a) => a?.findings?.entity_name ?? "",
   },
+  record_findings: {
+    label: "Noting what it found",
+    detail: (a) => (Array.isArray(a?.findings) && a.findings.length ? `${a.findings.length} facts` : ""),
+  },
   save_research: {
     label: "Saving findings",
-    detail: (a) => a?.findings?.entity_name ?? "",
+    detail: (a) => a?.entity_name ?? a?.findings?.entity_name ?? "",
   },
   publish_brief: {
     label: "Publishing the research notes",

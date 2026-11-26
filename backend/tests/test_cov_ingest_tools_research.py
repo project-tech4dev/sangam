@@ -14,11 +14,10 @@ import httpx
 import pytest
 
 from app.ingest.catalog.matcher import Match
-from app.ingest.reading import fetch
-from app.ingest.refresh.delta import REFRESH_REASON
+from app.ingest.reading import fetch, snapshots
 from app.ingest.research.expectations import concepts_for
 from app.ingest.tools import research_tools
-from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, running_as
+from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, prior_row, running_as, save_in_run
 from tests.test_import_roles import ARPAN_STEWARD, KABIL_STEWARD, MEMBER, STAFF
 
 URL = "https://example.org/csr"
@@ -422,14 +421,24 @@ class TestSaveResearch:
         monkeypatch.setattr(research_tools, "publish", publish)
         return state
 
-    async def save(self, payload, scope=STAFF, **args):
-        with running_as(scope):
-            return await research_tools.save_research.ainvoke({"findings": payload, **args})
+    async def save(self, payload, scope=STAFF):
+        out, self.run = await save_in_run(payload, scope)
+        return out
+
+    def inserted(self, saving) -> list[dict]:
+        [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        return json.loads(params[8])
 
     async def test_a_field_with_neither_finding_nor_gap_is_refused_and_nothing_is_written(self, saving):
-        out = await self.save(research(gaps=[]) | {"gaps": []})
-        assert out.startswith("REFUSED: a save answers every field with a finding or a gap")
-        assert not saving.conn.calls
+        out = await self.save(research(gaps=[]))
+        assert out.startswith("REFUSED, nothing saved: every field gets a finding or a gap")
+        assert "Nothing already recorded needs sending again" in out
+        assert not saving.conn.sql("INSERT") and self.run.refusals == 1
+
+    async def test_a_whole_save_problem_is_refused_and_counted(self, saving):
+        out = await self.save(research(stopped_reason=None))
+        assert out.startswith("REFUSED, nothing saved:") and "needs a stopped_reason" in out
+        assert self.run.refusals == 1 and self.run.saved is None
 
     async def test_a_save_is_written_published_and_reports_quoted_numbers(self, saving):
         out = await self.save(research())
@@ -438,6 +447,13 @@ class TestSaveResearch:
         [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
         assert params[3] == "example-foundation" and params[-1] == STAFF.user_id
         assert saving.published[0][0] == [{"slug": "example-foundation"}]
+
+    async def test_what_was_saved_is_kept_for_the_summary(self, saving):
+        await self.save(research(goals=["CSR spend by year"]))
+        assert self.run.saved == {"slug": "example-foundation", "entity_kind": "funder", "status": "partial",
+                                  "fact_count": 1, "source_count": 1, "concepts_found": ["csr_spend"],
+                                  "not_found": sorted(set(concepts_for("funder")) - {"csr_spend"})}
+        assert self.run.goals == ["CSR spend by year"]
 
     async def test_an_unpublished_brief_points_at_client_docs(self, saving):
         saving.result = None
@@ -451,18 +467,42 @@ class TestSaveResearch:
         monkeypatch.setattr(research_tools, "publish", broken)
         assert (await self.save(research())).startswith("Saved as entity_research #31")
 
-    async def test_a_fuller_save_today_is_kept_without_replace(self, saving):
-        saving.conn.on("SELECT fact_count", {"fact_count": 15, "researched_by": STAFF.user_id, "stopped_reason": None})
+    async def test_a_fuller_save_today_is_merged_not_shrunk(self, saving):
+        # c2b6973d step 14: a 57-fact save was refused over the 66 saved that morning, and written again.
+        earlier = [spend(project_name=f"Project {i}", evidence=f"The company spent Rs {i} crore on project {i}.")
+                   for i in range(1, 16)]
+        saving.conn.on("SELECT fact_count", prior_row(earlier, researched_by=STAFF.user_id))
         out = await self.save(research())
-        assert "already has 15 findings saved today" in out
-        assert not saving.conn.sql("INSERT")
+        assert out.startswith("Saved as entity_research #31 (example-foundation): 16 findings")
+        assert "Merged with the 15 findings saved earlier today." in out and len(self.inserted(saving)) == 16
 
-    async def test_a_refresh_today_is_weighed_by_its_own_delta_not_the_whole_record(self, saving):
-        # Older rows still merge into the brief, so overwriting a 1-fact refresh loses 1 fact, not the record.
-        saving.conn.on("SELECT fact_count", {"fact_count": 1, "researched_by": None,
-                                             "stopped_reason": f"{REFRESH_REASON}: 1 changed or new sources reread"})
-        out = await self.save(research(findings=[spend(), spend(evidence="The company spent Rs 9 crore on CSR.")]))
-        assert out.startswith("Saved as") and saving.conn.sql("INSERT INTO entity_research")
+    async def test_the_same_fact_again_replaces_the_earlier_copy(self, saving):
+        saving.conn.on("SELECT fact_count", prior_row([spend(evidence="An older line about Rs 6.74 crore spent.")]))
+        await self.save(research())
+        [f] = self.inserted(saving)
+        assert f["evidence"] == spend()["evidence"]
+
+    async def test_a_refresh_rows_carried_finding_is_kept(self, saving):
+        carried = spend(project_name="Kept", evidence="A private line kept by the refresh, unchanged.", carried=True)
+        saving.conn.on("SELECT fact_count", prior_row([carried]))
+        out = await self.save(research())
+        assert out.startswith("Saved as") and any(f.get("carried") for f in self.inserted(saving))
+
+    async def test_gaps_merge_and_a_found_one_closes(self, saving):
+        earlier_gap = {"concept": "csr_spend", "fiscal_year": "FY2023-24", "reason": "not_stated",
+                       "detail": "the morning's run did not find it"}
+        # This run's own gap covers every year, so only a finding can close the morning's.
+        kept_gap = {"concept": "csr_spend", "fiscal_year": "FY2022-23", "reason": "blocked", "detail": "403 on the PDF"}
+        saving.conn.on("SELECT fact_count", prior_row(gaps=[earlier_gap, kept_gap], snapshot_ids=[1],
+                                                      sources_read=["https://example.org/a"]))
+        with snapshots.collecting() as ids:
+            ids.append(2)
+            await self.save(research(sources_read=["https://example.org/b"]))
+        [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        gaps = [(g["concept"], g["fiscal_year"], g["detail"]) for g in json.loads(params[14])]
+        assert ("csr_spend", "FY2023-24", "the morning's run did not find it") not in gaps
+        assert ("csr_spend", "FY2022-23", "403 on the PDF") in gaps
+        assert params[10] == ["https://example.org/a", "https://example.org/b"] and params[16] == [1, 2]
 
     async def test_a_save_over_todays_row_keeps_what_a_refresh_removed(self, saving):
         # A row's supersedes apply before its own findings, so what this run finds again still stands.
@@ -471,14 +511,30 @@ class TestSaveResearch:
         # A removal stays removed; an update's note goes, or the updated fact would vanish with its new value.
         assert "WHERE NOT coalesce((e->>'updated')::boolean, false)" in sql
 
-    async def test_replace_overwrites_and_says_so(self, saving):
-        saving.conn.on("SELECT fact_count", {"fact_count": 15, "researched_by": UUID(int=9), "stopped_reason": None})
-        out = await self.save(research(), replace=True)
-        assert "Replaced 15 findings saved earlier today." in out
+    async def test_a_wrong_entity_does_not_merge_with_the_right_one(self, saving):
+        saving.conn.on("SELECT fact_count", prior_row([spend(project_name="Other")]))
+        out = await self.save(research(findings=[], status="wrong_entity", stopped_reason="A different trust."))
+        assert out.startswith("Saved as") and self.inserted(saving) == []
 
-    async def test_a_members_own_earlier_save_may_be_replaced(self, saving):
-        saving.conn.on("SELECT fact_count", {"fact_count": 0, "researched_by": MEMBER.user_id, "stopped_reason": None})
+    async def test_a_members_own_earlier_save_may_be_added_to(self, saving):
+        saving.conn.on("SELECT fact_count", prior_row(researched_by=MEMBER.user_id))
         assert (await self.save(research(), scope=MEMBER)).startswith("Saved as")
+
+    async def test_someone_elses_save_today_is_refused(self, saving):
+        saving.conn.on("SELECT fact_count", prior_row(researched_by=UUID(int=9)))
+        assert (await self.save(research(), scope=MEMBER)).startswith("REFUSED: example-foundation was already")
+
+    async def test_a_cited_page_no_tool_read_is_named(self, saving, monkeypatch):
+        async def unfetched(slug, ids, cited):
+            return [URL]
+        monkeypatch.setattr(snapshots, "log_unfetched", unfetched)
+        with snapshots.collecting():
+            out = await self.save(research())
+        assert f"No tool read these cited pages in this run; check the findings citing them: {URL}." in out
+
+    async def test_outside_a_run_it_says_so(self):
+        assert "no research run is open" in await research_tools.save_research.ainvoke(
+            {k: v for k, v in research().items() if k not in ("findings", "gaps")})
 
     async def test_a_database_failure_is_returned(self, monkeypatch):
         monkeypatch.setattr(research_tools, "get_pool", lambda: BrokenPool())
@@ -522,8 +578,7 @@ class TestSaveNgoResearchScope:
         return state
 
     async def save(self, scope, payload=None):
-        with running_as(scope):
-            return await research_tools.save_research.ainvoke({"findings": payload or ngo_research()})
+        return (await save_in_run(payload or ngo_research(), scope))[0]
 
     async def test_a_steward_saves_their_own_ngo(self, saving):
         assert (await self.save(ARPAN_STEWARD)).startswith("Saved as entity_research #31 (arpan)")

@@ -86,3 +86,21 @@ def patch_catalog(monkeypatch, name, value):
     for module in (catalog_tools, catalog_save):
         if hasattr(module, name):
             monkeypatch.setattr(module, name, value)
+
+
+async def save_in_run(payload: dict[str, Any], scope: CallerScope | None = None) -> tuple[str, Any]:
+    """A researcher's run: its findings recorded into the draft, then save_research with the rest as arguments."""
+    from app.ingest.research import draft
+    from app.ingest.tools.research_tools import save_research
+
+    head = {k: v for k, v in payload.items() if k not in ("findings", "gaps", "unplaced")}
+    with running_as(scope), draft.drafting() as current:
+        reply = draft.record(current, payload.get("findings"), payload.get("gaps"), payload.get("unplaced"))
+        assert "Refused" not in reply, reply
+        return await save_research.ainvoke(head), current
+
+
+def prior_row(findings: list[dict] = (), **over: Any) -> dict[str, Any]:
+    """Today's entity_research row as save_research reads it back."""
+    return {"fact_count": len(findings), "researched_by": None, "findings": list(findings), "gaps": [],
+            "sources_read": [], "snapshot_ids": [], **over}

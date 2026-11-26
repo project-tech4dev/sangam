@@ -60,8 +60,16 @@ function parse(result: string | null): any {
 
 function nameOf(step: TraceStep): string | null {
   if (NAMING.includes(step.tool)) return a(step).name ?? null;
-  if (step.tool === "save_research") return a(step).findings?.entity_name ?? null;
+  // A thread from before record_findings carried the whole research as `findings`.
+  if (step.tool === "save_research") return a(step).entity_name ?? a(step).findings?.entity_name ?? null;
   return null;
+}
+
+/** The concepts a step recorded: record_findings' list (sometimes sent as a JSON string), or an older full save's. */
+function conceptsOf(step: TraceStep): string[] {
+  let items = step.tool === "record_findings" ? a(step).findings : a(step).findings?.findings;
+  if (typeof items === "string") items = parse(items);
+  return Array.isArray(items) ? items.map((f: any) => f?.concept).filter(Boolean) : [];
 }
 
 function pageOf(step: TraceStep): PageLine | null {
@@ -128,7 +136,7 @@ export function boardOf(
     const total = goals ? (goals.result!.match(/^\w+ -> /gm) ?? []).length || null : null;
     const saved = own.filter((s) => s.tool === "save_research");
     const savedConcepts = new Set<string>(
-      saved.flatMap((s) => (a(s).findings?.findings ?? []).map((f: any) => f?.concept)).filter(Boolean),
+      own.filter((s) => s.tool === "record_findings" || s.tool === "save_research").flatMap(conceptsOf),
     );
     const found = Array.isArray(summary?.concepts_found)
       ? summary.concepts_found.length
@@ -202,7 +210,8 @@ export function boardOf(
       else if (p?.state === "scanned") text = `opened ${what}: it is a scan, with no text to read`;
       else if (p) text = `couldn't open ${what}`;
     } else if (s.tool === "save_research") {
-      const n = new Set((a(s).findings?.findings ?? []).map((f: any) => f?.concept)).size;
+      const across = /findings across (.+?); status/.exec(s.result ?? "")?.[1];
+      const n = across && across !== "nothing" ? across.split(", ").length : new Set(conceptsOf(s)).size;
       text = `found ${n} answer${n === 1 ? "" : "s"}`;
     } else if (isResearcher(s)) {
       const row = rows.find((r) => r.id === s.id);

@@ -177,6 +177,27 @@ class TestEachTierGetsItsModel:
 
         assert Settings(_env_file=None, sql_audit_model=value).sql_audit_model == ""
 
+    @pytest.mark.parametrize(("value", "judge"), [("", "m:cheap"), ("  ", "m:cheap"), ("off", ""), (" OFF ", ""),
+                                                  ("m:other", "m:other")])
+    def test_the_research_judge_follows_utility_unless_set_or_off(self, value, judge):
+        from app.core.config import Settings
+
+        got = Settings(_env_file=None, utility_model="m:cheap", research_judge_model=value)
+        assert got.research_judge_model == judge
+
+    def test_a_compat_run_needs_the_research_judge_on_compat_or_off(self):
+        from pydantic import ValidationError
+
+        from app.core.config import Settings
+
+        c = "compat:open-model"
+        rest = {"model": c, "research_model": c, "utility_model": c, "sql_audit_model": "off",
+                "compat_base_url": "https://llm.example/v1", "compat_api_key": "k"}
+        assert Settings(_env_file=None, **rest).research_judge_model == c
+        assert Settings(_env_file=None, **rest, research_judge_model="off").research_judge_model == ""
+        with pytest.raises(ValidationError, match="RESEARCH_JUDGE_MODEL"):
+            Settings(_env_file=None, **rest, research_judge_model="anthropic:claude-haiku-5-5")
+
     def test_the_defaults_are_strong_mid_cheap(self):
         from app.core.config import Settings
 
@@ -407,11 +428,11 @@ class TestASubagentRunsOnlyTheToolsItsSpecDeclares:
             "list_vault_documents", "read_vault_document", "research_goals", "save_vault_findings", "read_file",
         }
 
-    def test_the_researcher_gets_its_eight_and_nothing_of_the_filesystem(self, subagents):
+    def test_the_researcher_gets_its_own_and_nothing_of_the_filesystem(self, subagents):
         assert subagents["entity-researcher"] == {
             "research_goals", "funder_dossier", "list_library_documents", "read_library_document",
             "read_source_rows", "search_public_sources", "read_page", "fetch_document", "read_document_pages",
-            "save_research",
+            "record_findings", "save_research",
             "read_file",
         }
         # Staff rows last: once the run has asked for read_source_rows, the compiled node refuses read_page.
@@ -487,16 +508,14 @@ class TestASubagentLeavesNoFiles:
         drops = {n for n, g in graphs.items() if "DropFilesOnExit.after_agent" in g.nodes}
         assert drops == set(graphs)
 
-    def test_the_rubric_grades_before_the_files_go(self):
+    def test_the_judge_scores_and_never_sends_the_researcher_back(self):
         from app.core.config import get_settings
         from app.ingest.agent import build_ingest_agent
 
         researcher = _subagent_graphs(build_ingest_agent(get_settings(), None))["entity-researcher"]
         edges = {(e.source, e.target) for e in researcher.get_graph().edges}
-        # A revision jumps back to the model with its pages; only a finished researcher drops them.
-        assert {t for s, t in edges if s == "ResearchRubric.after_agent"} == {
-            "SkillsMiddleware.before_model", "DropFilesOnExit.after_agent",
-        }
+        # Quality is a Langfuse score, not a gate: the judge's only way out is onward.
+        assert {t for s, t in edges if s == "ResearchJudge.after_agent"} == {"DropFilesOnExit.after_agent"}
 
     async def test_through_an_unsaved_subagent_the_parent_keeps_its_own_and_gets_none(self):
         from deepagents import create_deep_agent

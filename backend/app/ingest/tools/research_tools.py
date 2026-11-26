@@ -2,9 +2,9 @@
 
 The pipeline adapters handle the two sources we enumerate. These are for the
 research the hand-vetted sheets did by hand: open the funder's CSR report, read
-the pages that carry the figures, quote the sentence. `save_research` ends the
-path — it is the only tool here that writes, and it writes findings, not catalog
-rows.
+the pages that carry the figures, quote the sentence. `record_findings` keeps each
+fact as it is found and `save_research` ends the path: the only write, of findings,
+not catalog rows.
 """
 
 from __future__ import annotations
@@ -13,16 +13,17 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from langchain_core.tools import BaseTool, tool
 from langchain_tavily import TavilySearch
+from pydantic import ValidationError
 
 from app.core import extract
 from app.core.config import get_settings
 from app.core.extract import extract_pdf_text
 from app.db.pool import get_pool
-from app.ingest.brief import publish, rows_for
+from app.ingest.brief import CARRIED, fact_key, merge_findings, publish, rows_for
 from app.ingest.caller import scope, staff_only
 from app.ingest.catalog.promote import org_match
 from app.ingest.catalog.promote_records import MERGEABLE
@@ -31,8 +32,9 @@ from app.ingest.reading import snapshots
 from app.ingest.reading.access import check_url
 from app.ingest.reading.fetch import downloads_dir, fetch_document_file, read_page_text
 from app.ingest.reading.staff_sources import is_staff_source_url
+from app.ingest.research import draft
 from app.ingest.research.contract import quoted_only, unanswered
-from app.ingest.research.finding_types import SCHEMA_VERSION
+from app.ingest.research.finding_types import SCHEMA_VERSION, STORED
 from app.ingest.research.findings import EntityResearch
 from app.integrations.storage import safe_name
 
@@ -208,80 +210,151 @@ _NGO_REFUSAL = ("REFUSED: researching an NGO is for its stewards and the Sangam 
                 "Sangam already holds. Report what you found in your summary instead.")
 
 
-async def _may_research(conn: Any, caller: Any, findings: EntityResearch, slug: str) -> bool:
+async def _may_research(conn: Any, caller: Any, head: dict[str, Any], findings: list[dict], slug: str) -> bool:
     """Whether a non-staff caller stewards the NGO this save writes to; the brief is keyed on the slug alone."""
-    row = {"slug": slug, "entity_kind": "org", "entity_name": findings.entity_name,
-           "canonical_name": findings.canonical_name,
-           "findings": [f.model_dump(mode="json") for f in findings.findings]}
+    row = {"slug": slug, "entity_kind": "org", "entity_name": head["entity_name"],
+           "canonical_name": head["canonical_name"], "findings": findings}
     match = await org_match(conn, row)
     held = await (await conn.execute("SELECT id FROM orgs WHERE slug = %s", (slug,))).fetchall()
     ids = {r["id"] for r in held} | ({match.entity_id} if match and match.method in MERGEABLE else set())
     return bool(ids) and all(caller.can_research_org(i) for i in ids)
 
 
+_NO_RUN = "{} failed: no research run is open. Report what you found in your summary instead."
+
+
 @tool
-async def save_research(findings: EntityResearch, replace: bool = False) -> str:
-    """Save what you found. Call this LAST, once, before you report back.
+async def record_findings(
+    findings: list[dict[str, Any]] | str | None = None,
+    gaps: list[dict[str, Any]] | str | None = None,
+    unplaced: list[dict[str, Any]] | str | None = None,
+) -> str:
+    """Record what you found, a few items at a time, as you go. Nothing recorded needs sending again.
 
-    Research that is only spoken disappears when the conversation does. This is
-    what makes it durable, and what the client and entity documents are rendered
-    from. Every finding needs the sentence that states it and the URL it came
-    from — the tool refuses anything else, so do not summarise the evidence away.
+    findings: one object per fact: `concept` plus that concept's keys from research_goals, and always
+    `evidence` (the sentence that states it), `source_url`, `confidence`, and `page` for a PDF.
+    gaps: {concept, fiscal_year, field, reason, detail} for each thing looked for and not got; reason is
+    not_stated (read, does not say), blocked (could not be read) or not_reached (the run stopped first).
+    unplaced: {field, value, evidence, source_url} for a stated fact no concept has a key for.
 
-    Report `status` honestly: 'complete' only if you answered the questions,
-    'partial' with a reason if the budget ran out, 'not_found' if the sources
-    have nothing, 'wrong_entity' if what you found is a different organisation
-    from the one asked about.
+    Each item is checked on its own: valid ones are kept, the reply names only the refused ones, and a
+    key that is not a field is dropped. Sending a fact again replaces its earlier copy from that source.
+    """
+    try:
+        current = draft.CURRENT.get()
+        return draft.record(current, findings, gaps, unplaced) if current else _NO_RUN.format("record_findings")
+    except Exception as exc:
+        logger.exception("record_findings failed")
+        return f"record_findings failed: {type(exc).__name__}. Record the items again."
+
+
+def _json(value: Any) -> list[dict[str, Any]]:
+    return value if isinstance(value, list) else json.loads(value or "[]")
+
+
+def _merged(head: dict[str, Any], current: draft.Draft,
+            prior: dict[str, Any] | None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """This run's draft over the row saved today, so a second save adds to the first and never shrinks it; and the
+    refresh's carried findings, which were checked when first saved and are kept beside it unchecked."""
+    if not prior or head["status"] == "wrong_entity":
+        return {**head, "findings": current.findings, "gaps": current.gaps, "unplaced": current.unplaced}, []
+    before = _json(prior["findings"])
+    findings = merge_findings([{"findings": before}, {"findings": current.findings}])
+    kept = {fact_key(f) for f in findings}
+    carried = [f for f in before if f.get(CARRIED) and fact_key(f) not in kept]
+    return {
+        **head,
+        "findings": findings,
+        "gaps": draft.merged_gaps(_json(prior["gaps"]), current.gaps, findings),
+        "sources_read": list(dict.fromkeys([*(prior["sources_read"] or []), *head["sources_read"]])),
+        "unplaced": current.unplaced,
+    }, carried
+
+
+@tool
+async def save_research(
+    entity_name: str,
+    entity_kind: Literal["funder", "org", "unknown"],
+    status: Literal["complete", "partial", "not_found", "wrong_entity"],
+    summary: str,
+    canonical_name: str | None = None,
+    website: str | None = None,
+    stopped_reason: str | None = None,
+    goals: list[str] | None = None,
+    years: list[str] | None = None,
+    sources_read: list[str] | None = None,
+) -> str:
+    """Save everything record_findings recorded in this run. Call it LAST, before you report back.
+
+    It takes no findings: those are already recorded. It merges them into anything saved for this
+    organisation earlier today, checks every field has a finding or a gap, and names only what is missing;
+    record those, then call this again.
 
     Args:
-        findings: everything you found, with the evidence for each fact.
-        replace: set only when you mean to discard a fuller result saved for
-            this organisation earlier today. Saving is an upsert keyed on
-            (slug, date), so without this a short re-run can quietly overwrite
-            a long one — which has happened, and cost fifteen findings.
+        entity_name: the name as it was asked for.
+        entity_kind: 'funder' if it GIVES money, 'org' if it RECEIVES it, 'unknown' only when research
+            did not get far enough to tell.
+        status: 'complete' if you answered the questions; 'partial' with stopped_reason if the run ran out;
+            'not_found' if the sources have nothing; 'wrong_entity' if what you found is another organisation.
+        summary: a few sentences, factual, no judgement.
+        canonical_name: as the strongest source writes it.
+        website: the organisation's own site.
+        stopped_reason: REQUIRED for 'partial' and 'wrong_entity': why research ended where it did.
+        goals: what you set out to find, from research_goals, one line each.
+        years: the fiscal years you were asked to cover, e.g. ['FY2024-25'].
+        sources_read: every URL you read.
     """
+    current = draft.CURRENT.get()
+    if current is None:
+        return _NO_RUN.format("save_research")
+    head = {"entity_name": entity_name, "canonical_name": canonical_name, "entity_kind": entity_kind,
+            "website": website, "status": status, "stopped_reason": stopped_reason, "summary": summary,
+            "goals": goals or [], "years": years or [], "sources_read": sources_read or []}
     # A staff finding quotes a confidential cell; its failures carry the exception type only.
-    staff_save = any(is_staff_source_url(f.source_url) for f in findings.findings)
+    staff_save = any(is_staff_source_url(f.get("source_url") or "") for f in current.findings)
     caller = scope()
-    if findings.entity_kind == "org" and not (caller.is_staff or caller.steward_of):
+    if entity_kind == "org" and not (caller.is_staff or caller.steward_of):
         return _NGO_REFUSAL
-    if missing := unanswered(findings):
-        return (
-            f"REFUSED: a save answers every field with a finding or a gap, and {len(missing)} have "
-            f"neither: {'; '.join(missing[:40])}. For each, add the finding, or a gap "
-            f"{{concept, field, fiscal_year, reason, detail}}: not_stated or blocked naming the source, or "
-            f"not_reached naming what was left unread when the run stopped. Then save again."
-        )
     # What the tools fetched in this researcher's run, not what the model says it read; None outside a run.
     collected = snapshots.COLLECTED.get()
-    snapshot_ids = list(collected) if collected is not None else None
     try:
-        slug = slugify(findings.canonical_name or findings.entity_name)
+        slug = slugify(canonical_name or entity_name)
         pool = get_pool()
         async with pool.connection() as conn:
-            if findings.entity_kind == "org" and not caller.is_staff and not await _may_research(
-                    conn, caller, findings, slug):
+            if entity_kind == "org" and not caller.is_staff and not await _may_research(
+                    conn, caller, head, current.findings, slug):
                 return _NGO_REFUSAL
             prior = await (
                 await conn.execute(
-                    "SELECT fact_count, researched_by, stopped_reason FROM entity_research "
-                    "WHERE slug = %s AND researched_on = current_date",
+                    "SELECT fact_count, researched_by, findings, gaps, sources_read, snapshot_ids "
+                    "FROM entity_research WHERE slug = %s AND researched_on = current_date",
                     (slug,),
                 )
             ).fetchone()
-            # Overwriting today's row loses only that row's own findings; for a refresh, only its delta.
-            held = prior["fact_count"] if prior else 0
-        # One row per entity per day is shared, so only staff replace what someone else saved.
+        # One row per entity per day is shared, so only staff add to what someone else saved.
         if prior and not caller.is_staff and prior["researched_by"] != caller.user_id:
             return (f"REFUSED: {slug} was already researched and saved today. Report back with "
                     f"slug={slug!r} and saved=true, and say the research on file is today's.")
-        if prior and held > len(findings.findings) and not replace:
+        payload, carried = _merged(head, current, prior)
+        try:
+            findings = EntityResearch.model_validate(payload, context=STORED)
+        except ValidationError as exc:
+            current.refusals += 1
+            return ("REFUSED, nothing saved:\n" + "\n".join(f"- {p}" for p in draft.problems(exc, payload["findings"]))
+                    + "\nFix a finding by recording it again with record_findings (it replaces the earlier copy), "
+                      "or fix this call's own arguments, then call save_research again.")
+        if missing := unanswered(findings):
+            current.refusals += 1
             return (
-                f"REFUSED: {slug} already has {held} findings saved today and "
-                f"you are offering {len(findings.findings)}. Saving would replace the fuller "
-                f"result. If you meant to, call again with replace=true; otherwise report what "
-                f"you found and say the earlier research is already on file."
+                f"REFUSED, nothing saved: every field gets a finding or a gap, and {len(missing)} have neither: "
+                f"{'; '.join(missing[:40])}. Record each with record_findings, as a finding or a gap "
+                f"{{concept, field, fiscal_year, reason, detail}}: not_stated or blocked naming the source, or "
+                f"not_reached naming what was left unread. Nothing already recorded needs sending again. "
+                f"Then call save_research again."
             )
+        prior_ids = (prior["snapshot_ids"] or []) if prior else []
+        snapshot_ids = list(dict.fromkeys([*prior_ids, *collected])) if collected is not None else None
+        stored = [f.model_dump(mode="json") for f in findings.findings] + carried
         async with pool.connection() as conn, conn.transaction():
             row = await (
                 await conn.execute(
@@ -320,9 +393,8 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                     (
                         findings.entity_name, findings.canonical_name, findings.entity_kind, slug,
                         findings.website, findings.status, findings.stopped_reason,
-                        findings.summary,
-                        json.dumps([f.model_dump(mode="json") for f in findings.findings]),
-                        findings.not_found, findings.sources_read, len(findings.findings),
+                        findings.summary, json.dumps(stored),
+                        findings.not_found, findings.sources_read, len(stored),
                         json.dumps(findings.goals), SCHEMA_VERSION,
                         json.dumps([g.model_dump(mode="json") for g in findings.gaps]), findings.years,
                         snapshot_ids, caller.user_id,
@@ -330,8 +402,14 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
                 )
             ).fetchone()
             history = await rows_for(conn, slug)
-        if snapshot_ids is not None:
-            await snapshots.log_unfetched(slug, snapshot_ids, [f.source_url for f in findings.findings])
+        current.saved = {
+            "slug": slug, "entity_kind": findings.entity_kind, "status": findings.status,
+            "fact_count": len(stored), "source_count": len({f["source_url"] for f in stored}),
+            "concepts_found": findings.concepts_found(), "not_found": findings.not_found,
+        }
+        current.goals = findings.goals
+        unfetched = (await snapshots.log_unfetched(slug, snapshot_ids, [f["source_url"] for f in stored]) or []
+                     if snapshot_ids is not None else [])
         # Publish the brief with the same call that saves it: waiting for a
         # person to run `make client-docs` left the funder page's link dead in
         # between. Silent on failure, like archiving — the model cannot act on
@@ -344,10 +422,7 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
             published = None
 
         found = ", ".join(findings.concepts_found()) or "nothing"
-        replaced = (
-            f" Replaced {prior['fact_count']} findings saved earlier today."
-            if prior else ""
-        )
+        merged = f" Merged with the {prior['fact_count']} findings saved earlier today." if prior else ""
         # Only claim what happened. With Storage unconfigured the brief exists
         # nowhere until someone renders it on the host. "brief is published" is
         # matched by the Import UI's milestone strip — a test pins the phrase.
@@ -359,20 +434,22 @@ async def save_research(findings: EntityResearch, replace: bool = False) -> str:
         quoted = quoted_only(findings)
         unextracted = (
             f" These numbers are only inside quotes: {' | '.join(quoted)}. If any is a reach figure, a "
-            f"count of places or an amount, add it as a finding and save again."
+            f"count of places or an amount, record it as a finding and save again."
             if quoted else ""
         )
+        unread = (f" No tool read these cited pages in this run; check the findings citing them: "
+                  f"{', '.join(unfetched[:10])}." if unfetched else "")
         return (
-            f"Saved as entity_research #{row['id']} ({slug}): {len(findings.findings)} findings "
+            f"Saved as entity_research #{row['id']} ({slug}): {len(stored)} findings "
             f"across {found}; status {findings.status}. Report back with slug={slug!r} and "
             f"saved=true. {where}"
-            f"promote_research moves what has a writer into the catalog.{replaced}{unextracted}"
+            f"promote_research moves what has a writer into the catalog.{merged}{unextracted}{unread}"
         )
     except Exception as exc:
         if staff_save:
-            logger.warning("save_research failed for %s (%s)", findings.entity_name, type(exc).__name__)
+            logger.warning("save_research failed for %s (%s)", entity_name, type(exc).__name__)
             return f"save_research failed: {type(exc).__name__}. Report the failure in your summary, without repeating any row."
-        logger.exception("save_research failed for %s", findings.entity_name)
+        logger.exception("save_research failed for %s", entity_name)
         return f"save_research failed: {type(exc).__name__}: {exc}. Report your findings in text."
 
 

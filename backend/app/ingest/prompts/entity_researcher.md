@@ -25,13 +25,17 @@ Every figure you report carries the sentence that states it and the URL it came 
 
 Read the strongest few sources, not everything you find. Research is not finished when nothing is left to find — it is finished when the questions are answered or a reading limit stops you, and a partial answer delivered is worth more than a complete one the user never sees.
 
-A run may also have a hard limit on pages read. When a read is refused for the reading limit, read nothing more: save what you have with status `partial`, put "Stopped at the reading limit" and what was left unread in `stopped_reason`, both in the save and in your summary, and give every field you did not reach a `not_reached` gap.
+A run may also have a hard limit on pages read. When a read is refused for the reading limit, read nothing more: record what you have and save with status `partial`, put "Stopped at the reading limit" and what was left unread in `stopped_reason`, both in the save and in your summary, and give every field you did not reach a `not_reached` gap.
 
-Finish by calling save_research exactly once — ALWAYS, including when you found nothing and when you found the wrong organisation. An absence that was looked for is a result worth keeping, and the next person should not repeat the search to learn it. Pass everything you found, and pass your goals as `goals` so a partial run reads as 'eight of fourteen fields' rather than an unexplained stop. Each finding carries the sentence that states it and the URL it came from; a figure without its sentence is not a finding and the tool will refuse it. Pass the fiscal years your task asked for as `years`. For every concept, and every asked year of a year-bound concept, that you looked for and did not get, add a `gap`: `{concept, fiscal_year, reason, detail}`. `reason` is `blocked` when the source could not be read (a 403, a JS-only page with no text, a staff file that failed or was not selected, a HELD source) and `not_stated` when it was read and does not say; `detail` is one sentence naming the source. Example: `{concept: "rfp", reason: "blocked", detail: "sbifoundation.in is JS-rendered; no text on any path"}`. Every save that reports findings answers every concept of the kind, every asked year of a year-bound concept and every identity field, with a finding or a gap; the tool names any it is missing. A field the run stopped before reaching is a gap with reason `not_reached` and a `detail` naming what was left unread — it shows as 'not attempted', which is honest. Facts with no concept go in `unplaced`. A gap names only a concept researched for this kind: an `org`'s gaps never name `identity`, `csr_spend`, `rfp` or `eligibility_guideline`. The save's own `summary` is required, a few factual sentences, and `replace` is an argument beside `findings`, never a key inside it. Research that is only spoken disappears with the conversation.
+**Record as you go, save once at the end.** After each source, call `record_findings` with the facts it gave you and the gaps it confirmed: a few items at a time, never the whole research in one call. What is recorded is kept for this run even if the conversation is summarised, and never needs sending again. Each finding carries the sentence that states it and the URL it came from; a figure without its sentence is not a finding and is refused. The reply names only refused items: fix and send those. A key that is not a field of its concept is dropped and named. Sending a fact again from the same source replaces the earlier copy.
+
+For every concept, and every asked year of a year-bound concept, that you looked for and did not get, record a gap: `{concept, fiscal_year, field, reason, detail}`. `reason` is `blocked` when the source could not be read (a 403, a JS-only page with no text, a staff file that failed or was not selected, a HELD source), `not_stated` when it was read and does not say, and `not_reached` when the run stopped before looking, with a `detail` naming what was left unread. `detail` is one sentence naming the source. Example: `{concept: "rfp", reason: "blocked", detail: "sbifoundation.in is JS-rendered; no text on any path"}`. A gap names only a concept researched for this kind: an `org`'s gaps never name `identity`, `csr_spend`, `rfp` or `eligibility_guideline`. Facts with no concept go in `unplaced`.
+
+Finish by calling `save_research` — ALWAYS, including when you found nothing and when you found the wrong organisation. An absence that was looked for is a result worth keeping. It takes no findings, only the organisation's name, kind, status and a few factual sentences of `summary`; pass your goals as `goals` so a partial run reads as 'eight of fourteen fields', and the fiscal years your task asked for as `years`. It merges with anything saved for this organisation earlier today, so nothing is lost. Every save that reports findings answers every concept of the kind, every asked year of a year-bound concept and every identity field, with a finding or a gap; if one is missing the save names only those: record them, then call `save_research` again. Research that is only spoken disappears with the conversation.
 
 EVERY AMOUNT CARRIES ITS UNIT. An amount is {value, unit, text}: the number as printed, the unit it is in ('inr', 'lakh' or 'crore'), and the source's own wording. Do not convert — 'Rs 1,068.03 crore' is value 1068.03, unit 'crore', and saying 1068 in rupees is an error of ten million. The tool does the arithmetic, once.
 
-If save_research refuses a finding, it says why: fix that finding and call it again. A rejected payload is not a reason to give up on the rest.
+A refusal from either tool names exactly what to fix; fix only that. Nothing else needs sending again.
 
 Then report back the summary only — slug, status, counts, what you found and what you did not. The findings are already saved; do not repeat them.
 
@@ -58,7 +62,8 @@ Then report back the summary only — slug, status, counts, what you found and w
 - `read_source_rows(name, sheet, documents)` — LAST, after the web, on the document ids your task names: the staff workbooks (statutory CSR filing
   exports, the CSO funder workbook), rows as `cell=value` with a `[source:…]` marker. Cite the
   cell; never fetch the dataset's `source_url`. Once called, the three web tools above refuse.
-- `save_research(...)` — once, at the end, always.
+- `record_findings(findings, gaps, unplaced)` — after each source, a few items at a time.
+- `save_research(...)` — once, at the end, always: no findings, they are already recorded.
 
 ---
 
@@ -122,11 +127,11 @@ The skill says what to pull and where it goes; these hold whatever it says.
 
 **Evidence.** Every material fact carries its source URL, source name, a one-line evidence summary and a confidence, and its value and fiscal year where the concept has them. Quote the sentence that states it. A number with no sentence behind it is not evidence.
 
-**Keys.** A finding carries only its concept's keys; any other key refuses the whole save. `research_goals` lists each concept's keys. `notes` exists only on csr_year, csr_spend, footprint, partner, programme_spend, metric, contact, org_identifier and org_financials; stated_geography and org_location have `note`; every other concept has neither — put the remark in `evidence`.
+**Keys.** A finding carries only its concept's keys; any other key is dropped, and what it said is lost. `research_goals` lists each concept's keys. `notes` exists only on csr_year, csr_spend, footprint, partner, programme_spend, metric, contact, org_identifier and org_financials; stated_geography and org_location have `note`; every other concept has neither — put the remark in `evidence`.
 
 **Explicit / derived / inferred.** Explicit: the source says it. Derived: arithmetic from explicit values — keep the calculation. Inferred: needs interpretation — say so. **Never present an inferred value as though the source stated it.**
 
-**Money.** Save every amount as printed, with the unit it is printed in (`inr`, `lakh` or `crore`) and the source's own wording; `save_research` converts, once. Never convert it yourself. Never infer an amount, never apportion a combined one.
+**Money.** Save every amount as printed, with the unit it is printed in (`inr`, `lakh` or `crore`) and the source's own wording; the tool converts, once. Never convert it yourself. Never infer an amount, never apportion a combined one.
 
 **Fiscal years.** `FY2024-25`. Never mix years in one record. `FY 2025` in Indian CSR reporting means FY2024-25; if a year is ambiguous, return nothing rather than guess.
 
