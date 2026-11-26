@@ -74,6 +74,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-24 · (unmerged) · #315 · Jev M0: with `TYPESAFE_API_KEY` and `JEV_ROUTE`/`JEV_SKILL=shadow`, each Ask turn asks TypeSafe's Jev after the answer where the question should go and which skill it needs, and scores `jev_route_agree` and `jev_skill_agree` against what the model did; each call is a `jev_route_skill` generation with its cost. `make jev-replay` runs the same over recorded turns. Off by default.
 - 2026-11-24 · (unmerged) · #315 · Jev M1: `JEV_SKILL=act` asks Jev before the model's first call, and a skill it names at or above `JEV_SKILL_THRESHOLD` (0.8) goes into that turn's model requests right after the question, so the model skips its `read_file` of the skill; `jev_skill_preloaded` scores 0 when it read the skill anyway. Off by default.
 - 2026-11-24 · (unmerged) · #315 · Jev M2: `JEV_ROUTE=act` answers a question Jev calls off-topic at or above `JEV_ROUTE_THRESHOLD` (0.9) with a fixed reply and ends the turn before any model call, scored `jev_route_acted`; a research question still goes to the model. It still counts as one of the free questions. Off by default.
+- 2026-11-24 · (unmerged) · #315 · Jev M3: `JEV_AUDIT=shadow` asks Jev, after each data answer, for a probability on each of `answer_audit`'s checks (supported, grain, filters, false zero, numbers) over the same results, and scores the weakest as `jev_audit` beside the Haiku verdict. It sends the turn's rows to TypeSafe, so it is off by default.
 
 ## Knowledge graph
 

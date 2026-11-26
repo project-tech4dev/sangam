@@ -34,7 +34,7 @@ DATA_TOOLS = {"db_query", "db_profile_column", "search_graph", "compare_fit"}
 NO_DATA = ("The knowledge graph is not available", "No graph facts found")  # search_graph's empty replies
 LARGE_RESULTS = "/large_tool_results/"  # where FilesystemMiddleware moves a result too big to keep inline
 _EXECUTED = re.compile(r"^executed: (.+)$", re.MULTILINE)
-_CITE = re.compile(r"\[(?:org|funder|activity|grant|score|news|graph):[a-zA-Z0-9]+\]")
+CITE = re.compile(r"\[(?:org|funder|activity|grant|score|news|graph):[a-zA-Z0-9]+\]")
 
 PROMPT = """You are auditing a data assistant's answer AFTER it was given. Report problems \
 that would make the answer WRONG. Ignore style, tone and formatting.
@@ -129,7 +129,7 @@ def _cited_rows(block: str, cited: set[str]) -> str | None:
     return "\n".join(lines[:head] + rows + ["(only the rows the answer cites)"]) if rows else None
 
 
-def _newest(blocks: list[str], cited: set[str] = frozenset()) -> str:
+def newest(blocks: list[str], cited: set[str] = frozenset()) -> str:
     """Whole blocks, newest first back to the cap: the answer is built mostly from the last results."""
     kept, size = [], 0
     for block in reversed(blocks):
@@ -186,7 +186,7 @@ def audit_turn(messages: list[BaseMessage], model_spec: str) -> Audit | None:
             PROMPT.format(
                 today=datetime.now(IST).date().isoformat(),
                 question=turn.question[:1000],
-                evidence=_newest(turn.evidence, set(_CITE.findall(turn.answer))),
+                evidence=newest(turn.evidence, set(CITE.findall(turn.answer))),
                 answer=turn.answer[:3000],
             ),
         )

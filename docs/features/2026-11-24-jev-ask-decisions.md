@@ -124,9 +124,10 @@ Stacked, one PR each.
 - **Acceptance:** tests; a local "what is the weather today?" turn ends with no generation but Jev's.
 
 #### M3: J3, Jev's answer check beside Haiku's
-- **Deliverable:** with `JEV_AUDIT=shadow`, each audited turn also gets `jev_audit` from the same evidence, and the
-  replay compares it with the recorded `answer_audit` verdicts.
-- **Acceptance:** tests; replay shows agreement with Haiku.
+- **Deliverable:** with `JEV_AUDIT=shadow`, each audited turn also gets `jev_audit` from the same evidence, scored on
+  the same trace as `answer_audit`, so the two are compared live. The replay does not rebuild the audit's evidence: that
+  needs every tool result's output from Langfuse, and it is a follow-up if the live scores are worth it.
+- **Acceptance:** tests; a local data turn shows both scores on one trace.
 
 ## 8. Open questions and risks
 

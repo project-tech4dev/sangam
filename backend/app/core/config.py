@@ -109,6 +109,8 @@ class Settings(BaseSettings):
     # `act` preloads the skill Jev names at or above the threshold, so the model skips reading it.
     jev_skill: Literal["off", "shadow", "act"] = "off"
     jev_skill_threshold: float = 0.8
+    # `shadow` scores each data answer's checks beside answer_audit. It sends the turn's rows to TypeSafe.
+    jev_audit: Literal["off", "shadow"] = "off"
     # Input price per million tokens, for the cost Langfuse shows: it has no price of its own for jev-*.
     jev_usd_per_mtok: float = 0.042
 
@@ -152,7 +154,7 @@ class Settings(BaseSettings):
         "research_model",
         "utility_model",
         "sql_audit_model",
-        "jev_model", "jev_route", "jev_route_threshold", "jev_skill", "jev_skill_threshold", "jev_usd_per_mtok",
+        "jev_model", "jev_route", "jev_route_threshold", "jev_skill", "jev_skill_threshold", "jev_audit", "jev_usd_per_mtok",
         "max_parallel_research", "research_page_limit", "research_model_call_limit", "ask_model_call_limit",
         "free_questions",
         "db_pool_max_size", "db_pool_timeout_s", "db_connect_timeout_s", "db_statement_timeout_ms",

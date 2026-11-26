@@ -72,6 +72,7 @@ services:
       JEV_ROUTE_THRESHOLD: ${JEV_ROUTE_THRESHOLD:-}
       JEV_SKILL: ${JEV_SKILL:-}
       JEV_SKILL_THRESHOLD: ${JEV_SKILL_THRESHOLD:-}
+      JEV_AUDIT: ${JEV_AUDIT:-}
       # Research fan-out and the pool it is bounded by. Raise them together.
       MAX_PARALLEL_RESEARCH: ${MAX_PARALLEL_RESEARCH:-}
       DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-}
