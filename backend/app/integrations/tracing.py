@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+from collections.abc import Awaitable, Callable
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from textwrap import dedent
 from typing import Any
@@ -14,7 +15,7 @@ from typing import Any
 from ag_ui.core.types import RunAgentInput
 from copilotkit import LangGraphAGUIAgent
 from langchain_core.messages import ToolMessage
-from langchain_core.runnables import RunnableConfig
+from langchain_core.runnables import RunnableConfig, RunnableLambda
 
 from app.core.config import Settings
 from app.core.security import DEV_USER_ID, CallerScope, chat_proposal, chat_scope, chat_user_id
@@ -100,8 +101,14 @@ def export_span(span: Any) -> bool:
     )
 
 
+# A model call outside any graph names itself here, e.g. `source-check/judge`, through with_config's metadata.
+GENERATION_NAME = "generation_name"
+
+
 def model_call_name(metadata: dict | None, root: str) -> str | None:
     """`<agent>/<node>`, e.g. `entity-researcher/model`: every call is otherwise just `ChatAnthropic`."""
+    if named := (metadata or {}).get(GENERATION_NAME):
+        return named
     ns = (metadata or {}).get("langgraph_checkpoint_ns")
     if not ns:
         return None
@@ -152,10 +159,21 @@ def flush_traces() -> None:
         logger.debug("Langfuse flush failed", exc_info=True)
 
 
+# One answer per public key and host: building the client makes a blocking auth_check round trip.
+_CONFIGURED: dict[tuple[str, str], bool] = {}
+
+
 def configure_langfuse(settings: Settings) -> bool:
-    """Build the Langfuse client once, with masking and clipping attached."""
+    """Build the Langfuse client once per key and host, with masking and clipping attached."""
     if not settings.langfuse_enabled:
         return False
+    key = (settings.langfuse_public_key, settings.langfuse_host)
+    if key not in _CONFIGURED:
+        _CONFIGURED[key] = _build_client(settings)
+    return _CONFIGURED[key]
+
+
+def _build_client(settings: Settings) -> bool:
     try:
         from langfuse import Langfuse
 
@@ -406,6 +424,32 @@ def trace_config(
             exc_info=True,
         )
         return base
+
+
+async def traced_job(settings: Settings, name: str, work: Callable[[], Awaitable[Any]], *, inputs: dict[str, Any],
+                     session_id: str, tags: tuple[str, ...] = (), user_id: str | None = None) -> Any:
+    """Runs a job outside any agent as one trace: its model calls nest under it, and what it returns is the output.
+    The user, session and tags go on every observation, as for a chat, so a cost-per-user chart counts the job."""
+    if not settings.langfuse_enabled:
+        return await work()
+
+    async def root(_: Any) -> Any:
+        return await work()
+
+    config = trace_config(settings, name=name, tags=tags)
+    config["metadata"] = {**config.get("metadata", {}), "langfuse_session_id": session_id}
+    with _job_attributes(user_id, session_id, name, tags):
+        return await RunnableLambda(root, name=name).ainvoke(inputs, config)
+
+
+def _job_attributes(user_id: str | None, session_id: str, name: str, tags: tuple[str, ...]) -> AbstractContextManager:
+    try:
+        from langfuse import propagate_attributes
+
+        return propagate_attributes(user_id=user_id, session_id=session_id, trace_name=name, tags=list(tags))
+    except Exception:  # telemetry must never take the app down
+        logger.debug("Langfuse attributes not propagated", exc_info=True)
+        return nullcontext()
 
 
 def caller_trace(scope: CallerScope | None, user_id: Any) -> tuple[str, list[str], dict[str, Any]]:

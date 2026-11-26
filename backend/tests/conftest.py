@@ -26,6 +26,20 @@ class _SentinelPool:
 
 
 @pytest.fixture(autouse=True)
+def _no_langfuse(monkeypatch):
+    """Exported LANGFUSE_* keys would make every traced test call Langfuse and leave real traces behind."""
+    from app.core.config import get_settings
+    from app.integrations import tracing
+
+    for key in ("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY"):
+        monkeypatch.delenv(key, raising=False)
+    get_settings.cache_clear()
+    monkeypatch.setattr(tracing, "_CONFIGURED", {})  # each test builds its own client, as a fresh process would
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
 def _plain_buckets(monkeypatch):
     """A shell's STORAGE_BUCKET_SUFFIX would rename every bucket a test expects."""
     monkeypatch.delenv("STORAGE_BUCKET_SUFFIX", raising=False)

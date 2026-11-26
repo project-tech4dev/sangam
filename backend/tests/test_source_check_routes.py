@@ -63,7 +63,7 @@ async def test_the_baseline_lists_each_source(monkeypatch):
 async def test_a_free_check_returns_what_it_found(monkeypatch):
     asked = {}
 
-    async def run(pool, slug, depth, refresh, user_id):
+    async def run(pool, slug, depth, refresh, user_id, user_email=None):
         asked.update(slug=slug, depth=depth, refresh=refresh)
         return RUN
 
@@ -86,7 +86,7 @@ async def test_an_update_needs_the_full_check():
 @pytest.mark.parametrize(("error", "says"), [(service.NoBaseline(SLUG), "Research it once first"),
                                              (service.Busy(SLUG), "already running")])
 async def test_a_refused_check_says_why(monkeypatch, error, says):
-    async def run(*a):
+    async def run(*a, **kw):
         raise error
 
     monkeypatch.setattr(service, "run", run)

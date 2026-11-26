@@ -126,7 +126,7 @@ class TestStages:
         async def ainvoke(messages):
             asked.append(messages)
             return judge.Judgement(meaningful=False, confidence="high", reason="only the wording")
-        model = SimpleNamespace(ainvoke=ainvoke)
+        model = _structured(ainvoke)
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
         monkeypatch.setattr(service, "resolve_model",
                             lambda spec: SimpleNamespace(with_structured_output=lambda schema: model))
@@ -145,7 +145,7 @@ class TestStages:
             return discover.Discovery(searched=3)
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
         monkeypatch.setattr(service, "resolve_model", lambda spec: SimpleNamespace(
-            with_structured_output=lambda schema: SimpleNamespace(ainvoke=ainvoke)))
+            with_structured_output=lambda schema: _structured(ainvoke)))
         monkeypatch.setattr(discover, "run", search)
         # A row saved before snapshots cites a page that has no baseline; it was read all the same.
         monkeypatch.setattr(evidence, "load_findings", lambda conn, slug: _value({"https://a.org/old": ["Old."]}))
@@ -172,7 +172,7 @@ class TestStages:
             return save.Saved(rows=1, snapshots=1, archive_failed=0)
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
         monkeypatch.setattr(service, "resolve_model", lambda spec: SimpleNamespace(
-            with_structured_output=lambda schema: SimpleNamespace(ainvoke=ainvoke)))
+            with_structured_output=lambda schema: _structured(ainvoke)))
         monkeypatch.setattr(discover, "run", lambda *a: _value(discover.Discovery(searched=3)))
         monkeypatch.setattr(save, "archive_all", archive_all)
         monkeypatch.setattr(save, "write", write_rows)
@@ -188,7 +188,7 @@ class TestStages:
             return judge.Judgement(meaningful=False, confidence="high", reason="only the wording")
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
         monkeypatch.setattr(service, "resolve_model", lambda spec: SimpleNamespace(
-            with_structured_output=lambda schema: SimpleNamespace(ainvoke=ainvoke)))
+            with_structured_output=lambda schema: _structured(ainvoke)))
         monkeypatch.setattr(discover, "run", lambda *a: _value(discover.Discovery(searched=3)))
         await change_check.main(SLUG, "discover")
         last = capsys.readouterr().out.strip().splitlines()[-1]
@@ -212,7 +212,7 @@ class TestStages:
             return judge.Judgement(meaningful=True, confidence="high", reason="a new programme")
         monkeypatch.setattr(diff, "old_text", lambda source: _value("We fund 400 schools."))
         monkeypatch.setattr(service, "resolve_model", lambda spec: SimpleNamespace(
-            with_structured_output=lambda schema, **kw: SimpleNamespace(ainvoke=ainvoke)))
+            with_structured_output=lambda schema, **kw: _structured(ainvoke)))
         monkeypatch.setattr(discover, "run", lambda *a: _value(discover.Discovery(searched=3)))
         monkeypatch.setattr(save, "archive_all", lambda checks, found: _value({}))
         monkeypatch.setattr(save, "write", lambda *a: _value(save.Saved(2, 1, 0, {"https://a.org/about": 55})))
@@ -288,3 +288,10 @@ class TestDescribe:
         out = baseline.describe(SLUG, [], 3)
         assert "nothing to check" in out and "Run a full pull first" in out
         assert "(3 research rows predate snapshots" in out
+
+
+def _structured(ainvoke):
+    """A model's with_structured_output: with_config, as a named step calls, keeps the same fake."""
+    model = SimpleNamespace(ainvoke=ainvoke)
+    model.with_config = lambda **kw: model
+    return model

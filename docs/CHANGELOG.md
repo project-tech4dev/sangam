@@ -260,6 +260,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-10-19 · Import evals count every tool call, subagents' under their own name (`entity-researcher.save_research`), and the two canaries fail on `max_calls`: one sources card, no bulk import, at most two `task`s and three saves (#250).
 - 2026-11-20 · (unmerged) · `make audit-review`: `CMD=setup` creates the `answer_correct` score config and the "Ask answer review" annotation queue in Langfuse; `CMD=rerun` re-audits past local turns from their checkpoints as `answer_audit_v2` and queues them, so Score Analytics can compare the audit with a person's labels (#451).
 - 2026-11-18 · (unmerged) · One generation per model call: the local image installs from `uv.lock`, each call is named `<agent>/<node>`, cached tokens have one name, and `service.name` is `sangam-backend` (#325).
+- 2026-11-20 · (unmerged) · Each change check is one Langfuse trace, `sangam_source_check` (session `source-check-<run_id>`): the judge, page picker, update and grader nest under it, and its output is the decision, the `source_checks` rows saved and any research row the update saved. `traced_job` wraps a job outside any agent the same way; a check from the Scout screen builds the masked client first and flushes after; the person who ran it is the trace's user, and each model call is named `source-check/<step>`.
 
 ## Docs
 
