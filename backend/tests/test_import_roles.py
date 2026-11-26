@@ -16,7 +16,7 @@ from app.ingest.catalog import promote
 from app.ingest.catalog import save as catalog_save
 from app.ingest.catalog.writer import Gate
 from app.ingest.tools import catalog_tools, pipeline_tools, research_tools
-from tests.cov_ingest_fakes import patch_catalog
+from tests.cov_ingest_fakes import patch_catalog, prior_row, save_in_run
 
 ME = UUID(int=2)
 MEMBER = CallerScope(ME, False, {7: "member"}, {7: "Arpan"})
@@ -94,24 +94,19 @@ class TestStaffToolsRefuseEveryoneElse:
 
 
 class TestSavingResearch:
-    from app.ingest.research.findings import EntityResearch
-
-    FUNDER = EntityResearch(entity_name="Acme Foundation", entity_kind="funder", status="not_found",
-                            summary="Nothing public about this one, in any source read.")
-    NGO = EntityResearch(entity_name="Arpan", entity_kind="org", status="not_found",
-                         summary="Nothing public about this one, in any source read.")
+    FUNDER = {"entity_name": "Acme Foundation", "entity_kind": "funder", "status": "not_found",
+              "summary": "Nothing public about this one, in any source read."}
+    NGO = {**FUNDER, "entity_name": "Arpan", "entity_kind": "org"}
 
     async def test_a_member_does_not_research_an_ngo(self, monkeypatch):
         monkeypatch.setattr(research_tools, "get_pool", lambda: pytest.fail("reached the database"))
-        with running_as(MEMBER):
-            out = await research_tools.save_research.ainvoke({"findings": self.NGO})
+        out, _ = await save_in_run(self.NGO, MEMBER)
         assert out.startswith("REFUSED")
 
-    async def test_a_member_does_not_overwrite_someone_elses_research_today(self, monkeypatch):
-        pool = _Pool([{"fact_count": 0, "researched_by": UUID(int=9), "stopped_reason": None}])
+    async def test_a_member_does_not_add_to_someone_elses_research_today(self, monkeypatch):
+        pool = _Pool([prior_row(researched_by=UUID(int=9))])
         monkeypatch.setattr(research_tools, "get_pool", lambda: pool)
-        with running_as(MEMBER):
-            out = await research_tools.save_research.ainvoke({"findings": self.FUNDER, "replace": True})
+        out, _ = await save_in_run(self.FUNDER, MEMBER)
         assert out.startswith("REFUSED") and "already researched" in out
         assert not any("INSERT" in sql for sql in pool.conn.sql)
 
@@ -129,8 +124,7 @@ class TestSavingResearch:
             return None
 
         pool.conn.execute = execute
-        with running_as(MEMBER):
-            await research_tools.save_research.ainvoke({"findings": self.FUNDER})
+        await save_in_run(self.FUNDER, MEMBER)
         assert "researched_by" in seen["sql"] and seen["params"][-1] == ME
 
 

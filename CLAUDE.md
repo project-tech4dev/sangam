@@ -506,8 +506,11 @@ Vercel env, which beats the code defaults.
 fails. A researcher has no page, model-call or page-length limit by default: a long page is evicted to a
 file it pages back. `RESEARCH_PAGE_LIMIT` and `RESEARCH_MODEL_CALL_LIMIT`, when set, cap pages read (then
 it saves what it has) and model calls; Vercel's 1800 s is the stop that always applies.
-Once a `save_research` call is refused for a malformed payload, the rest of that run moves to `MODEL`.
-A Haiku grader checks the save and summary against `prompts/research_rubric.md` and allows one revision.
+A researcher records findings as it goes with `record_findings`, each item checked alone into a per-run draft
+(`research/draft.py`) that a summary cannot lose; `save_research` sends no findings, merges the draft into today's row,
+and code writes the summary's counts. Two saves refused for their content move the rest of that run to `MODEL`; a format
+error never does. Quality is a score, not a gate: `ResearchJudge` (`RESEARCH_JUDGE_MODEL`, default `UTILITY_MODEL`, `off`
+disables) writes `research_*` Langfuse scores and never sends the researcher back.
 Summaries of long runs are written by `UTILITY_MODEL` at a fixed 170k tokens, keeping the last 20k, for every model
 (`SUMMARY_TRIGGER`/`SUMMARY_KEEP` in `agentkit/middleware.py`), and keep each source's full URL beside its facts.
 

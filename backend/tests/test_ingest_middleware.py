@@ -1,15 +1,23 @@
-"""Import's middleware: tier fallbacks, the researcher's budgets, escalation, rubric and summarizer."""
+"""Import's middleware: tier fallbacks, the researcher's budgets, escalation, the judge and summarizer."""
 
 from __future__ import annotations
 
 from types import SimpleNamespace
 
 import pytest
-from langchain.agents.middleware import ModelCallLimitMiddleware, ModelFallbackMiddleware
+from langchain.agents.middleware import (
+    ClearToolUsesEdit,
+    ContextEditingMiddleware,
+    ModelCallLimitMiddleware,
+    ModelFallbackMiddleware,
+)
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from app.agentkit.middleware import SUMMARY_INPUT_TOKENS, SUMMARY_PROMPT, cheap_summarizer
+from app.ingest import agent as ingest_agent
 from app.ingest import middleware as mw
+from app.ingest.research import draft
+from app.ingest.research.judge import ResearchJudge
 
 TIERS = {"model": "m:strong", "research_model": "m:mid", "utility_model": "m:cheap"}
 
@@ -110,37 +118,19 @@ class TestTheResearcherReadsToABudget:
         assert of(built.main, FilesystemMiddleware)[0]._tool_token_limit_before_evict == 20_000
 
 
-def save_result(content, status="success"):
-    return ToolMessage(content, tool_call_id="s", name="save_research", status=status)
+class TestTwoContentRefusalsMoveTheRunToTheStrongModel:
+    def request(self):
+        return SimpleNamespace(messages=[HumanMessage("go")], override=lambda **kw: ("overridden", kw["model"]))
 
-
-class TestAFailedSaveMovesToTheStrongModel:
-    @pytest.mark.parametrize(
-        ("message", "failed"),
-        [
-            (save_result("Error invoking tool 'save_research' with kwargs {} with error: ...", "error"), True),
-            (save_result("anything", "error"), True),
-            (save_result("Saved as entity_research #4 (kabil): 3 findings"), False),
-            # A refusal is the tool working: the strong model would get the same answer.
-            (save_result("REFUSED: kabil already has 9 findings saved today"), False),
-            # The database failing is not the payload's fault.
-            (save_result("save_research failed: OperationalError. Report your findings in text."), False),
-            (ToolMessage("Error invoking tool", tool_call_id="r", name="read_page", status="error"), False),
-        ],
-    )
-    def test_which_results_count_as_a_failed_save(self, message, failed):
-        assert mw.save_failed([HumanMessage("go"), message]) is failed
-
-    def test_the_request_is_overridden_after_a_failure_only(self):
+    def test_the_request_is_overridden_after_two_refusals_only(self):
         strong = object()
         escalate = mw.EscalateAfterFailedSave(strong)
-
-        def request(messages):
-            return SimpleNamespace(messages=messages, override=lambda **kw: ("overridden", kw["model"]))
-
-        assert escalate.wrap_model_call(request([HumanMessage("go")]), lambda r: r).messages
-        failed = request([save_result("bad", "error")])
-        assert escalate.wrap_model_call(failed, lambda r: r) == ("overridden", strong)
+        assert escalate.wrap_model_call(self.request(), lambda r: r).messages
+        with draft.drafting() as current:
+            current.refusals = 1
+            assert escalate.wrap_model_call(self.request(), lambda r: r).messages
+            current.refusals = 2
+            assert escalate.wrap_model_call(self.request(), lambda r: r) == ("overridden", strong)
 
     def test_only_a_researcher_below_the_strong_tier_escalates(self, build_import):
         def researcher(**tiers):
@@ -151,50 +141,28 @@ class TestAFailedSaveMovesToTheStrongModel:
         assert not of(researcher(model="m:strong", research_model="m:strong", utility_model="m:strong"), mw.EscalateAfterFailedSave)
 
 
-class TestTheRubricGradesTheResearcher:
-    def test_the_grader_runs_on_the_utility_tier(self, built):
-        (rubric,) = of(built.researcher, mw.ResearchRubric)
-        assert rubric._model.name == "m:cheap" and rubric.max_iterations == 2
-        assert not of(built.writer, mw.ResearchRubric) and not of(built.main, mw.ResearchRubric)
+class TestQualityIsJudgedNotGraded:
+    LANGFUSE = {"langfuse_public_key": "pk", "langfuse_secret_key": "sk"}
 
-    def test_the_rubric_starts_a_grading_run_without_entering_state(self):
-        # A public `rubric` key in the update would flow back to the parent through the task tool.
-        update = mw.research_rubric(object()).before_agent({"messages": []}, None)
-        assert update["_active_rubric"] == mw.RUBRIC and update["_rubric_iterations"] == 0
-        assert "rubric" not in update
+    def researcher(self, build_import, **over):
+        seen = build_import(**TIERS, **over)
+        return next(s for s in seen["subagents"] if s["name"] == "entity-researcher")["middleware"]
 
-    def test_a_revision_can_jump_back_to_the_model(self, monkeypatch):
-        # Without the edge, needs_revision is graded and then ignored.
-        from app.core.config import Settings
-        from app.ingest.agent import build_ingest_agent
+    def test_the_judge_runs_on_the_utility_tier_and_only_on_the_researcher(self, build_import):
+        seen = build_import(**TIERS, **self.LANGFUSE)
+        (judge,) = of(self.researcher(build_import, **self.LANGFUSE), ResearchJudge)
+        assert judge.model.name == "m:cheap"
+        assert not of(seen["middleware"], ResearchJudge)
 
-        monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
-        task = build_ingest_agent(Settings(_env_file=None), None).nodes["tools"].bound.tools_by_name["task"]
-        graphs = next(c.cell_contents for c in (task.func or task.coroutine).__closure__
-                      if isinstance(c.cell_contents, dict) and "entity-researcher" in c.cell_contents)
-        edges = {(e.source, e.target) for e in graphs["entity-researcher"].get_graph().edges}
-        # A jump to "model" lands on the first before_model hook (deepagents 0.7.2x: skill reload), else the model.
-        # Its way out is __end__ or the next after_agent hook (a compiled deep agent's parent notifier).
-        targets = {t for s, t in edges if s == "ResearchRubric.after_agent" and not t.endswith(".after_agent")}
-        targets -= {"__end__"}
-        assert targets and all(t == "model" or t.endswith(".before_model") for t in targets)
+    def test_off_or_no_langfuse_turns_it_off(self, build_import):
+        assert not of(self.researcher(build_import, research_judge_model="off", **self.LANGFUSE), ResearchJudge)
+        assert not of(self.researcher(build_import, langfuse_public_key="", langfuse_secret_key=""), ResearchJudge)
 
-    def test_a_save_reaches_the_grader_as_a_digest(self):
-        findings = [{"concept": "csr_year", "evidence": "x" * 5000}, {"concept": "rfp", "evidence": "y"}]
-        save = {
-            "name": "save_research",
-            "id": "s",
-            "args": {"findings": {"status": "partial", "goals": ["csr_year", "rfp", "geography"], "findings": findings,
-                                  "gaps": [{"concept": "geography", "reason": "blocked", "detail": "site.org 403"}]}},
-        }
-        other = {"name": "read_page", "id": "r", "args": {"url": "https://a.org"}}
-        out = mw.digest_saves([HumanMessage("go"), AIMessage("saving", tool_calls=[other, save])])
-        args = {c["name"]: c["args"] for c in out[1].tool_calls}
-        assert args["read_page"] == {"url": "https://a.org"}
-        assert args["save_research"]["finding_count"] == 2
-        assert args["save_research"]["concepts_found"] == ["csr_year", "rfp"]
-        assert args["save_research"]["gaps"][0]["reason"] == "blocked"
-        assert "xxxx" not in str(out)
+    def test_old_tool_results_are_cleared_on_the_researcher(self, built):
+        (clearing,) = of(built.researcher, ContextEditingMiddleware)
+        (edit,) = [e for e in clearing.edits if isinstance(e, ClearToolUsesEdit)]
+        # Once, late, and never the goals each record_findings is checked against.
+        assert edit.trigger == ingest_agent.RESEARCHER_CLEAR_AT and "research_goals" in edit.exclude_tools
 
 
 class TestSummariesAreWrittenByTheUtilityTier:

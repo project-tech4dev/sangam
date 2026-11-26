@@ -103,6 +103,8 @@ class Settings(BaseSettings):
     # make source-check: picks which off-site search results could fill an open gap. Its own setting, so tuning
     # the judge never changes the picker. Blank follows UTILITY_MODEL too.
     source_check_gap_model: str = ""
+    # Scores each saved research's quality to Langfuse, never retrying it. Blank follows UTILITY_MODEL; `off` disables.
+    research_judge_model: str = ""
 
     # Graph steps per turn, not tool calls: every middleware hook is its own node, so one model-then-tool
     # cycle costs several. Bound in build_agent(); LangGraph's own default is 25, which a SQL turn exceeds.
@@ -146,6 +148,7 @@ class Settings(BaseSettings):
         "sql_audit_model",
         "source_check_judge_model",
         "source_check_gap_model",
+        "research_judge_model",
         "max_parallel_research", "research_page_limit", "research_model_call_limit", "ask_model_call_limit",
         "free_questions",
         "db_pool_max_size", "db_pool_timeout_s", "db_connect_timeout_s", "db_statement_timeout_ms",
@@ -174,6 +177,8 @@ class Settings(BaseSettings):
             self.source_check_judge_model = self.utility_model
         if not self.source_check_gap_model:
             self.source_check_gap_model = self.utility_model
+        judge = self.research_judge_model.strip()
+        self.research_judge_model = "" if judge.lower() == "off" else judge or self.utility_model
         return self
 
     @model_validator(mode="after")
@@ -184,6 +189,8 @@ class Settings(BaseSettings):
             tiers["SQL_AUDIT_MODEL"] = self.sql_audit_model
         tiers["SOURCE_CHECK_JUDGE_MODEL"] = self.source_check_judge_model
         tiers["SOURCE_CHECK_GAP_MODEL"] = self.source_check_gap_model
+        if self.research_judge_model:
+            tiers["RESEARCH_JUDGE_MODEL"] = self.research_judge_model
         others = [name for name, spec in tiers.items() if not spec.startswith("compat:")]
         if others and len(others) < len(tiers):
             raise ValueError(f"a compat: tier needs every tier on compat:, but {', '.join(others)} is not "

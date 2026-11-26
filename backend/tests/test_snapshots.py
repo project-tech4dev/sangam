@@ -15,7 +15,7 @@ from app.ingest.reading import fetch, snapshots, staff_sources
 from app.ingest.reading.fingerprint import bytes_hash, text_hash
 from app.ingest.research.source_guards import PRIVATE_SOURCE_DOMAIN
 from app.ingest.tools import research_tools
-from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, running_as
+from tests.cov_ingest_fakes import BrokenPool, ScriptConn, ScriptPool, prior_row, save_in_run
 from tests.test_cov_ingest_tools_research import research
 from tests.test_import_roles import STAFF
 from tests.test_import_sources import _answered
@@ -220,25 +220,34 @@ class TestTheSaveLinksWhatWasRead:
 
         async def log_unfetched(slug, ids, cited):
             logged.append((slug, ids, cited))
+            return []
         monkeypatch.setattr(snapshots, "log_unfetched", log_unfetched)
         return SimpleNamespace(conn=conn, logged=logged)
 
     async def save(self):
-        with running_as(STAFF):
-            return await research_tools.save_research.ainvoke({"findings": research()})
+        reply, _ = await save_in_run(research(), STAFF)
+        return reply
 
     async def test_a_researchers_ids_are_saved_with_its_findings(self, saving):
         with snapshots.collecting() as ids:
             ids.extend([3, 4])
             assert (await self.save()).startswith("Saved as entity_research #31")
         [(sql, params)] = saving.conn.sql("INSERT INTO entity_research")
-        assert params[-2] == [3, 4] and "snapshot_ids = EXCLUDED.snapshot_ids" in sql
+        assert params[16] == [3, 4] and "snapshot_ids = EXCLUDED.snapshot_ids" in sql
         assert saving.logged == [("example-foundation", [3, 4], [URL])]
 
     async def test_outside_a_researcher_nothing_is_claimed(self, saving):
         await self.save()
         [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
-        assert params[-2] is None and saving.logged == []
+        assert params[16] is None and saving.logged == []
+
+    async def test_a_second_save_today_keeps_the_first_ones_ids(self, saving):
+        saving.conn.on("SELECT fact_count", prior_row(snapshot_ids=[1, 3]))
+        with snapshots.collecting() as ids:
+            ids.extend([3, 4])
+            await self.save()
+        [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        assert params[16] == [1, 3, 4]
 
 
 class TestLogUnfetched:

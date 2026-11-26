@@ -364,7 +364,7 @@ to call them:
 
 | Tool | Whose it is |
 |---|---|
-| `research_goals` · `read_source_rows` · `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `save_research` | `entity-researcher` |
+| `research_goals` · `read_source_rows` · `search_public_sources` · `read_page` · `fetch_document` · `read_document_pages` · `record_findings` · `save_research` | `entity-researcher` |
 | `promote_research` | `catalog-writer` |
 | `read_workbook` | `workbook-reader` |
 

@@ -239,8 +239,10 @@ def test_score_goes_to_the_current_run_or_the_client(monkeypatch):
     tracing.score_answer("a", 1.0, "c", {"check": "grain"})
     monkeypatch.setattr(tracing, "current_observation", lambda: None)
     tracing.score_answer("b", 0.0)
+    tracing.score_answer("d", 2.0, run=run)  # a run that has ended, taken before
     assert scored == [("run", {"name": "a", "value": 1.0, "comment": "c", "metadata": {"check": "grain"}}),
-                      ("client", {"name": "b", "value": 0.0, "comment": None, "metadata": None})]
+                      ("client", {"name": "b", "value": 0.0, "comment": None, "metadata": None}),
+                      ("run", {"name": "d", "value": 2.0, "comment": None, "metadata": None})]
 
     def broken():
         raise RuntimeError

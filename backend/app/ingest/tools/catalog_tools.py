@@ -27,7 +27,7 @@ from app.ingest.research.expectations import (
     expected_fields,
     recent_fiscal_years,
 )
-from app.ingest.research.finding_types import FINDING_MODELS
+from app.ingest.research.finding_types import FINDING_MODELS, FindingBase
 
 logger = logging.getLogger(__name__)
 
@@ -414,11 +414,15 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
             out.append(f"\n{concept} -> {target}: {state}")
             out += [f"    {f.describe()}" for f in fields]
             if model := FINDING_MODELS.get(concept):
-                out.append(f"    keys: {', '.join(model.model_fields)}; any other key refuses the save")
+                # The rules a column list cannot carry ("REQUIRED with a theme"); the save's schema used to.
+                described = {f.name for f in fields} | set(FindingBase.model_fields)
+                out += [f"    {k}: {v.description}" for k, v in model.model_fields.items()
+                        if v.description and k not in described]
+                out.append(f"    keys: {', '.join(model.model_fields)}; any other key is dropped")
 
         out.append(
             "\nFields nothing can fill are as useful as fields you fill: say which you looked "
-            "for and did not get, and pass each to save_research as a gap: blocked if the source "
+            "for and did not get, and record each with record_findings as a gap: blocked if the source "
             "could not be read, not_stated if it was read and does not say, not_reached if the run "
             "stopped first. Every field gets a finding or a gap, or the save is refused."
         )

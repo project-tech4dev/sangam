@@ -29,12 +29,12 @@ from app.ingest.middleware import (
     TickedSources,
     ask_for_sources,
     call_limit,
-    research_rubric,
     run_plan,
     save_questions,
     staff_last_lock,
 )
 from app.ingest.research.findings import PromotionReport, ResearchSummary, VaultSummary, WorkbookEntities
+from app.ingest.research.judge import ResearchJudge
 from app.ingest.tools.catalog_tools import (
     compare_with_catalog,
     coverage_report,
@@ -59,6 +59,7 @@ from app.ingest.tools.research_tools import (
     publish_brief,
     read_document_pages,
     read_page,
+    record_findings,
     save_research,
     search_public_sources,
 )
@@ -173,8 +174,8 @@ RESEARCH_TOOLS = [
     read_document_pages,
 ]
 
-# The researcher saves its own findings; the parent never copies JSON around.
-RESEARCHER_TOOLS = [*RESEARCH_TOOLS, save_research]
+# The researcher records findings as it goes and saves them once; the parent never copies JSON around.
+RESEARCHER_TOOLS = [*RESEARCH_TOOLS, record_findings, save_research]
 
 ENTITY_RESEARCHER = {
     "name": "entity-researcher",
@@ -253,6 +254,8 @@ VAULT_READER: dict = {
 
 # Pages and PDFs past this many tokens go to a file the researcher pages back; the library default is 20k.
 RESEARCHER_EVICT_AT = 8_000
+# Each clearing rewrites the cached prompt (~$0.13 at 50k), so the researcher clears once, well before the summary.
+RESEARCHER_CLEAR_AT = 120_000
 # Promote, read back, report: a handful of calls, so a dozen is already a loop.
 WRITER_MODEL_CALL_LIMIT = 12
 
@@ -306,9 +309,8 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
     utility_spec = settings.utility_model
     research = resolve_model(research_spec)
     utility = resolve_model(utility_spec)
-    # Each subagent on its tier (config.py). Each falls back to the next
-    # tier when its call fails. The researcher reads to a budget, has its save and summary graded, and
-    # moves to the strong model if its save is refused for a malformed payload.
+    # Each subagent on its tier (config.py). Each falls back to the next tier when its call fails. The researcher
+    # reads to a budget, moves to the strong model after two saves refused for what they hold, and is scored, not graded.
     researcher = {
         **ENTITY_RESEARCHER,
         "model": research,
@@ -319,14 +321,18 @@ def build_ingest_agent(settings: Settings, checkpointer: BaseCheckpointSaver):
             SaveRefusal(),
             # Only what the person chose on the sources card; staff rows last.
             RunSources(),
-            # Before the rubric, so its exit hook runs only once the grader lets the researcher finish.
             DropFilesOnExit(),
             staff_last_lock(),
             *([ReadingLimit(settings.research_page_limit)] if settings.research_page_limit is not None else []),
             *_call_limit(settings.research_model_call_limit),
             *([EscalateAfterFailedSave(strong)] if research_spec != settings.model else []),
             *fallback(research_spec, settings.model),
-            research_rubric(utility),
+            # A score with nowhere to go is not worth a call.
+            *([ResearchJudge(resolve_model(settings.research_judge_model))]
+              if settings.research_judge_model and settings.langfuse_enabled else []),
+            # Pages already recorded are dead weight; the findings live in the draft, not the messages. The goals are
+            # the contract each record_findings is checked against, so they stay.
+            clear_old_tool_results(trigger=RESEARCHER_CLEAR_AT, keep_tools=("research_goals",)),
             cheap_summarizer(utility, backend),
         ],
     }

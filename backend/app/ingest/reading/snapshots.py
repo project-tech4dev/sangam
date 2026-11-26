@@ -121,8 +121,8 @@ async def moved(pairs: list[tuple[str, str]]) -> None:
         logger.warning("snapshot keys not moved from %s", [old for old, _ in pairs], exc_info=True)
 
 
-async def log_unfetched(slug: str, snapshot_ids: list[int], cited: list[str]) -> None:
-    """Log a cited public URL no tool fetched in this run: a finding with no version behind it."""
+async def log_unfetched(slug: str, snapshot_ids: list[int], cited: list[str]) -> list[str]:
+    """Log and return each cited public URL no tool fetched in this run: a finding with no version behind it."""
     public = set()
     for u in cited:
         if not u or staff_sources.is_staff_source_url(u) or vault.is_vault_url(u):
@@ -132,13 +132,15 @@ async def log_unfetched(slug: str, snapshot_ids: list[int], cited: list[str]) ->
         except Exception:  # noqa: BLE001 — the row is already saved; a bad URL must not fail the save
             logger.info("%s cites %s, which is not a URL that can be fetched", slug, u)
     if not public:
-        return
+        return []
     try:
         async with get_pool().connection() as conn:
             rows = await (await conn.execute(
                 "SELECT url FROM source_snapshots WHERE id = ANY(%s)", (snapshot_ids,))).fetchall()
     except Exception:
         logger.warning("snapshots for %s not checked", slug, exc_info=True)
-        return
-    for url in sorted(public - {r["url"] for r in rows}):
+        return []
+    unfetched = sorted(public - {r["url"] for r in rows})
+    for url in unfetched:
         logger.info("%s cites %s, which no tool fetched in this run", slug, url)
+    return unfetched

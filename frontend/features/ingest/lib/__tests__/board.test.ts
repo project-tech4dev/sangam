@@ -85,6 +85,39 @@ describe("boardOf", () => {
     expect([saving.now, saving.pct, saving.found]).toEqual(["Writing up", 90, 1]);
   });
 
+  it("counts what record_findings noted, and the answers a slim save reports", () => {
+    const t = researcher("A — x", null);
+    const goals = step("research_goals", { name: "A" }, "x -> y\nz -> w\n", { lane: "L" });
+    const noted = step("record_findings", { findings: [{ concept: "x" }, { concept: "z" }] }, "Recorded 2", { lane: "L" });
+    // A model sometimes sends the list as a JSON string; it still counts.
+    const asText = step("record_findings", { findings: JSON.stringify([{ concept: "w" }]) }, "Recorded 1", { lane: "L" });
+    const save = step("save_research", { entity_name: "A", status: "complete" },
+      "Saved as entity_research #4 (a): 3 findings across w, x, z; status complete.", { lane: "L", doneAt: 2 });
+    const board = boardOf([t, goals, noted, asText, save], true);
+
+    expect(board.rows[0]!.found).toBe(3);
+    expect(board.events.find((e) => e.text.startsWith("found"))?.text).toBe("found 3 answers");
+    expect(boardOf([t, goals, step("save_research", { entity_name: "A" },
+      "Saved as entity_research #4 (a): 0 findings across nothing; status not_found.", { lane: "L" })], true)
+      .events.find((e) => e.text.startsWith("found"))?.text).toBe("found 0 answers");
+    // A refused save found nothing yet; it is not "found 0 answers".
+    const refused = step("save_research", { entity_name: "A" }, "REFUSED, nothing saved: every field gets a finding. Then call save_research again.",
+      { lane: "L" });
+    expect(boardOf([t, goals, noted, refused], true).events.map((e) => e.text))
+      .toContain("is fixing what the save refused");
+  });
+
+  it.each([
+    ["REFUSED: a was already researched and saved today. Report back with slug='a'", "found today's research already saved"],
+    ["REFUSED: researching an NGO is for its stewards. Report what you found in your summary instead.", "stopped without saving"],
+    ["REFUSED, nothing saved: every field gets a finding or a gap. Then call save_research again.", "is fixing what the save refused"],
+    ["REFUSED, nothing saved: a already holds 3 findings. Report back status wrong_entity", "stopped without saving"],
+  ])("tells a refusal that ends the researcher from one it fixes: %s", (result, shown) => {
+    const t = researcher("A — x", null);
+    const refused = step("save_research", { entity_name: "A" }, result, { lane: "L" });
+    expect(boardOf([t, refused], true).events.map((e) => e.text)).toContain(shown);
+  });
+
   it("lists documents, keeping only a scan or failure of a downloaded file", () => {
     const t = researcher("A — x", null);
     const board = boardOf(
