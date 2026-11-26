@@ -103,7 +103,9 @@ class Settings(BaseSettings):
     # `shadow` asks it after the answer and scores agreement with what the model did; nothing changes for the user.
     typesafe_api_key: str = ""
     jev_model: str = "jev-latest"
-    jev_route: Literal["off", "shadow"] = "off"
+    # `act` answers an off-topic question with a fixed reply, at or above the threshold, before any model call.
+    jev_route: Literal["off", "shadow", "act"] = "off"
+    jev_route_threshold: float = 0.9
     # `act` preloads the skill Jev names at or above the threshold, so the model skips reading it.
     jev_skill: Literal["off", "shadow", "act"] = "off"
     jev_skill_threshold: float = 0.8
@@ -150,7 +152,7 @@ class Settings(BaseSettings):
         "research_model",
         "utility_model",
         "sql_audit_model",
-        "jev_model", "jev_route", "jev_skill", "jev_skill_threshold", "jev_usd_per_mtok",
+        "jev_model", "jev_route", "jev_route_threshold", "jev_skill", "jev_skill_threshold", "jev_usd_per_mtok",
         "max_parallel_research", "research_page_limit", "research_model_call_limit", "ask_model_call_limit",
         "free_questions",
         "db_pool_max_size", "db_pool_timeout_s", "db_connect_timeout_s", "db_statement_timeout_ms",
