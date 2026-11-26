@@ -77,7 +77,7 @@ async def test_what_a_new_run_can_fill_is_a_top_up(check):
     out = await ask()
     assert "Open: 2 gaps, of which 1 were not reached; 1 fields unanswered." in out
     assert "NEXT: nothing changed; launch ONE entity-researcher, its task naming 'HCL Technologies Limited'" in out
-    assert "top-up of the 2 items" in out
+    assert "a top-up with top_up='hcl-technologies-limited' of the 2 items" in out
 
 
 async def test_gaps_already_tried_launch_no_researcher(check):
@@ -97,7 +97,7 @@ async def test_a_changed_page_with_open_fields_also_tops_up(check):
     check["run"] = run_row(decision.REFRESH, [(CSR, "changed")])
     check["saved"] = saved(unanswered=["rfp: no finding and no gap"])
     out = await ask()
-    assert "top-up of the 1 items" in out and "In your report, name what changed" in out
+    assert "top_up='hcl-technologies-limited' of the 1 items" in out and "In your report, name what changed" in out
 
 
 async def test_a_page_that_only_differs_is_named_too(check):
@@ -113,17 +113,22 @@ async def test_a_redesign_is_a_full_research(check):
 async def test_research_with_no_recorded_versions(check):
     check["raise"] = service.NoBaseline("hcl")
     check["saved"] = saved(gaps=[{"concept": "rfp"}])
-    assert "nothing to compare. NEXT: research 'HCL Technologies Limited' again" in await ask()
+    assert "nothing to compare. NEXT: launch ONE entity-researcher" in (out := await ask())
+    assert "top_up='hcl-technologies-limited'" in out
 
 
 async def test_a_check_already_running(check):
     check["raise"] = service.Busy("hcl")
-    assert "a check is already running" in await ask()
+    out = await ask()
+    # No sleep tool exists, so "wait and call again" looped the supervisor through paid calls.
+    assert "a check of it is already running" in out and "do not call check_changes again this turn" in out
 
 
 async def test_a_failed_check_falls_back_to_the_gaps(check):
     check["run"] = run_row(None, error="ReadTimeout: stalled")
-    assert "the check failed (ReadTimeout: stalled). NEXT: research the open gaps" in await ask()
+    out = await ask()
+    assert "the check failed (ReadTimeout: stalled). NEXT: launch ONE entity-researcher" in out
+    assert "top_up='hcl-technologies-limited'" in out
 
 
 async def test_an_error_is_returned_not_raised(check, monkeypatch):
@@ -132,3 +137,31 @@ async def test_an_error_is_returned_not_raised(check, monkeypatch):
 
     monkeypatch.setattr(catalog_tools.saved_research, "latest", broken)
     assert (await ask()) == "check_changes failed: RuntimeError: database down"
+
+
+async def test_no_source_opened_is_never_current(check):
+    check["run"] = run_row(decision.NOTHING, [(CSR, "unverified"), ("https://hcltech.com/about", "unverified")])
+    out = await ask()
+    assert "NEXT: none of its 2 sources could be opened" in out and "research it in full" in out
+    assert "current." not in out.split("NEXT:")[1]
+
+
+async def test_some_sources_unopened_is_not_called_current(check):
+    check["run"] = run_row(decision.NOTHING, [(CSR, "unverified"), ("https://hcltech.com/about", "unchanged")])
+    out = await ask()
+    assert "NEXT: 1 sources could not be opened" in out and "not all of it is known current" in out
+    check["saved"] = saved(unanswered=["rfp: no finding and no gap"])
+    assert "top_up='hcl-technologies-limited'" in await ask()
+
+
+async def test_a_gap_page_is_not_counted_as_a_source(check):
+    check["run"] = run_row(decision.NOTHING, [(CSR, "unchanged"), ("https://news.example/x", "gap")])
+    assert "Sources: 1 unchanged." in await ask()
+
+
+async def test_a_match_by_name_says_so(check):
+    # "HCL Technologies" is not the slug hcl-technologies-limited, so the supervisor is told to confirm it.
+    assert "It matched by name, not slug" in await ask()
+    with running_as(STAFF):
+        out = await catalog_tools.check_changes.ainvoke({"name": "hcl-technologies-limited"})
+    assert "matched by name" not in out

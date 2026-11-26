@@ -135,23 +135,28 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   same in its reply. A host that timed out twice in an hour is not asked again (in memory, shared by every run on the
   instance, so the window is short; a restart forgets it), and a document gives up after 30 s with
   no bytes, not 120 s, because NSE held nine reads for 8 minutes in `7925d873`.
-- **Research on a later day is a top-up.** `research_goals` leads with the newest saved row's open gaps and the
-  fields no saved row answers (`contract.holes`), and says the saved findings are kept. `save_research` lets earlier
-  days' findings of the same kind answer the contract (`unanswered(..., held=)`), so a run that filled two gaps is not
-  refused for the 26 fields it never looked at, and a first save today starts from the newest earlier row's gaps less
-  those this run answered, since the brief shows the newest row's gaps only. A top-up that found nothing keeps the
-  saved status rather than `not_found`, and saves under the slug `research_goals` matched, whatever spelling of the
-  name it used. Saved research is matched by slug or by one name inside the other on whole words ("HCL Technologies"
-  for HCL Technologies Limited, never "ITC" for Switch Foundation), never by trigram similarity, which matched
-  "NRL Foundation" to Piramal.
+- **Research on a later day is a top-up only when `check_changes` says so.** Its NEXT line names the slug, the
+  supervisor's task passes it on, and `research_goals(top_up=<slug>)` reads that slug's newest row; without it a run
+  is a full research, as after a redesign, and builds on no earlier day. The slug is never taken from a name match no
+  model saw: one matched "Infosys" to Infosys Foundation's research. A top-up's goals are the newest row's open gaps
+  and the fields no saved row answers (`contract.holes`, over the merged findings, so a fact a refresh removed
+  answers nothing). `save_research` lets those findings answer the contract (`unanswered(..., held=)`), so a run that
+  filled two gaps is not refused for the 26 fields it never looked at. A first save today starts from the newest
+  earlier row's gaps less those this run answered; an every-year gap of a yearly concept is spread over the years its
+  run asked (`contract.spread`), so a new year is asked again. The private findings of that row are carried, as a
+  refresh row carries them, since promotion reads them from the newest row only. A top-up that found nothing saves
+  `partial`, since `complete` needs findings of its own. `check_changes` still matches by slug or one name inside the
+  other on whole words, never by trigram similarity (which matched "NRL Foundation" to Piramal), and says when the
+  match was by name.
 - **Research again starts with the free change check.** For staff with the web open, the supervisor calls
   `check_changes(name)` before launching anything: `refresh/service.run` at free depth (fetch, fingerprint, diff,
   evidence; no model), recorded as a `source_check_runs` row like the screen's, plus the saved research's open items.
   Its NEXT line decides, with no question to the person: a top-up researcher runs only for what a new run can fill
   (fields never answered, a new year, gaps `not_reached`), since a `not_stated` or `blocked` gap was already tried;
   with none, no researcher runs. Changed pages are named in the report with `/import/check/<slug>`, whose update reads
-  only what changed; a redesign or no recorded versions is a full research. The matched name is printed, so a wrong
-  match is researched in full. It fetches pages itself, so `ChosenSources` refuses it before `choose_sources` is
+  only what changed; a redesign is a full research. When no source could be opened it is a full research too, and
+  when some could not, the research is never called current. A check already running ends the tool's turn rather than
+  inviting a retry, and a stopped turn marks its run `cancelled` so it does not block checks for 30 minutes. It fetches pages itself, so `ChosenSources` refuses it before `choose_sources` is
   answered or when public websites were not ticked. HCL's check took 8 s for 18 sources.
 - **A metric's period has four shapes**, because it is part of the metric's key: `FY2024-25`, `CY2025`,
   `cumulative to <date>`, `as of <date>` (`rows.shape_period`). A save rewrites an exact match and refuses the rest;

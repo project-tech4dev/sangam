@@ -24,6 +24,15 @@ def stored(items: Any) -> list[SimpleNamespace]:
     return [SimpleNamespace(**{**dict.fromkeys(("concept", "fiscal_year", "field")), **i}) for i in items or []]
 
 
+def spread(gaps: list[dict[str, Any]], years: list[str]) -> list[dict[str, Any]]:
+    """An every-year gap of a yearly concept as one gap per year its run asked, so a later year is asked again."""
+    out: list[dict[str, Any]] = []
+    for g in gaps:
+        every = g.get("concept") in YEARLY and not g.get("fiscal_year") and not g.get("field")
+        out += [{**g, "fiscal_year": y} for y in years] if every and years else [g]
+    return out
+
+
 def holes(entity_kind: str, years: list[str], findings: list[Any], gaps: list[Any]) -> list[str]:
     """Each field with neither a finding nor a gap, for any objects with the finding and gap attributes."""
     missing: list[str] = []

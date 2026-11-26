@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date
 from types import SimpleNamespace
 from uuid import UUID
@@ -122,6 +123,18 @@ class TestRun:
         run_id = await service.run(ScriptPool(conn), SLUG, service.FREE, False, USER)
         [(_sql, failed)] = conn.sql("SET error")
         assert failed == ("RuntimeError: site down", run_id)
+
+    async def test_a_stopped_turn_marks_the_run_cancelled(self, stubbed, monkeypatch):
+        # Unmarked, the run reads as running and blocks every check of the slug for STALE_MINUTES.
+        async def stopped(*a):
+            raise asyncio.CancelledError
+
+        monkeypatch.setattr(fetch_status, "fetch_today", stopped)
+        conn = ScriptConn()
+        with pytest.raises(asyncio.CancelledError):
+            await service.run(ScriptPool(conn), SLUG, service.FREE, False, USER)
+        [(_sql, failed)] = conn.sql("SET error")
+        assert failed[0] == "cancelled"
 
     async def test_a_full_run_saves_the_update_it_asked_for(self, stubbed, monkeypatch):
         async def stages(*a, **kw):

@@ -88,13 +88,16 @@ def patch_catalog(monkeypatch, name, value):
             monkeypatch.setattr(module, name, value)
 
 
-async def save_in_run(payload: dict[str, Any], scope: CallerScope | None = None) -> tuple[str, Any]:
-    """A researcher's run: its findings recorded into the draft, then save_research with the rest as arguments."""
+async def save_in_run(payload: dict[str, Any], scope: CallerScope | None = None,
+                      top_up: str | None = None) -> tuple[str, Any]:
+    """A researcher's run: its findings recorded into the draft, then save_research with the rest as arguments.
+    `top_up` is the slug research_goals set for a top-up."""
     from app.ingest.research import draft
     from app.ingest.tools.research_tools import save_research
 
     head = {k: v for k, v in payload.items() if k not in ("findings", "gaps", "unplaced")}
     with running_as(scope), draft.drafting() as current:
+        current.slug = top_up
         reply = draft.record(current, payload.get("findings"), payload.get("gaps"), payload.get("unplaced"))
         assert "Refused" not in reply, reply
         return await save_research.ainvoke(head), current
