@@ -25,6 +25,7 @@ from app.ingest.refresh import (
 from tests.cov_ingest_fakes import ScriptConn, ScriptPool
 
 SLUG = "azim-premji-foundation"
+RUN = UUID("00000000-0000-0000-0000-000000000001")
 URL = "https://a.org/about"
 USER = UUID("00000000-0000-0000-0000-000000000001")
 
@@ -251,7 +252,7 @@ class TestRefresh:
         monkeypatch.setattr(delta, "propose", propose)
         monkeypatch.setattr(delta, "apply", lambda proposed, srcs, *rest: delta.Applied(added=1, findings=[{"x": 1}]))
 
-        async def save_row(conn, entity, applied, proposed, context, snapshot_ids, read):
+        async def save_row(conn, entity, applied, proposed, context, snapshot_ids, read, held_years=None):
             state.saved.append(read)
             return 91
         monkeypatch.setattr(delta, "save_row", save_row)
@@ -260,7 +261,7 @@ class TestRefresh:
         return state
 
     async def run(self, checks=None, saved=None):
-        return await service._refresh(ScriptPool(ScriptConn()), SLUG, [_changed()] if checks is None else checks,
+        return await service._refresh(ScriptPool(ScriptConn()), RUN, SLUG, [_changed()] if checks is None else checks,
                                       discover.Discovery(), judge.Context((), ()), saved or save.Saved(0, 0, 0))
 
     @pytest.mark.parametrize("entity, why", [
@@ -310,10 +311,14 @@ class TestRefresh:
         mine = delta.Source("https://a.org/about", "changed", "text")
         monkeypatch.setattr(delta, "sources", lambda *a: [mine, gap])
         monkeypatch.setattr(delta, "save_row", lambda conn, *a: _value(saved_args.append(a) or 91))
-        await service._refresh(ScriptPool(ScriptConn()), SLUG, [], discover.Discovery(), judge.Context((), ()),
+        conn = ScriptConn()
+        await service._refresh(ScriptPool(conn), RUN, SLUG, [], discover.Discovery(), judge.Context((), ()),
                                save.Saved(0, 0, 0, {mine.url: 55, gap.url: 56}))
-        [(_entity, _applied, _proposed, _context, snapshot_ids, read)] = saved_args
+        [(_entity, _applied, _proposed, _context, snapshot_ids, read, _years)] = saved_args
         assert snapshot_ids == [55] and read == [mine.url, gap.url]
+        # Read by the update, it is not offered again until its text changes.
+        [(_sql, params)] = conn.sql("UPDATE source_checks")
+        assert params == (service.READ_BY_UPDATE, RUN, [gap.url])
 
     async def test_researched_today_asks_no_model(self, refresh, monkeypatch):
         monkeypatch.setattr(delta, "researched_today", lambda conn, slug: _value(True))
@@ -356,11 +361,11 @@ async def test_a_full_check_searches_for_gaps_after_discovery_and_skips_what_it_
     monkeypatch.setattr(gap_search, "run", gaps)
     earlier = "https://partner.org/read-last-week"
     given = service.Inputs([base(), base("https://a.org/contact", snapshot_id=8)], 0, {}, judge.Context((), ()),
-                           discover.Subject("A", "a.org"), frozenset({earlier}))
+                           discover.Subject("A", "a.org"), frozenset({earlier}), frozenset({"e" * 64}))
     ended = await service.stages(SLUG, service.FULL, tmp_path, given)
     assert ended is not None
     _checks, found, verdict = ended
-    assert new.url in seen["urls"] and earlier in seen["urls"] and "f" * 64 in seen["hashes"]
+    assert new.url in seen["urls"] and earlier in seen["urls"] and {"f" * 64, "e" * 64} <= seen["hashes"]
     settings = service.get_settings()
     assert specs == [settings.source_check_judge_model, settings.source_check_gap_model]
     assert found.gap_leads == [(off, "csr_year", "a filing")] and decision.gap_sources(found) == 1
@@ -383,9 +388,12 @@ async def test_the_inputs_include_pages_earlier_checks_read_for_a_gap(monkeypatc
     monkeypatch.setattr(evidence, "load_findings", lambda conn, slug: _value({}))
     monkeypatch.setattr(judge, "load_context", lambda conn, slug: _value(judge.Context((), ())))
     monkeypatch.setattr(discover, "load_subject", lambda conn, slug: _value(None))
-    conn = ScriptConn([("status = 'gap'", [{"url": "https://partner.org/a"}, {"url": "https://csr.gov.in/b"}])])
+    conn = ScriptConn([("SELECT DISTINCT c.url", [{"url": "https://partner.org/a"}, {"url": "https://csr.gov.in/b"}]),
+                       ("SELECT DISTINCT s.text_hash", [{"text_hash": "e" * 64}])])
     given = await service.load_inputs(conn, SLUG)
-    assert given.gap_urls == {"https://partner.org/a", "https://csr.gov.in/b"}
+    assert given.gap_urls == {"https://partner.org/a", "https://csr.gov.in/b"} and given.gap_hashes == {"e" * 64}
+    [(_sql, params)] = conn.sql("SELECT DISTINCT s.text_hash")
+    assert params == (SLUG, service.READ_BY_UPDATE)
     # Only a page a saved research row cites counts as read; a look-only check's page may be offered again.
-    sql = next(s for s, _ in conn.calls if "status = 'gap'" in s)
+    sql = next(s for s, _ in conn.calls if "SELECT DISTINCT c.url" in s)
     assert "jsonb_array_elements(r.findings)" in sql and "f->>'source_url' = c.url" in sql

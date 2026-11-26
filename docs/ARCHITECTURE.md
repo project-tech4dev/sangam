@@ -148,8 +148,10 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   read (`MAX_PICKS`). A page read that way (`source_checks.status = 'gap'`) may only `add` a fact that fills its gap,
   year and field included: `delta.apply` refuses any other add and any update from it. A gap closes only when a saved
   finding fills it, never on the model's word alone. Gap pages never join the baseline, so a partner's page is never
-  rechecked as if it were the funder's own, and a later check skips the ones read before. A fact whose sentence is
-  still on its own page is never removed, whatever a gap page says.
+  rechecked as if it were the funder's own, and a later check skips the ones read before, and any version of one the
+  update already read. A programme's field gap is never searched, since only that programme, already held, fills it;
+  an `unknown` value answers no topic gap, and a yearly gap never reopens a year the record holds. A fact whose
+  sentence is still on its own page is never removed, whatever a gap page says.
 
 ## 5. Funder Match
 

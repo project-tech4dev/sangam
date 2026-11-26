@@ -224,7 +224,7 @@ class TestStages:
 
     async def test_refresh_runs_only_when_the_decision_is_refresh(self, run, written, monkeypatch, capsys):
         await change_check.main(SLUG, "gaps", write=True, refresh=True)
-        assert len(written) == 1 and written[0][5].snapshot_ids == {"https://a.org/about": 55}
+        assert len(written) == 1 and written[0][6].snapshot_ids == {"https://a.org/about": 55}
         monkeypatch.setattr(decision, "decide", lambda *a: decision.NOTHING)
         await change_check.main(SLUG, "gaps", write=True, refresh=True)
         assert len(written) == 1 and f"{SLUG}: no refresh: the decision is nothing to do" in capsys.readouterr().out

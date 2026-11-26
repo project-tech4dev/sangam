@@ -156,6 +156,11 @@ class TestPieces:
         assert gap_search.chosen(CONTEXT) == [CSR, APPLY]
         assert len(gap_search.chosen(Context((), (), many))) == gap_search.MAX_GAPS
 
+    def test_a_programmes_field_gap_is_not_searched(self):
+        """Only that programme fills it, and another site may not replace a fact the record holds."""
+        themes = OpenGap("program.themes", "program", "themes", None, "not_stated", "Teacher Fellowship lists no themes")
+        assert gap_search.chosen(Context((), (), (themes, APPLY))) == [APPLY]
+
     @pytest.mark.parametrize(("url", "ok"), [
         ("https://csr.gov.in/x", True), (f"https://www.{SITE}/x", False), ("https://in.linkedin.com/x", False)])
     def test_citable(self, monkeypatch, url, ok):

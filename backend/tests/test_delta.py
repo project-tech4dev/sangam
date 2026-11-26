@@ -504,6 +504,10 @@ class TestFills:
         assert not delta.fills({"concept": "rfp", "title": "Fellowship", "url": None}, "rfp.how_to_apply")
         assert not delta.fills({"concept": "contact"}, "rfp.how_to_apply")
 
+    def test_an_unknown_intake_mode_does_not_answer_the_intake_route(self):
+        assert not delta.fills({"concept": "identity", "intake_mode": "unknown"}, "identity.intake_route")
+        assert delta.fills({"concept": "identity", "intake_mode": "open_call"}, "identity.intake_route")
+
     def test_a_topic_with_no_answering_field_stays_open(self):
         assert not delta.fills({"concept": "identity", "name": "X"}, "identity.governance")
 
@@ -524,6 +528,19 @@ async def test_a_yearly_gap_filled_for_one_year_stays_open_for_the_others():
     [(_sql, p)] = conn.sql("INSERT INTO entity_research")
     assert json.loads(p[14]) == [{"concept": "csr_spend", "reason": "not_stated", "detail": "no filing",
                                   "fiscal_year": y} for y in ("FY2022-23", "FY2024-25")]
+
+
+async def test_a_year_an_older_row_holds_is_not_reopened():
+    entity = {**TestSaveRow.ENTITY, "years": ["FY2022-23", "FY2023-24", "FY2024-25"],
+              "gaps": [{"concept": "partner"}]}
+    applied = delta.Applied(findings=[{"concept": "partner", "fiscal_year": "FY2022-23"}])
+    conn = ScriptConn([("INSERT INTO entity_research", {"id": 98})])
+    held = delta.held_years({"u": [{"concept": "partner", "fiscal_year": "FY2024-25"}, {"concept": "csr_year"}]})
+    assert held == {"partner": {"FY2024-25"}}
+    await delta.save_row(conn, entity, applied, answer(gaps_closed=["partner"]), Context(("partner",), ("partner",)),
+                         [], [], held)
+    [(_sql, p)] = conn.sql("INSERT INTO entity_research")
+    assert [g["fiscal_year"] for g in json.loads(p[14])] == ["FY2023-24"]
 
 
 async def test_only_the_programme_a_field_gap_names_is_closed():

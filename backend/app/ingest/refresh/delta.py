@@ -287,8 +287,10 @@ def _fills(finding: dict[str, Any], concept: str, field: str | None, fiscal_year
     if finding.get("concept") != concept:
         return False
     if field:
-        field = field if field in finding else TOPIC_FIELDS.get((concept, field))
-        if not field or finding.get(field) in (None, "", [], {}):
+        topic = field not in finding
+        field = TOPIC_FIELDS.get((concept, field)) if topic else field
+        # "unknown" is how a finding says the topic was not found, so it answers nothing.
+        if not field or finding.get(field) in (None, "", [], {}) or (topic and finding.get(field) == "unknown"):
             return False
         # A programme's field gap names its programme; another programme's value does not fill it.
         name = (finding.get("name") or "").strip().casefold()
@@ -397,7 +399,8 @@ def apply(delta: Delta, srcs: list[Source], open_gaps: tuple[OpenGap, ...] = (),
 
 
 async def save_row(conn: Any, entity: dict[str, Any], applied: Applied, delta: Delta, context: Context,
-                   snapshot_ids: list[int], sources_read: list[str]) -> int | None:
+                   snapshot_ids: list[int], sources_read: list[str],
+                   held_years: dict[str, set[str]] | None = None) -> int | None:
     """Today's row, carrying the newest row's frame forward; None when the entity was already researched today."""
     if await researched_today(conn, entity["slug"]):  # the race guard; _refresh asked before paying for a model
         return None
@@ -405,7 +408,8 @@ async def save_row(conn: Any, entity: dict[str, Any], applied: Applied, delta: D
     # A gap closes only when a saved finding fills it, its year and field included, not on the model's word alone.
     claimed = set(delta.gaps_closed) & set(context.gaps)
     gaps = [left for g in _list(entity.get("gaps")) if g.get("concept")
-            for left in _still_open(g, claimed, applied.findings, entity.get("years") or [])]
+            for left in _still_open(g, claimed, applied.findings, entity.get("years") or [],
+                                    (held_years or {}).get(g["concept"], set()))]
     base = (entity["summary"] or "").split(REFRESHED)[0]  # one refresh note, not one per refresh
     summary = f"{base}{REFRESHED}{delta.summary}"
     reason = f"{REFRESH_REASON}: {len(sources_read)} changed or new sources reread; the rest stand from earlier research."
@@ -433,7 +437,7 @@ async def save_row(conn: Any, entity: dict[str, Any], applied: Applied, delta: D
 
 
 def _still_open(gap: dict[str, Any], claimed: set[str], findings: list[dict[str, Any]],
-                years: list[str]) -> list[dict[str, Any]]:
+                years: list[str], held: set[str] = frozenset()) -> list[dict[str, Any]]:
     """The gap, nothing when a saved finding filled it, or, for a yearly concept asked of every year, one gap for
     each year still missing."""
     if gap_name(gap) not in claimed:
@@ -443,10 +447,19 @@ def _still_open(gap: dict[str, Any], claimed: set[str], findings: list[dict[str,
     if not hits:
         return [gap]
     if gap["concept"] in YEARLY and not gap.get("fiscal_year") and not gap.get("field"):
-        found = {f.get("fiscal_year") for f in hits}
+        found = {f.get("fiscal_year") for f in hits} | held  # a year older rows hold is not reopened
         missing = [y for y in years if y not in found]
         return [{**gap, "fiscal_year": y} for y in missing] if years else [gap]
     return []
+
+
+def held_years(facts: dict[str, list[dict[str, Any]]]) -> dict[str, set[str]]:
+    """The fiscal years the merged record holds, by concept."""
+    out: dict[str, set[str]] = {}
+    for f in (f for fs in facts.values() for f in fs):
+        if f.get("fiscal_year"):
+            out.setdefault(f.get("concept"), set()).add(f["fiscal_year"])
+    return out
 
 
 def _list(value: Any) -> list[Any]:

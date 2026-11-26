@@ -63,7 +63,10 @@ class GapSearch:
 
 
 def chosen(context: Context) -> list[OpenGap]:
-    return [g for g in context.open_gaps if g.reason in CHASE][:MAX_GAPS]
+    # A programme's field gap is filled only by that programme, a fact the record holds and another site may not
+    # replace (delta.apply), so searching for one pays for nothing.
+    return [g for g in context.open_gaps
+            if g.reason in CHASE and not (g.concept == "program" and g.field and g.detail)][:MAX_GAPS]
 
 
 def query(name: str, gap: OpenGap) -> str:
