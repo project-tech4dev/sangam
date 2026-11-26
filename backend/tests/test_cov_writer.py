@@ -350,3 +350,13 @@ async def test_other_from_an_old_brief_never_replaces_a_type(db):
     assert (await one(db, "SELECT funder_type FROM funders WHERE id = %s", fid))["funder_type"] == "international_agency"
     await writer_funder.write_funder(db, record.model_copy(update={"funder_type": "intermediary"}), Match("exact", fid))
     assert (await one(db, "SELECT funder_type FROM funders WHERE id = %s", fid))["funder_type"] == "intermediary"
+
+
+async def test_a_reviewed_type_survives_a_reimport(db):
+    name = f"Zz Childline {tag()}"
+    fid = await funder(db, name, funder_type="government")
+    await db.execute("""UPDATE funders SET profile = profile || '{"funder_type_reviewed": true}' WHERE id = %s""", (fid,))
+    record = FunderRecord(name=name, funder_type="private_foundation", source_url="https://x.example.org",
+                          source_name="r", fetched_at=NOW, content_hash="h", extractor_version="v")
+    await writer_funder.write_funder(db, record, Match("exact", fid))
+    assert (await one(db, "SELECT funder_type FROM funders WHERE id = %s", fid))["funder_type"] == "government"

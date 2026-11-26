@@ -42,6 +42,10 @@ Briefs saved before `0064` still carry old values; promote maps them the same wa
 type beats `other`, whatever the source. A type the reviewed list in `0064` replaced is kept in `source_funder_type`
 too, and a funder marked foreign there always has its website as `money_origin_source`.
 
+Those reviewed rows carry `profile.funder_type_reviewed`, and no re-import changes their type; staff change it by hand.
+`0064` also refreshes Import's undo log (`catalog_writes`), so a save that could be undone before it still can. A save
+that wrote one of the reviewed rows cannot, as after any later edit.
+
 ## Foreign sources
 
 How a foreign source's own label maps, for when foreign funders load. Keep that label in `source_funder_type`.
