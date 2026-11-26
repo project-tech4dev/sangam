@@ -76,7 +76,7 @@ def api(client_for):
 
 
 def test_new_work_carries_the_match_and_the_funders_form():
-    match = {"id": 5, "score": 62, "run_at": NOW, "funder_type": "corporate_csr", "section_135_bound": False,
+    match = {"id": 5, "score": 62, "run_at": NOW, "funder_type": "csr_company", "section_135_bound": False,
              "detail": {"criteria": [], "not_judged": []}}
     form = {"id": 40, "source_url": "https://tata.example/form.pdf", "fetched_at": NOW}
     work = route.new_work(match, form, "Jan Sahas")

@@ -26,6 +26,7 @@ from app.ingest.catalog.rows import (
     ClassifiedBy,
     EvidenceTier,
     FindingSourceType,
+    FunderType,
     IdentifierStatus,
     ImplementationMode,
     check_registration,
@@ -267,10 +268,7 @@ class Tagged(BaseModel):
 class IdentityFinding(FindingBase, Tagged):
     concept: Literal["identity"] = "identity"
     name: str = Field(min_length=2, description="the legal name as the strongest source writes it")
-    funder_type: (
-        Literal["corporate_csr", "corporate_foundation", "private_foundation",
-                "family_trust", "family_trust_network", "other"] | None
-    ) = None
+    funder_type: FunderType | None = None
     section_135_bound: bool | None = Field(default=None, description="null means unknown, not false")
     website: str | None = None
     parent_name: str | None = Field(

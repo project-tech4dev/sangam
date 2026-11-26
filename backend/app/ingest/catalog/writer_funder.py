@@ -78,10 +78,14 @@ async def write_funder(
     if match.resolved:
         existing = await (
             await conn.execute(
-                f"SELECT id, name, aliases, {', '.join(FUNDER_UPDATABLE)} FROM funders WHERE id = %s",
+                f"SELECT id, name, aliases, {', '.join(FUNDER_UPDATABLE)}, "
+                "coalesce(profile ? 'funder_type_reviewed', false) AS type_reviewed FROM funders WHERE id = %s",
                 (match.entity_id,),
             )
         ).fetchone()
+        if existing["funder_type"] and (existing["type_reviewed"] or proposed["funder_type"] == "other"):
+            # A type reviewed by hand is kept, and 'other' (nothing fitted) never replaces a real one.
+            proposed["funder_type"] = None
         changes = diff_row({c: existing[c] for c in FUNDER_UPDATABLE}, proposed)
         if changes and gate and gate.on_change(
             "funders", {"name": existing["name"]}, dict(existing), changes, proposed

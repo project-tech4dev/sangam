@@ -3,7 +3,7 @@ from app.core.config import Settings
 
 ROW = {
     "id": 1, "slug": "axis-bank-foundation", "name": "Axis Bank Foundation",
-    "funder_type": "corporate_csr", "website": "https://www.axisbankfoundation.org",
+    "funder_type": "csr_company", "website": "https://www.axisbankfoundation.org",
     "focus_sectors": ["sustainable livelihoods"], "geographies": ["Assam", "India"],
     "profile": {"flagship_program": "Sustainable Livelihoods Programme"},
     "latest_scores": {"v1": 93, "v2": 93}, "total": 1,

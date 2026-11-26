@@ -23,10 +23,10 @@ LIVELIHOODS = Themes(frozenset({"theme-shg-empowerment"}), frozenset(), frozense
 HEALTH = Themes(frozenset({"theme-mch-nutrition"}), frozenset(), frozenset({"domain-health"}))
 ORG = OrgProfile(id=9, name="KABIL", location_ids={3}, themes=LIVELIHOODS,
                  programs=[Program(12, "Women's collectives", LIVELIHOODS)])
-SHARED = FunderProfile(id=7, name="HDFC Bank Parivartan", funder_type="corporate_csr", section_135_bound=True,
+SHARED = FunderProfile(id=7, name="HDFC Bank Parivartan", funder_type="csr_company", section_135_bound=True,
                        location_ids={3},
                        themes=LIVELIHOODS)
-NOTHING = FunderProfile(id=8, name="Infosys Foundation", funder_type="corporate_csr", section_135_bound=True,
+NOTHING = FunderProfile(id=8, name="Infosys Foundation", funder_type="csr_company", section_135_bound=True,
                         location_ids={4},
                         themes=HEALTH)
 MEMBER = CurrentUser(id=uuid4(), is_staff=False, auth_user_id=uuid4())

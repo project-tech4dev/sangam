@@ -43,7 +43,7 @@ Marks in the tables:
 |---|---|---|
 | name | `identity.name` | As the strongest source writes it. Name the exact body that **receives applications**: many companies route CSR through a foundation, and the policy names the foundation. |
 | other names | `identity.aliases` | Every spelling it files or trades under, the filings' included. |
-| type | `identity.funder_type` | `corporate_csr`, `corporate_foundation`, `private_foundation`, `family_trust`, `family_trust_network`, `other`. |
+| type | `identity.funder_type` | One of nine: `csr_company` (a company spending its own CSR, e.g. ITC), `csr_foundation` (a company's foundation, e.g. Infosys Foundation), `private_foundation` (a private or family foundation or trust, e.g. Azim Premji Foundation, Tata Trusts), `hni` (an individual or giving network), `intermediary` (re-grants others' money, e.g. Global Greengrants Fund), `international_agency` (a foreign development or church agency, e.g. Misereor), `bilateral_multilateral` (a government or multilateral donor, e.g. a UN agency), `government` (an Indian government or statutory body), `other` only when none fits. |
 | parent, and the parent's CIN | `identity.parent_name`; the CIN in the evidence | The Section 135 filer is often the parent. Never merge them; never put the parent's CIN on the foundation. |
 | CIN | `identity.cin` | A company only; a trust has none. Never guessed. |
 | Section 135 | `identity.section_135_bound` | |

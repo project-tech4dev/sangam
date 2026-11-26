@@ -70,7 +70,7 @@ def _detail(note="", not_judged=(), cites=(), relationship_points=None):
 
 
 def test_build_lists_csr1_only_for_section_135_money():
-    csr = gates.build(_detail(), "corporate_csr")
+    csr = gates.build(_detail(), "csr_company")
     trust = gates.build(_detail(), "trust")
     bound = gates.build(_detail(), "trust", section_135_bound=True)
     assert [r["key"] for r in csr["requirements"]] == ["12a", "80g", "csr1", "audits"]

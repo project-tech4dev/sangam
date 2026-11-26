@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, date, datetime, timedelta
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -202,6 +202,21 @@ def shape_period(value: str) -> str | None:
     return None
 
 
+FunderType = Literal["csr_company", "csr_foundation", "private_foundation", "hni", "intermediary",
+                     "international_agency", "bilateral_multilateral", "government", "other"]
+# Briefs saved before 0064 still carry the old values; promote reads them as the new ones.
+LEGACY_FUNDER_TYPES = {"corporate_csr": "csr_company", "corporate_foundation": "csr_foundation",
+                       "family_trust": "private_foundation", "family_trust_network": "private_foundation"}
+
+
+def current_funder_type(v: Any) -> str | None:
+    """An old or unknown label as one of the nine, the way 0064 mapped stored rows."""
+    if not isinstance(v, str) or not v.strip():
+        return None
+    v = LEGACY_FUNDER_TYPES.get(v, v)
+    return v if v in get_args(FunderType) else "other"
+
+
 class Tags(BaseModel):
     """Taxonomy codes the research gave, already checked against the vocabulary; the writer resolves them."""
 
@@ -214,7 +229,7 @@ class Tags(BaseModel):
 class FunderRecord(Provenance, Tags):
     kind: Literal["funder"] = "funder"
     name: str = Field(min_length=2)
-    funder_type: str | None = None
+    funder_type: FunderType | None = None
     website: str | None = None
     section_135_bound: bool | None = None
     parent_name: str | None = None
@@ -239,6 +254,11 @@ class FunderRecord(Provenance, Tags):
     @classmethod
     def _one_spelling(cls, v: str | None) -> str | None:
         return normalise_cin(v) if v else None
+
+    @field_validator("funder_type", mode="before")
+    @classmethod
+    def _current_type(cls, v: str | None) -> str | None:
+        return current_funder_type(v)
 
     @field_validator("aliases")
     @classmethod

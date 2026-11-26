@@ -10,7 +10,7 @@ import json
 import re
 from typing import Any
 
-from app.ingest.catalog.rows import shape_period
+from app.ingest.catalog.rows import LEGACY_FUNDER_TYPES, shape_period
 from app.ingest.research.expectations import CONCEPT_TITLES
 from app.ingest.research.finding_types import TYPED_SINCE, to_inr
 from app.ingest.research.source_guards import is_private_source
@@ -79,7 +79,7 @@ def headline(f: dict[str, Any]) -> str:
         return _join(f.get("label"), f.get("value"))
     concept = f.get("concept")
     if concept == "identity":
-        return _join(f.get("name"), f.get("funder_type"), f.get("legal_form"), f.get("website"),
+        return _join(f.get("name"), LEGACY_FUNDER_TYPES.get(f.get("funder_type"), f.get("funder_type")), f.get("legal_form"), f.get("website"),
                      f"founded {f['founded_year']}" if f.get("founded_year") else None,
                      f"part of {f['parent_name']}" if f.get("parent_name") else None,
                      f.get("registered_address"))

@@ -56,7 +56,7 @@ def org(**kw) -> OrgProfile:
 
 
 def funder(**kw) -> FunderProfile:
-    base = {"id": 7, "name": "HDFC Bank Parivartan", "funder_type": "corporate_csr", "section_135_bound": True,
+    base = {"id": 7, "name": "HDFC Bank Parivartan", "funder_type": "csr_company", "section_135_bound": True,
             "location_ids": {3}, "themes": SHG}
     return FunderProfile(**(base | kw))
 

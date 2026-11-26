@@ -11,7 +11,7 @@ ROWS = [
      "populations": ["Women"], "sdgs": ["1", "5"], "csr1": False, "has_12a_80g": True, "fcra": True,
      "press": 0, "social": 6, "posts_since": "2026-08-04", "search": "udalguri kabil india"},
     {"kind": "funder", "id": 29, "slug": "axis-bank-foundation", "name": "Axis Bank Foundation",
-     "funder_type": "corporate_foundation", "states": ["Meghalaya"], "intake_mode": "invitation_only",
+     "funder_type": "csr_foundation", "states": ["Meghalaya"], "intake_mode": "invitation_only",
      "partners": 42, "csr_prescribed": 4259200000, "csr_year": "FY2024-25"},
 ]
 

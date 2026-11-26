@@ -52,10 +52,10 @@ export function monthYear(iso: string | null | undefined, long = false): string 
 export const dayMonth = (iso: string) => `${Number(iso.slice(8, 10))} ${SHORT_MONTHS[Number(iso.slice(5, 7)) - 1]}`;
 
 const FUNDER_TYPES: Record<string, string> = {
-  corporate_csr: "Corporate CSR", corporate_foundation: "Corporate foundation",
-  private_foundation: "Private foundation", family_trust_network: "Family trust",
-  international: "International", bilateral: "Bilateral", multilateral: "Multilateral",
-  government: "Government", foundation: "Foundation",
+  csr_company: "Corporate CSR", csr_foundation: "Corporate foundation",
+  private_foundation: "Private foundation", hni: "Individual or giving network",
+  intermediary: "Intermediary", international_agency: "International agency",
+  bilateral_multilateral: "Bilateral or multilateral", government: "Government", other: "Other",
 };
 
 /** A funder_type as a person reads it, the same on the Registry list and the profile. */

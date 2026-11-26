@@ -339,14 +339,16 @@ _TABLES: tuple[Table, ...] = (
     ),
     Table(
         name="funders",
-        description="Funders: corporate CSR arms, private foundations, family trusts.",
+        description="Funders: corporate CSR arms, private and family foundations, intermediaries, international agencies.",
         primary_key=('id',),
         foreign_keys=(ForeignKey("registered_location_id", "locations.id"),),
         columns=(
             Column("id", "bigint", cites="funder"),
             Column("slug", "text"),
             Column("name", "text", note="trigram-indexed; use similarity() for fuzzy matching"),
-            Column("funder_type", "text", note="free text: corporate_csr | private_foundation | family_trust_network | ..."),
+            Column("funder_type", "text", note="what kind of funder; NULL means not researched. A family trust's older label is in profile->>'source_funder_type'", values=('csr_company', 'csr_foundation', 'private_foundation', 'hni', 'intermediary', 'international_agency', 'bilateral_multilateral', 'government', 'other')),
+            Column("funder_group", "text", note="the five-way roll-up of funder_type: corporate, hni, philanthropy, govt, other; NULL when funder_type is", values=('corporate', 'hni', 'philanthropy', 'govt', 'other')),
+            Column("money_origin", "text", note="whether the money an NGO gets counts as foreign under FCRA. 'unknown' is not 'domestic'; the source is profile->>'money_origin_source'", values=('domestic', 'foreign', 'mixed', 'unknown')),
             Column("section_135_bound", "boolean", note="NULL means unknown, not false"),
             Column("website", "text"),
             Column("profile", "jsonb", heavy=True),

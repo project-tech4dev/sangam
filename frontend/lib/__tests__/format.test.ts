@@ -42,7 +42,8 @@ describe("names and funder types", () => {
     expect(displayName("SMILE FOUNDATION")).toBe("Smile Foundation");
   });
   it("labels known and unknown funder types", () => {
-    expect(funderTypeLabel("corporate_csr")).toBe("Corporate CSR");
+    expect(funderTypeLabel("csr_company")).toBe("Corporate CSR");
+    expect(funderTypeLabel("international_agency")).toBe("International agency");
     expect(funderTypeLabel("impact_investor")).toBe("Impact investor");
     expect(funderTypeLabel(null)).toBe("Funder");
   });

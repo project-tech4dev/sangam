@@ -26,7 +26,7 @@ const ORGS = [
 ];
 const staff: MeOut = { id: "u", email: null, is_staff: true, is_anonymous: false, memberships: [] };
 
-const row = (id: number, name: string, score: number | null, tier: MatchRow["tier"], type = "corporate_csr"): MatchRow => ({
+const row = (id: number, name: string, score: number | null, tier: MatchRow["tier"], type = "csr_company"): MatchRow => ({
   id,
   funder: { id: id * 10, slug: name.toLowerCase(), name, funder_type: type },
   score,
