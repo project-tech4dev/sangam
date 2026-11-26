@@ -20,7 +20,8 @@ from app.ingest.catalog.matcher import resolve_funder, resolve_org
 from app.ingest.catalog.promote import promote
 from app.ingest.catalog.save import ENTITY_KEYS, SaveRefused, held_per_concept, research_rows, save_to_catalog
 from app.ingest.catalog.writer import Gate
-from app.ingest.research import coverage
+from app.ingest.research import coverage, draft
+from app.ingest.research import saved as saved_research
 from app.ingest.research.expectations import (
     CONCEPTS,
     concepts_for,
@@ -377,6 +378,9 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                 )
             ).fetchone()
             held = await held_per_concept(conn, row["id"], entity_kind) if row else {}
+            saved = await saved_research.latest(conn, [name, row["name"] if row else ""], entity_kind, wanted)
+        if (current := draft.CURRENT.get()) is not None:
+            current.slug = saved.slug if saved else None
 
         out = [
             (f"Research goals for {name!r}. These are the database's columns, not a wish list — "
@@ -392,6 +396,7 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
             f"That is not evidence the {noun} is absent from the sector."
         )
 
+        out += saved_research.goal_lines(saved)
         wanted_concepts = concepts_for(entity_kind)
         if entity_kind == "org":
             out.append(

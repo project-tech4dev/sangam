@@ -134,6 +134,12 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   first research, always gets the text. `fetch_document` says the same in its reply. A host that timed
   out twice in a day is not asked again (in memory: a restart forgets it), and a document gives up after 30 s with
   no bytes, not 120 s, because NSE held nine reads for 8 minutes in `7925d873`.
+- **Research on a later day is a top-up.** `research_goals` leads with the newest saved row's open gaps and the
+  fields no saved row answers (`contract.holes`), and says the saved findings are kept. `save_research` lets earlier
+  days' findings of the same kind answer the contract (`unanswered(..., held=)`), so a run that filled two gaps is not
+  refused for the 26 fields it never looked at, and a first save today starts from the newest earlier row's gaps less
+  those this run answered, since the brief shows the newest row's gaps only. A top-up that found nothing keeps the
+  saved status rather than `not_found`.
 - **A metric's period has four shapes**, because it is part of the metric's key: `FY2024-25`, `CY2025`,
   `cumulative to <date>`, `as of <date>` (`rows.shape_period`). A save rewrites an exact match and refuses the rest;
   research read back for promotion (`STORED` context) is rewritten the same way but never refused, so a rule added

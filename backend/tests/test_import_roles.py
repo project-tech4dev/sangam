@@ -118,10 +118,13 @@ class TestSavingResearch:
         async def execute(sql, params=()):
             if "INSERT" in sql:
                 seen.update(sql=sql, params=params)
-            return SimpleNamespace(fetchone=_none)
+            return SimpleNamespace(fetchone=_none, fetchall=_no_rows)
 
         async def _none():
             return None
+
+        async def _no_rows():
+            return []
 
         pool.conn.execute = execute
         await save_in_run(self.FUNDER, MEMBER)
