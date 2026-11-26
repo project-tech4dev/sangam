@@ -37,7 +37,7 @@ MAX_DOWNLOAD_MB = 60
 DOCUMENT_TIMEOUT = 30
 # A host that timed out this often in SLOW_FOR seconds is not asked again; in memory, so a restart forgets it.
 SLOW_AFTER = 2
-SLOW_FOR = 24 * 3600
+SLOW_FOR = 3600  # shared by every run on the instance, so a short outage costs an hour, not a day
 _TIMEOUTS: dict[str, list[float]] = {}
 # A longer PDF is fingerprinted by its bytes: parsing all of a 400-page report held the tool's reply for minutes.
 MAX_HASHED_PAGES = 100
@@ -155,7 +155,7 @@ def _note_timeout(got: Fetched) -> None:
 
 
 def _slow_reply(url: str, host: str) -> str:
-    return (f"ERROR: {host} timed out {SLOW_AFTER} times in the last day, so {url} was not requested. "
+    return (f"ERROR: {host} timed out {SLOW_AFTER} times in the last hour, so {url} was not requested. "
             "Find the fact on another source, or record a gap that names this one.")
 
 

@@ -69,11 +69,11 @@ class SavedReading:
     researched_on: date
 
 
-# The newest saved research row of this entity whose run read this exact version of the page.
+# The newest saved research row of this entity whose run read this exact version; a wrong_entity run kept nothing.
 SAVED_READING_SQL = """
     SELECT s.id, s.archive_key, r.researched_on
     FROM source_snapshots s JOIN entity_research r ON s.id = ANY(r.snapshot_ids)
-    WHERE s.url = %s AND s.text_hash = %s AND s.archive_key IS NOT NULL AND r.slug = %s
+    WHERE s.url = %s AND s.text_hash = %s AND s.archive_key IS NOT NULL AND r.slug = %s AND r.status <> 'wrong_entity'
     ORDER BY r.researched_on DESC, r.id DESC LIMIT 1
 """
 

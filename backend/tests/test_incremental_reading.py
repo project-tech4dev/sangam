@@ -43,6 +43,7 @@ class TestSavedReading:
             seen = await snapshots.saved_reading(URL, "h", SLUG)
         assert seen == snapshots.SavedReading("aa/csr.md", date(2026, 11, 26))
         assert conn.calls[0][1] == (URL, "h", SLUG) and "r.slug = %s" in conn.calls[0][0]
+        assert "r.status <> 'wrong_entity'" in conn.calls[0][0]  # a wrong_entity run kept none of the page
 
     async def test_one_this_run_already_read_is_not(self, monkeypatch):
         conn = ScriptConn([("FROM source_snapshots s JOIN entity_research", SAVED)])

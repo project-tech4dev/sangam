@@ -29,7 +29,7 @@ entity-researcher (Sonnet)
    ├─ M1 CHANGED read_page: a version this entity's saved research read answers "already read on <date>"
    │            (fetched and hashed, not sent back); a second read_page in the run returns the text
    ├─ M1 CHANGED fetch_document: says when the file is a version saved research already read
-   └─ M1 NEW  a host that timed out twice is skipped for a day; a stalled document times out after 30 s
+   └─ M1 NEW  a host that timed out twice is skipped for an hour; a stalled document times out after 30 s
 ```
 
 | Milestone | Change | Where |
@@ -61,6 +61,6 @@ M1 alone: ~$1.10, ~7 min. A paid HCL re-run on the local database confirms these
 ## 4. Tests
 
 M1: an unchanged version this entity's saved research read is not sent back, a second read is; a changed page is, and so is one read only for another entity; a host that
-timed out twice is refused without a request, and forgotten after a day. M2: goals list the newest row's open gaps; a
+timed out twice is refused without a request, and forgotten after an hour. M2: goals list the newest row's open gaps; a
 new-day save answering only gaps passes the contract and carries the other gaps. M3: each decision's reply, with and without something a new run can fill; no baseline;
 a check already running; NGO scope.

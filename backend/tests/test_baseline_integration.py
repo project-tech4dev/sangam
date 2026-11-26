@@ -11,6 +11,7 @@ import pytest
 from psycopg.rows import dict_row
 
 from app.ingest.refresh import baseline
+from app.ingest.research import saved
 
 DSN = os.environ.get("TEST_DATABASE_URL", "postgresql://sangam:sangam@localhost:5433/sangam")
 
@@ -64,3 +65,13 @@ async def test_wrong_entity_is_ignored_and_old_rows_are_counted(conn):
     await research(db, slug, date(2026, 11, 14), [await snapshot(db, url, "A")], status="wrong_entity")
     await research(db, slug, date(2026, 11, 15), None)
     assert await baseline.load(db, slug) == ([], 1)
+
+
+async def test_saved_research_is_found_by_whole_words(conn):
+    db, slug = conn
+    word = slug.rsplit("-", 1)[1]  # a short name unique to this test, like "ITC"
+    await db.execute("INSERT INTO entity_research (entity_name, canonical_name, slug, status, summary, entity_kind, "
+                     "researched_on) VALUES (%s, %s, %s, 'complete', 's', 'funder', %s)",
+                     (word, f"{word} Limited", slug, date(2026, 11, 14)))
+    assert await saved.latest(db, [f"S{word}h Foundation"], "funder", []) is None
+    assert (await saved.latest(db, [f"{word.upper()} Limited, Kolkata"], "funder", [])).slug == slug

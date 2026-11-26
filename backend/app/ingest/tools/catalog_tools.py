@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import Counter
 from typing import Any
 
 from langchain_core.tools import tool
@@ -380,7 +381,8 @@ async def research_goals(name: str, entity_kind: str, years: str = "") -> str:
                 )
             ).fetchone()
             held = await held_per_concept(conn, row["id"], entity_kind) if row else {}
-            saved = await saved_research.latest(conn, [name, row["name"] if row else ""], entity_kind, wanted)
+            # The asked name only: the catalog row above is a trigram match ("NRL" finds Piramal).
+            saved = await saved_research.latest(conn, [name], entity_kind, wanted)
         if (current := draft.CURRENT.get()) is not None:
             current.slug = saved.slug if saved else None
 
@@ -571,9 +573,7 @@ async def check_changes(name: str) -> str:
         if run is None or run["error"]:
             return (f"{slug}: the check failed ({run and run['error']}). NEXT: research the open gaps; "
                     "pages saved research already read answer ALREADY READ.")
-        counts: dict[str, int] = {}
-        for c in run["checks"]:
-            counts[c["status"]] = counts.get(c["status"], 0) + 1
+        counts = Counter(c["status"] for c in run["checks"])
         changed = [f"{c['url']} ({c['status']})" for c in run["checks"]
                    if c["status"] in (*decision.ACT_ON, compare.DIFFERS)]
         sources = ", ".join(f"{n} {status}" for status, n in sorted(counts.items())) or "none"

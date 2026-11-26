@@ -123,3 +123,15 @@ class TestGoals:
 def test_saved_research_is_matched_by_name_never_by_trigram_similarity():
     # "NRL Foundation" scored 0.48 against "Piramal Foundation", and its researcher was told Piramal's research was on file.
     assert "similarity(" not in saved_research.LATEST_SQL
+
+
+def test_a_name_matches_whole_words_only_and_nothing_in_it_is_a_wildcard():
+    # "ITC" inside "Switch Foundation" once made a Switch run a top-up of ITC.
+    assert "ILIKE" not in saved_research.LATEST_SQL and "[^a-z0-9]+" in saved_research.LATEST_SQL
+
+
+async def test_the_lookup_sends_words_not_the_raw_name():
+    conn = ScriptConn([])
+    assert await saved_research.latest(conn, ["HCL_Tech 100%", "%%"], "funder", []) is None
+    [(_sql, params)] = conn.calls
+    assert params["within"] == "% hcl tech 100 %" and params["words"] == " hcl tech 100 "

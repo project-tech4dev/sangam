@@ -380,17 +380,29 @@ def with_saved_counts(result: Any, current: draft.Draft | None) -> Any:
     return Command(graph=result.graph, update={**update, "messages": messages}, resume=result.resume, goto=result.goto)
 
 
+# The one supervisor tool that reads the web.
+CHECKS_PAGES = "check_changes"
+
+
 class ChosenSources(AgentMiddleware):
     """The supervisor's half: no subagent before the person answers choose_sources, and each one launched
     carries that answer, so the subagent's own RunSources can enforce it."""
 
     def _sources(self, request: Any) -> run_sources.Sources | ToolMessage | None:
-        if request.tool_call.get("name") != "task":
+        name = request.tool_call.get("name")
+        if name not in ("task", CHECKS_PAGES):
             return None
         try:
             chosen = run_sources.chosen(_messages(request.state))
         except Exception:  # noqa: BLE001 - unreadable state fails closed
             chosen = None
+        if name == CHECKS_PAGES:
+            # It fetches the saved research's public pages itself, so it needs the person's web tick.
+            if chosen is None:
+                return _not_chosen(request.tool_call, "REFUSED: call choose_sources first, on its own, and wait "
+                                   "for the person's answer before checking pages.")
+            return None if chosen.web else _not_chosen(request.tool_call, run_sources.refusal(
+                chosen, "read_page", {}) or "REFUSED: public websites were not chosen.")
         return chosen or _not_chosen(request.tool_call, (
             "REFUSED: call choose_sources first, on its own, and wait for the person's answer before "
             "launching any subagent."))

@@ -247,6 +247,16 @@ class TestChosenAndRunSources:
         out = mw.ChosenSources().wrap_tool_call(tool_request("task"), lambda r: pytest.fail("launched"))
         assert "choose_sources first" in out.content
 
+    def test_check_changes_waits_for_the_answer_and_needs_the_web_tick(self):
+        never = lambda r: pytest.fail("checked")
+        out = mw.ChosenSources().wrap_tool_call(tool_request("check_changes"), never)
+        assert out.status == "error" and "choose_sources first" in out.content
+        vault_only = tool_request("check_changes", messages=answered({"web": False, "vault_org": 3}))
+        assert "public websites" in mw.ChosenSources().wrap_tool_call(vault_only, never).content
+        web = tool_request("check_changes", messages=answered({"web": True}))
+        assert mw.ChosenSources().wrap_tool_call(web, lambda r: "checked") == "checked"
+        assert run_sources.CURRENT.get() is None
+
     def test_other_tools_pass(self):
         assert mw.ChosenSources().wrap_tool_call(tool_request("read_page"), lambda r: "ok") == "ok"
 

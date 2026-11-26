@@ -286,8 +286,7 @@ def _kept_label(head: dict[str, Any], prior: dict[str, Any], found: bool) -> dic
 def _merged(head: dict[str, Any], current: draft.Draft, prior: dict[str, Any] | None,
             earlier: list[dict[str, Any]] = ()) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """This run's draft over the row saved today, so a second save adds to the first and never shrinks it; and the
-    refresh's carried findings, which were checked when first saved and are kept beside it unchecked.
-    A first save today starts from the newest earlier day's open gaps, less those this run answered."""
+    refresh's carried findings, kept beside it unchecked; a first save today starts from the last day's open gaps."""
     if head["status"] == "wrong_entity":
         return {**head, "findings": current.findings, "gaps": _fitting(current.gaps, head),
                 "unplaced": current.unplaced}, []
@@ -359,7 +358,9 @@ async def save_research(
     # What the tools fetched in this researcher's run, not what the model says it read; None outside a run.
     collected = snapshots.COLLECTED.get()
     try:
-        slug = slugify(canonical_name or entity_name)
+        # A top-up saves under the research it builds on, whatever spelling of the name this run used.
+        slug = (current.slug if current.slug and status != "wrong_entity" else None) or slugify(
+            canonical_name or entity_name)
         pool = get_pool()
         async with pool.connection() as conn:
             if entity_kind == "org" and not caller.is_staff and not await _may_research(

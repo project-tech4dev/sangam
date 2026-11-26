@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
@@ -21,12 +22,14 @@ async def earlier_rows(conn: Any, slug: str) -> list[dict[str, Any]]:
     return [dict(r) for r in await (await conn.execute(EARLIER_SQL, (slug,))).fetchall()]
 
 
-# By slug, or one name inside the other ("HCL Technologies" for HCL Technologies Limited); never trigram similarity,
-# which scores "NRL Foundation" 0.48 against "Piramal Foundation".
-LATEST_SQL = """
+# By slug, or one name inside the other on word boundaries ("HCL Technologies" for HCL Technologies Limited, never
+# "ITC" for Switch Foundation); never trigram similarity, which scores "NRL Foundation" 0.48 against Piramal.
+_WORDS = "' ' || trim(regexp_replace(lower({}), '[^a-z0-9]+', ' ', 'g')) || ' '"
+LATEST_SQL = f"""
     SELECT slug, entity_kind, researched_on, gaps, COALESCE(canonical_name, entity_name) AS name FROM entity_research
-    WHERE (slug = %(slug)s OR entity_name ILIKE %(like)s OR canonical_name ILIKE %(like)s
-           OR %(name)s ILIKE '%%' || COALESCE(canonical_name, entity_name) || '%%')
+    WHERE (slug = %(slug)s
+           OR {_WORDS.format("entity_name")} LIKE %(within)s OR {_WORDS.format("canonical_name")} LIKE %(within)s
+           OR %(words)s LIKE '%%' || {_WORDS.format("COALESCE(canonical_name, entity_name)")} || '%%')
       AND status <> 'wrong_entity' AND entity_kind IN ('funder', 'org')
       AND (%(kind)s::text IS NULL OR entity_kind = %(kind)s)
     ORDER BY slug = %(slug)s DESC, length(COALESCE(canonical_name, entity_name)) DESC,
@@ -61,8 +64,11 @@ async def latest(conn: Any, names: list[str], entity_kind: str | None, wanted: l
     """The newest saved research for any of names, and what it leaves open; None when there is none."""
     row = None
     for name in dict.fromkeys(n for n in names if n):
-        row = row or await (await conn.execute(
-            LATEST_SQL, {"slug": slugify(name), "like": f"%{name}%", "name": name, "kind": entity_kind})).fetchone()
+        # Letters and digits only, so nothing in a name is a LIKE wildcard.
+        if not (words := " ".join(re.findall(r"[a-z0-9]+", name.lower()))):
+            continue
+        row = row or await (await conn.execute(LATEST_SQL, {
+            "slug": slugify(name), "within": f"% {words} %", "words": f" {words} ", "kind": entity_kind})).fetchone()
     if not row:
         return None
     rows = await (await conn.execute(FOUND_SQL, (row["slug"], row["entity_kind"]))).fetchall()

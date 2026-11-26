@@ -131,15 +131,19 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   research row of the same entity already read (`source_snapshots` joined to `entity_research.snapshot_ids`, on the
   slug `research_goals` matched) answers `ALREADY READ` with the date, not its text; a second `read_page` in the same
   run sends the text, so a researcher who needs it for an open item is never blocked. Another entity's researcher, or a
-  first research, always gets the text. `fetch_document` says the same in its reply. A host that timed
-  out twice in a day is not asked again (in memory: a restart forgets it), and a document gives up after 30 s with
+  first research, always gets the text, and so does a page only a `wrong_entity` run read. `fetch_document` says the
+  same in its reply. A host that timed out twice in an hour is not asked again (in memory, shared by every run on the
+  instance, so the window is short; a restart forgets it), and a document gives up after 30 s with
   no bytes, not 120 s, because NSE held nine reads for 8 minutes in `7925d873`.
 - **Research on a later day is a top-up.** `research_goals` leads with the newest saved row's open gaps and the
   fields no saved row answers (`contract.holes`), and says the saved findings are kept. `save_research` lets earlier
   days' findings of the same kind answer the contract (`unanswered(..., held=)`), so a run that filled two gaps is not
   refused for the 26 fields it never looked at, and a first save today starts from the newest earlier row's gaps less
   those this run answered, since the brief shows the newest row's gaps only. A top-up that found nothing keeps the
-  saved status rather than `not_found`.
+  saved status rather than `not_found`, and saves under the slug `research_goals` matched, whatever spelling of the
+  name it used. Saved research is matched by slug or by one name inside the other on whole words ("HCL Technologies"
+  for HCL Technologies Limited, never "ITC" for Switch Foundation), never by trigram similarity, which matched
+  "NRL Foundation" to Piramal.
 - **Research again starts with the free change check.** For staff with the web open, the supervisor calls
   `check_changes(name)` before launching anything: `refresh/service.run` at free depth (fetch, fingerprint, diff,
   evidence; no model), recorded as a `source_check_runs` row like the screen's, plus the saved research's open items.
@@ -147,7 +151,8 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   (fields never answered, a new year, gaps `not_reached`), since a `not_stated` or `blocked` gap was already tried;
   with none, no researcher runs. Changed pages are named in the report with `/import/check/<slug>`, whose update reads
   only what changed; a redesign or no recorded versions is a full research. The matched name is printed, so a wrong
-  match is researched in full. HCL's check took 8 s for 18 sources.
+  match is researched in full. It fetches pages itself, so `ChosenSources` refuses it before `choose_sources` is
+  answered or when public websites were not ticked. HCL's check took 8 s for 18 sources.
 - **A metric's period has four shapes**, because it is part of the metric's key: `FY2024-25`, `CY2025`,
   `cumulative to <date>`, `as of <date>` (`rows.shape_period`). A save rewrites an exact match and refuses the rest;
   research read back for promotion (`STORED` context) is rewritten the same way but never refused, so a rule added
