@@ -219,12 +219,17 @@ class TestEachTierGetsItsModel:
 
         c = "compat:open-model"
         url = {"compat_base_url": "https://llm.example/v1", "compat_api_key": "k"}
+        judge = {"source_check_judge_model": c}
         with pytest.raises(ValidationError, match="MODEL, UTILITY_MODEL, SQL_AUDIT_MODEL"):
             Settings(_env_file=None, research_model=c, **url)
         with pytest.raises(ValidationError, match="SQL_AUDIT_MODEL"):
-            Settings(_env_file=None, model=c, research_model=c, utility_model=c, **url)
-        assert Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off", **url)
-        assert Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model=c, **url)
+            Settings(_env_file=None, model=c, research_model=c, utility_model=c, **judge, **url)
+        with pytest.raises(ValidationError, match="SOURCE_CHECK_JUDGE_MODEL"):
+            Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off", **url)
+        assert Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off",
+                        **judge, **url)
+        assert Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model=c,
+                        **judge, **url)
 
     def test_compat_tiers_refuse_to_boot_without_their_endpoint(self):
         from pydantic import ValidationError
@@ -234,7 +239,8 @@ class TestEachTierGetsItsModel:
         c = "compat:open-model"
         for missing in ({"compat_api_key": "k"}, {"compat_base_url": "https://llm.example/v1"}):
             with pytest.raises(ValidationError, match="COMPAT_BASE_URL and COMPAT_API_KEY"):
-                Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off", **missing)
+                Settings(_env_file=None, model=c, research_model=c, utility_model=c, sql_audit_model="off",
+                         source_check_judge_model=c, **missing)
 
     def test_the_module_level_specs_are_not_mutated(self, build_import):
         # build_ingest_agent copies each spec before adding a model, so builds cannot leak between them.

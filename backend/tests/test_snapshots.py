@@ -51,6 +51,13 @@ async def test_a_failed_fingerprint_lookup_is_none(monkeypatch):
     assert await snapshots.known_fingerprint("archive/key.pdf") is None
 
 
+async def test_promotion_reads_the_version_the_run_read(monkeypatch):
+    conn = ScriptConn([("SELECT archive_key FROM source_snapshots", {"archive_key": "aa/read-then.pdf"})])
+    assert await snapshots.read_key(conn, [3, 4], URL) == "aa/read-then.pdf"
+    assert conn.sql("SELECT archive_key")[0][1] == ([3, 4], URL)
+    assert await snapshots.read_key(ScriptConn(), None, URL) is None
+
+
 async def test_a_query_error_is_none_too(monkeypatch):
     conn = ScriptConn([("INSERT INTO source_snapshots", RuntimeError("constraint"))])
     monkeypatch.setattr(snapshots, "get_pool", lambda: ScriptPool(conn))

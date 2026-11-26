@@ -113,7 +113,8 @@ async def _stages(slug: str, until: str, scratch: Path, baselines: list[baseline
         print(judge.describe(slug, checks))
         if until == "judge":
             return None
-        known_urls = {b.url for b in baselines}
+        # Rows saved before snapshots have no baseline, but their cited URLs were read all the same.
+        known_urls = {b.url for b in baselines} | set(findings)
         known_hashes = {b.text_hash for b in baselines} | {t.fingerprint for t in today if t.fingerprint}
         async with httpx.AsyncClient() as client:
             found = await discover.run(subject, known_urls, known_hashes, context,

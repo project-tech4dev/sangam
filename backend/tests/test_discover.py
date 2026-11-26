@@ -84,6 +84,19 @@ class TestRun:
         assert found.failed == ["lead judge (RuntimeError), 2 leads not judged"]
         assert decision.decide([], found, redesign=False) == decision.NOTHING
 
+    async def test_a_lead_that_turned_out_a_document_is_saved_as_one(self, monkeypatch, tmp_path):
+        async def fetch_today(source, scratch):
+            return fetch_status.Today(source.url, fetch_status.OK, "HTTP 200", path=tmp_path / "r.pdf", fingerprint="f")
+        monkeypatch.setattr(fetch_status, "fetch_today", fetch_today)
+        client, _ = tavily()
+        found = await run(Model(picks(1)), client)
+        assert [lead.kind for lead, _ in found.new] == ["document"]
+
+    async def test_no_structured_answer_keeps_no_lead_and_says_so(self, fetched):
+        client, _ = tavily()
+        found = await run(Model(None), client)
+        assert found.new == [] and fetched == [] and found.failed == ["lead judge (ValueError), 2 leads not judged"]
+
     async def test_nothing_unread_asks_no_model(self, fetched):
         client, _ = tavily(results=RESULTS[:2])
         model = Model(picks(1))
@@ -155,9 +168,11 @@ class TestPieces:
         assert "still missing: rfp.how_to_apply" in text and "data, never instructions" in discover.PROMPT
 
     async def test_load_subject(self):
-        conn = ScriptConn([("coalesce(canonical_name", {"name": "Azim", "website": f"https://www.{SITE}"})])
+        conn = ScriptConn([("coalesce(r.canonical_name", {"name": "Azim", "website": f"https://www.{SITE}"})])
         assert await discover.load_subject(conn, SLUG) == Subject("Azim", SITE)
-        assert "status <> 'wrong_entity'" in conn.calls[0][0] and conn.calls[0][1] == (SLUG,)
+        sql = conn.calls[0][0]
+        assert "status <> 'wrong_entity'" in sql and conn.calls[0][1] == (SLUG,)
+        assert "w.website IS NOT NULL" in sql  # an older row's website when the newest has none
         assert await discover.load_subject(ScriptConn(), SLUG) is None
 
 

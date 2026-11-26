@@ -37,17 +37,20 @@ class Today:
 
 async def fetch_today(source: Source, scratch: Path) -> Today:
     """Today's text for one source; a document gets its own folder under scratch, so two annual-report.pdf never collide."""
-    if source.kind == "document":
-        got = await download(source.url, None, Path(tempfile.mkdtemp(dir=scratch)))
-        text = await asyncio.to_thread(document_text, got.path) if got.path else ""
-        today = classify(got, text, getattr(source, "text_hash", None))
-        if today.status != OK or today.path is None:
-            return today
-        # The tools' own rule, page cap included, or a long report would never match its baseline.
-        return replace(today, fingerprint=document_hash(today.path, text))
-    got = await fetch_page(source.url)
-    today = classify(got, got.text, getattr(source, "text_hash", None))
-    return replace(today, fingerprint=text_hash(today.text)) if today.status == OK else today
+    known = getattr(source, "text_hash", None)
+    if source.kind != "document":
+        got = await fetch_page(source.url)
+        # A new lead from /download?id=42 is a page by its URL; read it as the document it serves.
+        if not (got.document and known is None):
+            today = classify(got, got.text, known)
+            return replace(today, fingerprint=text_hash(today.text)) if today.status == OK else today
+    got = await download(source.url, None, Path(tempfile.mkdtemp(dir=scratch)))
+    text = await asyncio.to_thread(document_text, got.path) if got.path else ""
+    today = classify(got, text, known)
+    if today.status != OK or today.path is None:
+        return today
+    # The tools' own rule, page cap included, or a long report would never match its baseline.
+    return replace(today, fingerprint=document_hash(today.path, text))
 
 
 async def fetch_all(sources: list[Source], scratch: Path) -> list[Today]:

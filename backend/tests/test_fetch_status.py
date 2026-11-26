@@ -74,6 +74,21 @@ class TestClassify:
 
 
 class TestFetchToday:
+    async def test_a_lead_without_an_extension_that_serves_a_pdf_is_read_as_one(self, monkeypatch, tmp_path):
+        async def fetch_page(url):
+            return Fetched(url, final_url=url, status=200, document="PDF")
+
+        async def download(url, filename, directory):
+            (directory / "r.pdf").write_bytes(b"%PDF report")
+            return Fetched(url, final_url=url, status=200, path=directory / "r.pdf")
+        monkeypatch.setattr(fetch_status, "fetch_page", fetch_page)
+        monkeypatch.setattr(fetch_status, "download", download)
+        monkeypatch.setattr(fetch_status, "document_text", lambda path: "Annual report")
+        lead = Lead("https://funder.example/download?id=42", "Annual report", "", "page")
+        assert (await fetch_status.fetch_today(lead, tmp_path)).status == OK
+        page = await fetch_status.fetch_today(source("https://funder.example/download?id=42"), tmp_path)
+        assert page.status == UNVERIFIED  # a baseline page that now serves a PDF is still not compared as one
+
     async def test_a_discovered_lead_has_no_baseline_and_is_still_fetched(self, monkeypatch):
         async def fetch_page(url):
             return Fetched(url, final_url="https://funder.example/", status=200, text="Welcome")

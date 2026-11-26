@@ -44,8 +44,9 @@ async def write_documents(
 
     async def document(url: str, title: str | None, source_name: str | None, as_of: str | None,
                        doc_type: str | None) -> tuple[int, str]:
-        # Whether the research run archived this URL; Storage being unreachable returns None, never raises.
-        key = await storage.archived_key(storage.SOURCE_ARCHIVE, url)
+        # The version this run read; Storage's newest copy only for a row saved before snapshots.
+        key = await snapshots.read_key(conn, row.get("snapshot_ids"), url) \
+            or await storage.archived_key(storage.SOURCE_ARCHIVE, url)
         digest = storage.hash_from_key(key) if key else None
         doc_type = doc_type or ("web_page" if (key or "").endswith(".md") or not _is_file(url) else "other")
         if key:

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.ingest.refresh import baseline, change_check, diff, discover, fetch_status, judge, save
+from app.ingest.refresh import baseline, change_check, diff, discover, evidence, fetch_status, judge, save
 from tests.cov_ingest_fakes import ScriptConn, ScriptPool
 
 SLUG = "azim-premji-foundation"
@@ -129,10 +129,13 @@ class TestStages:
         monkeypatch.setattr(change_check, "resolve_model", lambda spec: SimpleNamespace(
             with_structured_output=lambda schema: SimpleNamespace(ainvoke=ainvoke)))
         monkeypatch.setattr(discover, "run", search)
+        # A row saved before snapshots cites a page that has no baseline; it was read all the same.
+        monkeypatch.setattr(evidence, "load_findings", lambda conn, slug: _value({"https://a.org/old": ["Old."]}))
         await change_check.main(SLUG, "judge")
         assert seen == {}
         await change_check.main(SLUG, "discover")
-        assert seen["urls"] == {"https://a.org/about", CONTACT} and row("x")["text_hash"] in seen["hashes"]
+        assert seen["urls"] == {"https://a.org/about", CONTACT, "https://a.org/old"}
+        assert row("x")["text_hash"] in seen["hashes"]
         assert f"{SLUG}: 3 searches" in capsys.readouterr().out
 
     @pytest.mark.parametrize("write", [True, False])
