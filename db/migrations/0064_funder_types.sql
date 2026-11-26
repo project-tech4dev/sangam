@@ -4,26 +4,23 @@
 
 CREATE FUNCTION pg_temp.funder_type_now(t text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
   SELECT CASE
+           WHEN t IS NULL OR btrim(t) = '' THEN NULL
            WHEN t = 'corporate_csr' THEN 'csr_company'
            WHEN t = 'corporate_foundation' THEN 'csr_foundation'
            WHEN t IN ('family_trust', 'family_trust_network') THEN 'private_foundation'
-           WHEN btrim(t) = '' THEN NULL
            WHEN t IN ('csr_company', 'csr_foundation', 'private_foundation', 'hni', 'intermediary',
                       'international_agency', 'bilateral_multilateral', 'government', 'other') THEN t
            ELSE 'other'
          END $$;
 
--- Undo matches a funder by the row a save logged, so the saves that could be undone before this keep their match.
-CREATE TEMP TABLE undoable ON COMMIT DROP AS
-  SELECT w.id AS write_id, f.id AS funder_id
-    FROM catalog_writes w JOIN funders f ON f.id = (w.new_row->>'id')::bigint
-   WHERE w.table_name = 'funders' AND to_jsonb(f.*) = w.new_row;
+-- A label the mapping does not carry over by name, kept in profile.source_funder_type.
+CREATE FUNCTION pg_temp.keeps_label(t text) RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
+  SELECT btrim(coalesce(t, '')) <> '' AND t NOT IN (
+           'corporate_csr', 'corporate_foundation', 'other', 'csr_company', 'csr_foundation', 'private_foundation',
+           'hni', 'intermediary', 'international_agency', 'bilateral_multilateral', 'government') $$;
 
-UPDATE funders
-   SET profile = profile || jsonb_build_object('source_funder_type', funder_type)
- WHERE btrim(coalesce(funder_type, '')) <> '' AND funder_type NOT IN (
-         'corporate_csr', 'corporate_foundation', 'other', 'csr_company', 'csr_foundation', 'private_foundation',
-         'hni', 'intermediary', 'international_agency', 'bilateral_multilateral', 'government');
+UPDATE funders SET profile = profile || jsonb_build_object('source_funder_type', funder_type)
+ WHERE pg_temp.keeps_label(funder_type);
 
 UPDATE funders SET funder_type = pg_temp.funder_type_now(funder_type) WHERE funder_type IS NOT NULL;
 
@@ -39,14 +36,24 @@ ALTER TABLE funders ADD COLUMN IF NOT EXISTS funder_group text GENERATED ALWAYS 
     WHEN funder_type = 'other' THEN 'other'
   END) STORED;
 
-UPDATE catalog_writes w SET new_row = to_jsonb(f.*)
-  FROM undoable u JOIN funders f ON f.id = u.funder_id
- WHERE w.id = u.write_id;
--- A row undo would restore must pass the CHECK below.
-UPDATE catalog_writes
-   SET old_row = jsonb_set(old_row, '{funder_type}',
-                           coalesce(to_jsonb(pg_temp.funder_type_now(old_row->>'funder_type')), 'null'::jsonb))
- WHERE table_name = 'funders' AND old_row->>'funder_type' IS NOT NULL;
+-- Undo compares a funder with the rows a save logged and restores the older one, so every logged funder row gets
+-- the same change as the live rows above. The roll-up here must match funder_group's CASE.
+CREATE FUNCTION pg_temp.funder_row_now(r jsonb) RETURNS jsonb LANGUAGE sql AS $$
+  SELECT r
+      || jsonb_build_object('funder_type', pg_temp.funder_type_now(r->>'funder_type'),
+                            'money_origin', coalesce(r->>'money_origin', 'unknown'),
+                            'funder_group', (SELECT g FROM (VALUES
+                                ('csr_company', 'corporate'), ('csr_foundation', 'corporate'), ('hni', 'hni'),
+                                ('private_foundation', 'philanthropy'), ('intermediary', 'philanthropy'),
+                                ('international_agency', 'philanthropy'), ('bilateral_multilateral', 'govt'),
+                                ('government', 'govt'), ('other', 'other')) AS m(t, g)
+                             WHERE t = pg_temp.funder_type_now(r->>'funder_type')))
+      || CASE WHEN pg_temp.keeps_label(r->>'funder_type') THEN jsonb_build_object('profile',
+              coalesce(r->'profile', '{}'::jsonb) || jsonb_build_object('source_funder_type', r->>'funder_type'))
+              ELSE '{}'::jsonb END $$;
+
+UPDATE catalog_writes SET new_row = pg_temp.funder_row_now(new_row), old_row = pg_temp.funder_row_now(old_row)
+ WHERE table_name = 'funders';
 
 -- Reviewed by slug (docs/features/2026-11-25-funder-types-and-fcra.md). A slug this database lacks is skipped.
 -- money_origin is set only where the funder's own website shows where its money comes from; that is the source,

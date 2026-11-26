@@ -43,7 +43,7 @@ type beats `other`, whatever the source. A type the reviewed list in `0064` repl
 too, and a funder marked foreign there always has its website as `money_origin_source`.
 
 Those reviewed rows carry `profile.funder_type_reviewed`, and no re-import changes their type; staff change it by hand.
-`0064` also refreshes Import's undo log (`catalog_writes`), so a save that could be undone before it still can. A save
+`0064` makes the same change to every funder row in Import's undo log (`catalog_writes`), so a save that could be undone before it still can. A save
 that wrote one of the reviewed rows cannot, as after any later edit.
 
 ## Foreign sources
