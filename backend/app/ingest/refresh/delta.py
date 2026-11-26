@@ -215,9 +215,13 @@ def fit(name: str, srcs: list[Source], context: Context, kind: str | None = None
 async def propose(model: Any, grader: Any, question: str) -> tuple[Delta, list[str]]:
     """The delta, checked once against the rubric and revised once when it fails; a failed grader is no veto."""
     delta: Delta = await model.ainvoke([SystemMessage(PROMPT), HumanMessage(question)])
+    if delta is None:  # a refusal or a cut-off reply parses to nothing; the caller reports it and saves nothing
+        raise ValueError("no structured answer")
     try:
         grade: Grade = await grader.ainvoke([SystemMessage(RUBRIC),
                                              HumanMessage(f"{question}\n\n<delta>\n{delta.model_dump_json()}\n</delta>")])
+        if grade is None:
+            raise ValueError("no structured answer")
     except Exception as exc:  # noqa: BLE001 — the code's own checks still run on the delta
         logger.warning("delta grader failed: %s", exc)
         return delta, []
@@ -228,6 +232,8 @@ async def propose(model: Any, grader: Any, question: str) -> tuple[Delta, list[s
         revised: Delta = await model.ainvoke([SystemMessage(PROMPT), HumanMessage(
             f"{question}\n\nYour last answer:\n{delta.model_dump_json()}\n\nA reviewer found these problems; fix them:"
             f"\n{fixes}")])
+        if revised is None:
+            raise ValueError("no structured answer")
     except Exception as exc:  # noqa: BLE001 — the first delta still passes the code's own checks
         logger.warning("delta revision failed: %s", exc)
         return delta, [*grade.problems, f"the revision failed ({type(exc).__name__}), so the first answer stands"]
