@@ -20,7 +20,7 @@ from app.core.config import Settings
 from app.ingest import brief
 from app.ingest.catalog.writer import ensure_document
 from app.ingest.reading import fetch
-from app.ingest.research.findings import EntityResearch
+from app.ingest.research import draft
 from app.ingest.tools import research_tools as research
 from app.integrations import storage
 
@@ -713,10 +713,12 @@ class TestSavingResearchPublishesTheBrief:
     a dead "Research brief" link until someone remembered in the afternoon.
     """
 
-    FINDINGS = EntityResearch(
-        entity_name="Testcorp Foundation", entity_kind="funder", status="not_found",
-        summary="A foundation that exists only inside this test, and nowhere else.",
-    )
+    HEAD = {"entity_name": "Testcorp Foundation", "entity_kind": "funder", "status": "not_found",
+            "summary": "A foundation that exists only inside this test, and nowhere else."}
+
+    async def save(self) -> str:
+        with draft.drafting():
+            return await research.save_research.ainvoke(self.HEAD)
 
     @pytest.fixture
     def saved(self, db, monkeypatch):
@@ -732,7 +734,7 @@ class TestSavingResearchPublishesTheBrief:
         return published
 
     async def test_the_brief_is_published_by_the_call_that_saves_it(self, saved):
-        result = await research.save_research.ainvoke({"findings": self.FINDINGS})
+        result = await self.save()
         assert "Saved as entity_research" in result
 
         assert len(saved) == 1, "saving research did not publish a brief"
@@ -746,13 +748,13 @@ class TestSavingResearchPublishesTheBrief:
     async def test_the_reply_does_not_claim_publication_that_did_not_happen(self, db, monkeypatch):
         monkeypatch.setattr(research, "get_pool", lambda: _PoolOf(db))
         monkeypatch.setattr(brief.storage, "upload", lambda *a, **k: _none())
-        result = await research.save_research.ainvoke({"findings": self.FINDINGS})
+        result = await self.save()
         assert "make client-docs" in result and "is published" not in result
 
     async def test_the_brief_renders_from_the_row_as_stored(self, db, saved):
         """Not from the pydantic object: the row is what `make client-docs`
         renders, and two renderers of one brief would drift."""
-        await research.save_research.ainvoke({"findings": self.FINDINGS})
+        await self.save()
         row = await (await db.execute(
             "SELECT * FROM entity_research WHERE slug = 'testcorp-foundation'"
         )).fetchone()

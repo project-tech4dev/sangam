@@ -564,6 +564,25 @@ class TestSaveResearch:
         [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
         assert "org_identifier" not in params[14]
 
+    async def test_a_run_that_found_nothing_keeps_the_mornings_label(self, saving):
+        # The evening's not_found / unknown would hide 1 finding from refresh and promotion.
+        saving.conn.on("SELECT fact_count", prior_row([spend(project_name="Morning")]))
+        out = await self.save(research(findings=[], status="not_found", entity_kind="unknown", stopped_reason=None))
+        assert out.startswith("Saved as"), out
+        [(_sql, params)] = saving.conn.sql("INSERT INTO entity_research")
+        assert (params[2], params[5], params[6]) == ("funder", "partial", "Stopped early.")
+
+    async def test_a_row_of_the_other_kind_is_replaced_not_merged(self, saving):
+        # A funder's partner findings carry no tier, so merged into an org they would refuse every save.
+        saving.conn.on("SELECT fact_count", prior_row([spend(project_name="Funder")], entity_kind="org"))
+        out = await self.save(research())
+        assert "Merged" not in out and "replaced the 1 findings saved earlier today as a org" in out
+        assert [f["project_name"] for f in self.inserted(saving)] == ["Sports scholarships"]
+
+    async def test_one_object_is_recorded_as_a_list_of_one(self):
+        schema = research_tools.record_findings.tool_call_schema.model_json_schema()
+        assert any(t.get("type") == "object" for t in schema["properties"]["findings"]["anyOf"])
+
     async def test_a_members_own_earlier_save_may_be_added_to(self, saving):
         saving.conn.on("SELECT fact_count", prior_row(researched_by=MEMBER.user_id))
         assert (await self.save(research(), scope=MEMBER)).startswith("Saved as")

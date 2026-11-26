@@ -356,7 +356,9 @@ def _open_run(stack: ExitStack) -> draft.Draft:
 
 def with_saved_counts(result: Any, current: draft.Draft | None) -> Any:
     """The researcher's summary with its counts taken from what was saved, not from what the model wrote."""
-    if current is None or current.saved is None or not isinstance(result, Command):
+    if current is None or not isinstance(result, Command):
+        return result
+    if current.saved is None and not (current.findings or current.gaps):
         return result
     update = result.update if isinstance(result.update, dict) else {}
     messages = list(update.get("messages") or [])
@@ -368,8 +370,13 @@ def with_saved_counts(result: Any, current: draft.Draft | None) -> Any:
         summary = None
     if not isinstance(summary, dict) or "fact_count" not in summary:
         return result
-    saved = {k: v for k, v in current.saved.items() if k != "status"}
-    messages[-1] = messages[-1].model_copy(update={"content": json.dumps({**summary, **saved, "saved": True})})
+    if current.saved is None:
+        # Recorded but never saved: the draft dies with the run, so the summary must not claim a row.
+        saved = {"saved": False, "fact_count": 0,
+                 "not_saved": f"{len(current.findings)} findings were recorded but no save succeeded"}
+    else:
+        saved = {**{k: v for k, v in current.saved.items() if k != "status"}, "saved": True}
+    messages[-1] = messages[-1].model_copy(update={"content": json.dumps({**summary, **saved})})
     return Command(graph=result.graph, update={**update, "messages": messages}, resume=result.resume, goto=result.goto)
 
 

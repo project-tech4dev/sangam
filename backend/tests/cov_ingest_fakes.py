@@ -102,5 +102,6 @@ async def save_in_run(payload: dict[str, Any], scope: CallerScope | None = None)
 
 def prior_row(findings: list[dict] = (), **over: Any) -> dict[str, Any]:
     """Today's entity_research row as save_research reads it back."""
-    return {"status": "partial", "fact_count": len(findings), "researched_by": None, "findings": list(findings), "gaps": [],
+    return {"status": "partial", "entity_kind": "funder", "stopped_reason": "Stopped early.",
+            "fact_count": len(findings), "researched_by": None, "findings": list(findings), "gaps": [],
             "sources_read": [], "snapshot_ids": [], "supersedes": [], **over}

@@ -296,6 +296,13 @@ class TestTheSummaryCountsComeFromTheSave:
         assert mw.with_saved_counts(result, draft.Draft()) is result
         assert mw.with_saved_counts(result, None) is result
 
+    def test_recorded_but_never_saved_says_so(self):
+        # The draft dies with the run, so "saved: true, 40 facts" from the model must not reach the supervisor.
+        current = draft.Draft(findings=[{"concept": "rfp"}] * 2)
+        out = mw.with_saved_counts(task_result(self.summary(saved=True, fact_count=40)), current)
+        summary = json.loads(out.update["messages"][-1].content)
+        assert (summary["saved"], summary["fact_count"]) == (False, 0) and "2 findings" in summary["not_saved"]
+
     def test_each_task_gets_its_own_draft_and_snapshot_list(self):
         seen = {}
 

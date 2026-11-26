@@ -226,9 +226,9 @@ _NO_RUN = "{} failed: no research run is open. Report what you found in your sum
 
 @tool
 async def record_findings(
-    findings: list[dict[str, Any]] | str | None = None,
-    gaps: list[dict[str, Any]] | str | None = None,
-    unplaced: list[dict[str, Any]] | str | None = None,
+    findings: list[dict[str, Any]] | dict[str, Any] | str | None = None,
+    gaps: list[dict[str, Any]] | dict[str, Any] | str | None = None,
+    unplaced: list[dict[str, Any]] | dict[str, Any] | str | None = None,
 ) -> str:
     """Record what you found, a few items at a time, as you go. Nothing recorded needs sending again.
 
@@ -268,6 +268,17 @@ def _notes(prior: dict[str, Any] | None, stored: list[dict[str, Any]]) -> list[d
             if not e.get("updated") or tuple(e["key"]) in keys]
 
 
+def _kept_label(head: dict[str, Any], prior: dict[str, Any], found: bool) -> dict[str, Any]:
+    """A run that found nothing, or could not tell the kind, does not relabel what earlier today's run found."""
+    if head["entity_kind"] == "unknown" and prior["entity_kind"] != "unknown":
+        head = {**head, "entity_kind": prior["entity_kind"]}
+    if found and head["status"] == "not_found":
+        status = prior["status"] if prior["status"] not in ("not_found", "wrong_entity") else "partial"
+        head = {**head, "status": status, "stopped_reason": head["stopped_reason"] or prior["stopped_reason"]
+                or "This run found nothing more; the findings are from earlier today's research."}
+    return head
+
+
 def _merged(head: dict[str, Any], current: draft.Draft,
             prior: dict[str, Any] | None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """This run's draft over the row saved today, so a second save adds to the first and never shrinks it; and the
@@ -283,6 +294,7 @@ def _merged(head: dict[str, Any], current: draft.Draft,
     findings = merge_findings([{"findings": before}, {"findings": current.findings}])
     kept = {fact_key(f) for f in findings}
     carried = [f for f in before if f.get(CARRIED) and fact_key(f) not in kept]
+    head = _kept_label(head, prior, bool(findings))
     return {
         **head,
         "findings": findings,
@@ -347,7 +359,8 @@ async def save_research(
                 return _NGO_REFUSAL
             prior = await (
                 await conn.execute(
-                    "SELECT fact_count, status, researched_by, findings, gaps, sources_read, snapshot_ids, supersedes "
+                    "SELECT fact_count, status, entity_kind, stopped_reason, researched_by, findings, gaps, sources_read, "
+                    "snapshot_ids, supersedes "
                     "FROM entity_research WHERE slug = %s AND researched_on = current_date",
                     (slug,),
                 )
@@ -360,6 +373,12 @@ async def save_research(
             return (f"REFUSED, nothing saved: {slug} already holds {prior['fact_count']} findings on the right "
                     f"organisation today, which a wrong_entity save would erase. Report back status wrong_entity "
                     f"with saved=false.")
+        replaced = ""
+        if prior and "unknown" not in (prior["entity_kind"], entity_kind) and prior["entity_kind"] != entity_kind:
+            # One slug is one organisation, researched as one kind: the other kind's findings would fail its checks.
+            replaced = (f" It replaced the {prior['fact_count']} findings saved earlier today as a "
+                        f"{prior['entity_kind']}; say so in your summary.")
+            prior = None
         payload, carried = _merged(head, current, prior)
         staff_save = staff_save or any(is_staff_source_url(f.get("source_url") or "")
                                        for f in [*payload["findings"], *carried])
@@ -469,7 +488,7 @@ async def save_research(
             f"Saved as entity_research #{row['id']} ({slug}): {len(stored)} findings "
             f"across {found}; status {findings.status}. Report back with slug={slug!r} and "
             f"saved=true. {where}"
-            f"promote_research moves what has a writer into the catalog.{merged}{unextracted}{unread}"
+            f"promote_research moves what has a writer into the catalog.{merged}{replaced}{unextracted}{unread}"
         )
     except Exception as exc:
         if staff_save:
