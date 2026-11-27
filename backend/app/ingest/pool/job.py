@@ -71,18 +71,21 @@ async def process(pool: Any, row: dict[str, Any], research: Research) -> tuple[s
 
     summaries = await research(row)
     slugs = [s["slug"] for s in summaries if s.get("slug") and s.get("saved") is not False]
+    unsaved = {s["slug"] for s in summaries if s.get("saved") is False} - set(slugs)
     async with pool.connection() as conn, conn.transaction():
-        if summaries and (not slugs or len(slugs) < len(summaries)):  # a partial save could leave only a parent's
-            raise RuntimeError(f"researchers ran but {len(summaries) - len(slugs)} of {len(summaries)} saved nothing")
+        if summaries and not slugs:
+            raise RuntimeError(f"researchers ran but saved nothing (researchers: {len(summaries)})")
         if not slugs:
             earlier = await (await conn.execute(EARLIER, {"name": row["name"]})).fetchone()
             slugs = [earlier["slug"]] if earlier else []
-        await conn.execute(
-            "UPDATE entity_research SET run_id = %s "
-            "WHERE slug = ANY(%s) AND researched_on = current_date AND run_id IS NULL", (run_id, slugs))
         saved = await (await conn.execute(IDENTITY_CIN, (slugs,))).fetchall()
         if not saved:
             raise RuntimeError(f"research saved nothing (researchers: {len(summaries)})")
+        if unsaved and not named(saved, row["name"]):  # a parent's failed save is fine; the row's own is not
+            raise RuntimeError(f"{len(unsaved)} researcher(s) saved nothing and none saved is this funder's")
+        await conn.execute(
+            "UPDATE entity_research SET run_id = %s "
+            "WHERE slug = ANY(%s) AND researched_on = current_date AND run_id IS NULL", (run_id, slugs))
         found = pick(saved, row["name"])
         status, error = verdict(found)
         holder = await cin_holder(conn, found["cin"]) if found["cin"] else None
@@ -104,13 +107,17 @@ def verdict(saved: dict[str, Any]) -> tuple[str, str | None]:
     return "needs_review", f"research ended {saved['status']}"
 
 
+def named(saved: list[dict[str, Any]], name: str) -> list[dict[str, Any]]:
+    """The research whose entity or canonical name is this row's, case-folded."""
+    return [r for r in saved if name.casefold() in {(r["entity_name"] or "").casefold(), (r.get("canonical_name") or "").casefold()}]
+
+
 def pick(saved: list[dict[str, Any]], name: str) -> dict[str, Any]:
     """This row's own research; with several researched and none named, status 'unmatched' and no CIN, never a parent's."""
     usable = [r for r in saved if r["status"] != "wrong_entity"] or saved
-    names = {name.casefold()}
-    named = [r for r in usable if {(r["entity_name"] or "").casefold(), (r.get("canonical_name") or "").casefold()} & names]
-    if named:
-        return next((r for r in named if r["cin"]), named[0])
+    own = named(usable, name)
+    if own:
+        return next((r for r in own if r["cin"]), own[0])
     if len({r["slug"] for r in usable}) == 1:  # one research, however many identity findings it holds
         return next((r for r in usable if r["cin"]), usable[0])
     return {**usable[0], "cin": None, "status": "unmatched"}

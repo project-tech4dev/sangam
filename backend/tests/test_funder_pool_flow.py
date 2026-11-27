@@ -240,13 +240,34 @@ class TestProcess:
             await job.process(FakePool(conn), _row(), research)
         assert not conn.ran("SET run_id")
 
-    async def test_a_partial_save_does_not_leave_only_the_parent_s_research(self, conn, unmatched):
+    async def test_a_failed_save_of_the_row_s_own_research_is_not_covered_by_the_parent_s(self, conn, unmatched):
+        conn.replies["FROM entity_research r"] = [
+            {"slug": "acme-group", "entity_name": "Acme Group", "status": "complete", "cin": "L9"}]
+
         async def research(row):
             return [{"slug": "acme-ltd", "saved": False}, {"slug": "acme-group", "saved": True}]
 
-        with pytest.raises(RuntimeError, match="1 of 2 saved nothing"):
+        with pytest.raises(RuntimeError, match="none saved is this funder's"):
             await job.process(FakePool(conn), _row(), research)
         assert not conn.ran("SET run_id")
+
+    async def test_a_parent_s_failed_save_does_not_discard_the_row_s_research(self, conn, unmatched):
+        conn.replies["FROM entity_research r"] = [
+            {"slug": "acme-ltd", "entity_name": "Acme Ltd", "status": "complete", "cin": "L1"}]
+
+        async def research(row):
+            return [{"slug": "acme-ltd", "saved": True}, {"slug": "acme-group", "saved": False}]
+
+        assert (await job.process(FakePool(conn), _row(), research))[0] == "done"
+
+    async def test_a_researcher_relaunched_after_a_failed_save_is_not_a_failure(self, conn, unmatched):
+        conn.replies["FROM entity_research r"] = [
+            {"slug": "acme-limited", "entity_name": "Acme Limited", "status": "complete", "cin": "L1"}]
+
+        async def research(row):
+            return [{"slug": "acme-limited", "saved": False}, {"slug": "acme-limited", "saved": True}]
+
+        assert (await job.process(FakePool(conn), _row(), research))[0] == "done"
 
     async def test_a_parent_s_cin_is_never_stored_on_the_row(self, conn, unmatched):
         conn.replies["FROM entity_research r"] = [
