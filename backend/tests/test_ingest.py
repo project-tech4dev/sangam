@@ -1417,6 +1417,22 @@ class TestAnsweringANameWaitingForReview:
         assert response.status_code == 200 and response.json() == {"id": 4, "status": "accepted"}
         assert seen["same"] is True and seen["candidate_id"] == 9
 
+    async def test_the_answer_is_written_as_the_owner(self, client_for, monkeypatch):
+        from app.api.routes import ingest as ingest_api
+        from app.db.pool import CallerPool
+
+        pools = []
+
+        async def fake(pool, item_id, **kw):
+            pools.append(pool)
+            return {"id": item_id, "status": "rejected"}
+
+        monkeypatch.setattr("app.api.routes.ingest.repo.answer_queue", fake)
+        async with client_for(ingest_api.router) as client:
+            response = await client.post("/api/ingest/queue/4", json={"answer": "different"})
+        assert response.status_code == 200
+        assert not isinstance(pools[0], CallerPool)
+
     async def test_a_name_already_answered_is_404(self, client_for, monkeypatch):
         from app.api.routes import ingest as ingest_api
 

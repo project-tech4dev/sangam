@@ -113,8 +113,9 @@ async def queue(pool: PoolDep, limit: int = 50,
 
 
 @router.post("/queue/{item_id}", dependencies=STAFF, response_model=QueueAnswerOut, summary="Answer one name waiting for review")
-async def answer_queue(item_id: int, body: QueueAnswerIn, pool: PoolDep,
+async def answer_queue(item_id: int, body: QueueAnswerIn, pool: OwnerPoolDep,
                        user_id: UUID = Depends(require_user)) -> QueueAnswerOut:
+    # As the owner, like Import's other writes: callers hold only SELECT on resolution_queue and the alias tables.
     if body.answer == "same" and body.candidate_id is None:
         raise HTTPException(status_code=422, detail="'same' needs the candidate it is the same as")
     row = await repo.answer_queue(pool, item_id, same=body.answer == "same",
