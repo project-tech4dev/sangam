@@ -1,0 +1,57 @@
+# The stack on one EC2 instance; Postgres stays on Supabase. Secrets and domains come from .env beside this file.
+# deploy.sh builds the images here from the checkout; the Phase 2 workflow pulls the same names from GHCR instead.
+services:
+  backend:
+    image: ghcr.io/project-tech4dev/sangam-backend:${TAG:-latest}
+    build: ../../backend
+    env_file: .env
+    volumes:
+      - ../../db:/srv/db:ro   # the migration runner reads db/migrations from here
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  frontend:
+    image: ghcr.io/project-tech4dev/sangam-frontend:${TAG:-latest}
+    build:
+      context: ../../frontend
+      # NEXT_PUBLIC_* are compiled into the bundle, so they are build args read from .env.
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL in .env}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?set NEXT_PUBLIC_SUPABASE_URL in .env}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env}
+    environment:
+      AGENT_URL: http://backend:8000/agent
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.status < 500 ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN in .env}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # A folder, not the file: git and tar replace the file, and a single-file mount keeps the old one.
+      - ./caddy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [frontend, backend]
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

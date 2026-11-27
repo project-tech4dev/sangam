@@ -610,7 +610,8 @@ that they ran:
 
 ## Deployment
 
-Docker is local development only. Deployed, the stack splits across three hosts:
+`docker-compose.yml` is local development only. A self-hosted alternative, one EC2 instance that builds and
+restarts itself with `deploy/aws/deploy.sh`, is in `docs/DEPLOY_AWS.md`. On Vercel, the stack splits across three hosts:
 
 | Piece | Runs on |
 |---|---|
