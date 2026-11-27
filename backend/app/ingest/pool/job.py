@@ -72,8 +72,8 @@ async def process(pool: Any, row: dict[str, Any], research: Research) -> tuple[s
     summaries = await research(row)
     slugs = [s["slug"] for s in summaries if s.get("slug") and s.get("saved") is not False]
     async with pool.connection() as conn, conn.transaction():
-        if summaries and not slugs:
-            raise RuntimeError(f"researchers ran but saved nothing (researchers: {len(summaries)})")
+        if summaries and (not slugs or len(slugs) < len(summaries)):  # a partial save could leave only a parent's
+            raise RuntimeError(f"researchers ran but {len(summaries) - len(slugs)} of {len(summaries)} saved nothing")
         if not slugs:
             earlier = await (await conn.execute(EARLIER, {"name": row["name"]})).fetchone()
             slugs = [earlier["slug"]] if earlier else []
@@ -111,6 +111,6 @@ def pick(saved: list[dict[str, Any]], name: str) -> dict[str, Any]:
     named = [r for r in usable if {(r["entity_name"] or "").casefold(), (r.get("canonical_name") or "").casefold()} & names]
     if named:
         return next((r for r in named if r["cin"]), named[0])
-    if len(usable) == 1:
-        return usable[0]
+    if len({r["slug"] for r in usable}) == 1:  # one research, however many identity findings it holds
+        return next((r for r in usable if r["cin"]), usable[0])
     return {**usable[0], "cin": None, "status": "unmatched"}

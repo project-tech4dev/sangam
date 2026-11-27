@@ -119,3 +119,7 @@ class TestPick:
 
     def test_one_research_under_another_spelling_is_still_the_row_s(self):
         assert job.pick([self._r("l", "Acme Limited", cin="L1")], "Acme Ltd")["cin"] == "L1"
+
+    def test_one_research_with_several_identity_findings_is_still_the_row_s(self):
+        saved = [self._r("l", "Acme Limited"), self._r("l", "Acme Limited", cin="L1")]
+        assert job.pick(saved, "Acme Ltd")["cin"] == "L1"

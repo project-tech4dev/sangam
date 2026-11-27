@@ -240,6 +240,14 @@ class TestProcess:
             await job.process(FakePool(conn), _row(), research)
         assert not conn.ran("SET run_id")
 
+    async def test_a_partial_save_does_not_leave_only_the_parent_s_research(self, conn, unmatched):
+        async def research(row):
+            return [{"slug": "acme-ltd", "saved": False}, {"slug": "acme-group", "saved": True}]
+
+        with pytest.raises(RuntimeError, match="1 of 2 saved nothing"):
+            await job.process(FakePool(conn), _row(), research)
+        assert not conn.ran("SET run_id")
+
     async def test_a_parent_s_cin_is_never_stored_on_the_row(self, conn, unmatched):
         conn.replies["FROM entity_research r"] = [
             {"slug": "acme-group", "entity_name": "Acme Group", "status": "complete", "cin": "L9"},
