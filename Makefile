@@ -1,4 +1,4 @@
-.PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match source-check calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
+.PHONY: help up down logs wiki wiki-update wiki-fix wiki-deploy seed locations-seed taxonomy-seed graph-seed match pool-load pool-worker source-check calls-pull calls-match news-pull news-visibility news-seed smoke client-docs staff-source db-clean db-reset db-backup db-upgrade \
         db-init-remote db-push-remote migrate migrate-status psql db-url checkpoint-sizes prune-checkpoints audit-review \
         dev-backend dev-frontend frontend-reinstall evals
 
@@ -133,6 +133,14 @@ graph-seed:  ## Build the Neo4j graph from Postgres (needs OPENAI_API_KEY)
 
 match:  ## Save a Funder Match run for every org, or ORG=<slug>
 	$(COMPOSE) run --rm --no-deps backend python -m app.matching.run $(if $(ORG),--org $(ORG))
+
+pool-load:  ## Load FILE=<funder_pool_load.csv> into funder_pool; safe to rerun, never resets a row's progress
+	$(if $(FILE),,$(error FILE is required: make pool-load FILE=/path/to/funder_pool_load.csv))
+	$(COMPOSE) run --rm --no-deps -v "$(abspath $(dir $(FILE))):/pool:ro" backend \
+		python -m app.ingest.pool.load /pool/$(notdir $(FILE))
+
+pool-worker:  ## Start the funder pool worker; it claims nothing until a category is enabled
+	$(COMPOSE) --profile pool up -d pool-worker
 
 source-check:  ## Check SLUG=<slug>'s sources for change, up to UNTIL=<stage>; WRITE=1 saves, REFRESH=1 also saves a delta
 	$(if $(SLUG),,$(error SLUG is required: make source-check SLUG=<slug>))

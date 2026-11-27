@@ -130,6 +130,18 @@ services:
       timeout: 5s
       retries: 20
 
+  # The funder pool's worker: the backend's image and settings, no port. Off unless asked for:
+  # `docker compose --profile pool up -d pool-worker`. It claims nothing until a category is enabled.
+  pool-worker:
+    extends: backend
+    profiles: ["pool"]
+    ports: !reset []
+    healthcheck: !reset {}
+    command: python -m app.ingest.pool.worker
+    restart: unless-stopped
+    stop_grace_period: 150s   # the worker's own grace is 120 s
+    mem_limit: 2g
+
   frontend:
     build:
       context: ./frontend

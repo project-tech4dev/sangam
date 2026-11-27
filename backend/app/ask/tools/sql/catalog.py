@@ -1037,6 +1037,10 @@ KNOWN_EXCLUDED: frozenset[str] = frozenset(
         "ingest_source_proposals",
         "entity_research",
         "resolution_queue",
+        # The funder pool's queue and its worker switches.
+        "funder_pool",
+        "funder_ingest_settings",
+        "funder_pool_status",
         # What each make source-check WRITE=1 run found, per source.
         "source_checks",
         # One row per change check run: its depth, decision and who ran it.
