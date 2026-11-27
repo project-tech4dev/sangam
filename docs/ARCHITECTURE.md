@@ -204,9 +204,13 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   and `min_csr_spend_cr` is the floor. Claims are `FOR UPDATE SKIP LOCKED` in `priority_override NULLS LAST,
   rank_in_category` order; a lock older than `lock_timeout_min` goes back to pending, or failed after `max_attempts`.
 - **Jobs are asyncio tasks, not threads**, because the psycopg pool and Scout's graph belong to one event loop.
+  The whole process runs at most `POOL_MAX_JOBS` (default 2) at once, whatever the categories' `max_parallel` add up to:
+  one job peaked near 940 MiB against the container's 2g.
 - **`done` means research saved, not promoted.** The worker asks Scout to research and not save, and links the
   `entity_research` row to the row's `ingest_runs` entry; a person promotes it from Review. A funder already in Sangam
   is `skipped`; a close name, a CIN already on another funder, or research that did not find the funder is `needs_review`.
+  Only a researcher that saved counts, and research for other entities with none named for the row never gives it a CIN.
+  A close name a reviewer rejected is researched as its own funder; one they accepted is `skipped` with that funder.
 - **The loader never resets progress.** A rerun of `make pool-load` updates name, rank, score, spend, signals and
   export version only; status, `funder_id`, `cin`, attempts and locks are the worker's.
 - **The pool is not Ask's.** `funder_pool`, `funder_ingest_settings` and `funder_pool_status` are in `KNOWN_EXCLUDED`;

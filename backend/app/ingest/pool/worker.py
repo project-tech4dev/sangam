@@ -31,6 +31,8 @@ TICK_SECONDS = 60
 RUN_TIMEOUT_SECONDS = 1800
 # On SIGTERM running jobs get this long before they are cut off and put back to pending.
 SHUTDOWN_GRACE_SECONDS = int(os.environ.get("POOL_SHUTDOWN_GRACE_SECONDS", "120"))
+# One job peaked near 940 MiB against the container's 2g, so the whole process runs at most this many at once.
+MAX_JOBS = int(os.environ.get("POOL_MAX_JOBS", "2"))
 # Scout reads the open web and Sangam's library, as "Only public websites" plus the library on the sources card.
 SOURCES = {"web": True, "library": True, "vault_org": None, "vault_docs": [], "staff_paths": []}
 
@@ -117,10 +119,14 @@ async def tick(pool: Any, worker_id: str, research: job.Research, running: set[a
     async with pool.connection() as conn:
         enabled = await queue.enabled_settings(conn)
     claimed = 0
-    for setting in enabled:
+    turn = int(time.time() // TICK_SECONDS) % len(enabled) if enabled else 0
+    for setting in enabled[turn:] + enabled[:turn]:  # rotated, so one category cannot hold every slot
+        room = MAX_JOBS - len(running)
+        if room <= 0:
+            break
         try:
             async with pool.connection() as conn:
-                rows = await queue.claim(conn, setting["category"], worker_id)
+                rows = await queue.claim(conn, setting["category"], worker_id, room)
         except Exception:  # one category failing must not strand rows another already claimed
             log.exception("claim failed category=%s", setting["category"])
             continue

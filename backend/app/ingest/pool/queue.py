@@ -47,14 +47,15 @@ async def enabled_settings(conn: Any) -> list[dict[str, Any]]:
     return await (await conn.execute(SETTINGS)).fetchall()
 
 
-async def claim(conn: Any, category: str, worker: str) -> list[dict[str, Any]]:
-    """Recover this category's stale locks, then claim as many rows as it has free slots."""
+async def claim(conn: Any, category: str, worker: str, limit: int | None = None) -> list[dict[str, Any]]:
+    """Recover this category's stale locks, then claim as many rows as it has free slots, at most limit."""
     async with conn.transaction():
         # Serialises count-then-claim, so two workers cannot each take a full max_parallel.
         await conn.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (f"funder_pool:{category}",))
         await conn.execute(RECOVER, {"category": category})
         free = (await (await conn.execute(FREE, {"category": category})).fetchone())["free"]
-        if not free:
+        free = free if limit is None else min(free, limit)
+        if free <= 0:
             return []
         return await (await conn.execute(CLAIM, {"category": category, "worker": worker, "free": free})).fetchall()
 

@@ -17,7 +17,7 @@ Research = Callable[[dict[str, Any]], Awaitable[list[dict[str, Any]]]]
 
 # Each slug's latest research, with the CIN its identity finding names.
 IDENTITY_CIN = """
-SELECT r.slug, r.entity_name, r.status, f->>'cin' AS cin
+SELECT r.slug, r.entity_name, r.canonical_name, r.status, f->>'cin' AS cin
   FROM entity_research r LEFT JOIN LATERAL jsonb_array_elements(r.findings) f ON f->>'concept' = 'identity'
  WHERE r.slug = ANY(%s)
    AND r.researched_on = (SELECT max(researched_on) FROM entity_research WHERE slug = r.slug)
@@ -47,7 +47,17 @@ async def process(pool: Any, row: dict[str, Any], research: Research) -> tuple[s
                               target_id=str(match.entity_id), match_method=method(match.method))
             await queue.finish(conn, row, "skipped", funder_id=match.entity_id)
             return "skipped", None
-        if match.method == "trigram":
+        prior = await (await conn.execute(
+            "SELECT status, resolved_funder_id FROM resolution_queue "
+            "WHERE entity_kind = 'funder' AND raw_name = %s AND source = %s", (row["name"], SOURCE))).fetchone()
+        decided = prior["status"] if prior else "pending"
+        if match.method == "trigram" and decided == "accepted" and prior["resolved_funder_id"]:
+            await record_item(conn, run_id, SOURCE, "funder", "matched", subject=row["name"], target_table="funders",
+                              target_id=str(prior["resolved_funder_id"]), match_method="trigram",
+                              match_score=match.score)
+            await queue.finish(conn, row, "skipped", funder_id=prior["resolved_funder_id"])
+            return "skipped", None
+        if match.method == "trigram" and decided != "rejected":  # a rejected close name is researched as its own funder
             reason = "a close name in Sangam; a person decides whether it is the same funder"
             await record_item(conn, run_id, SOURCE, "funder", "queued", reason=reason, subject=row["name"],
                               match_method="trigram", match_score=match.score)
@@ -60,8 +70,10 @@ async def process(pool: Any, row: dict[str, Any], research: Research) -> tuple[s
             return "needs_review", reason
 
     summaries = await research(row)
-    slugs = [s["slug"] for s in summaries if s.get("slug")]
+    slugs = [s["slug"] for s in summaries if s.get("slug") and s.get("saved") is not False]
     async with pool.connection() as conn, conn.transaction():
+        if summaries and not slugs:
+            raise RuntimeError(f"researchers ran but saved nothing (researchers: {len(summaries)})")
         if not slugs:
             earlier = await (await conn.execute(EARLIER, {"name": row["name"]})).fetchone()
             slugs = [earlier["slug"]] if earlier else []
@@ -85,14 +97,20 @@ async def process(pool: Any, row: dict[str, Any], research: Research) -> tuple[s
 
 def verdict(saved: dict[str, Any]) -> tuple[str, str | None]:
     """Research that found the funder is done; research that did not waits for a person."""
+    if saved["status"] == "unmatched":
+        return "needs_review", "research saved for other entities, none matching this funder"
     if saved["status"] in ("complete", "partial"):
         return "done", None
     return "needs_review", f"research ended {saved['status']}"
 
 
 def pick(saved: list[dict[str, Any]], name: str) -> dict[str, Any]:
-    """The research for this row's funder, not a parent Scout also read; with a CIN where one was found."""
+    """This row's own research; with several researched and none named, status 'unmatched' and no CIN, never a parent's."""
     usable = [r for r in saved if r["status"] != "wrong_entity"] or saved
-    named = [r for r in usable if (r["entity_name"] or "").casefold() == name.casefold()]
-    candidates = named or usable
-    return next((r for r in candidates if r["cin"]), candidates[0])
+    names = {name.casefold()}
+    named = [r for r in usable if {(r["entity_name"] or "").casefold(), (r.get("canonical_name") or "").casefold()} & names]
+    if named:
+        return next((r for r in named if r["cin"]), named[0])
+    if len(usable) == 1:
+        return usable[0]
+    return {**usable[0], "cin": None, "status": "unmatched"}

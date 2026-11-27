@@ -103,5 +103,19 @@ class TestPick:
         assert job.pick(saved, "acme foundation")["slug"] == "acme-foundation"
 
     def test_wrong_entity_is_passed_over_and_a_cin_preferred_otherwise(self):
-        saved = [self._r("a", "A", "wrong_entity", "L9"), self._r("b", "B"), self._r("c", "C", cin="L2")]
+        saved = [self._r("a", "Acme", "wrong_entity", "L9"), self._r("b", "Acme"), self._r("c", "Acme", cin="L2")]
         assert job.pick(saved, "Acme")["slug"] == "c"
+
+    def test_the_canonical_name_counts_as_a_match(self):
+        saved = [{"slug": "g", "entity_name": "Acme Group", "canonical_name": "Other", "status": "complete", "cin": "L9"},
+                 {"slug": "l", "entity_name": "Acme Limited", "canonical_name": "Acme Ltd", "status": "partial",
+                  "cin": None}]
+        assert job.pick(saved, "Acme Ltd")["slug"] == "l"
+
+    def test_several_researched_and_none_named_picks_no_cin(self):
+        saved = [self._r("g", "Acme Group", cin="L9"), self._r("l", "Acme Limited")]
+        picked = job.pick(saved, "Acme Ltd")
+        assert picked["cin"] is None and job.verdict(picked)[0] == "needs_review"
+
+    def test_one_research_under_another_spelling_is_still_the_row_s(self):
+        assert job.pick([self._r("l", "Acme Limited", cin="L1")], "Acme Ltd")["cin"] == "L1"

@@ -79,6 +79,13 @@ class TestQueue:
         assert conn.ran("RETURNING *")[0]["free"] == 2
         assert conn.ran("pg_advisory_xact_lock")[0] == ("funder_pool:indian_csr",)
 
+    async def test_a_cap_limits_the_claim_below_the_free_slots(self):
+        conn = FakeConn({"AS free": [{"free": 5}], "RETURNING *": [_row()]})
+        await queue.claim(conn, "indian_csr", "w1", limit=1)
+        assert conn.ran("RETURNING *")[0]["free"] == 1
+        zero = FakeConn({"AS free": [{"free": 5}]})
+        assert await queue.claim(zero, "indian_csr", "w1", limit=0) == []
+
     async def test_start_run_links_the_row(self):
         conn = FakeConn({"INSERT INTO ingest_runs": [{"id": 7}]})
         assert await queue.start_run(conn, _row()) == 7
@@ -193,6 +200,58 @@ class TestProcess:
         status, error = await job.process(FakePool(conn), _row(), research)
         assert status == "needs_review" and "[funder:4]" in error
 
+    async def test_a_rejected_close_name_is_researched(self, conn, monkeypatch, unmatched):
+        async def resolve(c, name, cin=None, website=None):
+            return Match("trigram", score=0.8, candidates=[{"id": 3}])
+
+        monkeypatch.setattr(job, "resolve_funder", resolve)
+        conn.replies["FROM resolution_queue"] = [{"status": "rejected", "resolved_funder_id": None}]
+        conn.replies["FROM entity_research r"] = [
+            {"slug": "acme-ltd", "entity_name": "Acme Ltd", "status": "complete", "cin": None}]
+
+        async def research(row):
+            return [{"slug": "acme-ltd", "saved": True}]
+
+        assert await job.process(FakePool(conn), _row(), research) == ("done", None)
+        assert not conn.ran("INSERT INTO resolution_queue")
+
+    async def test_an_accepted_close_name_is_skipped_with_its_funder(self, conn, monkeypatch):
+        async def resolve(c, name, cin=None, website=None):
+            return Match("trigram", score=0.8, candidates=[{"id": 3}])
+
+        monkeypatch.setattr(job, "resolve_funder", resolve)
+        conn.replies["FROM resolution_queue"] = [{"status": "accepted", "resolved_funder_id": 3}]
+        assert await job.process(FakePool(conn), _row(), self._no_research) == ("skipped", None)
+        assert conn.ran("UPDATE funder_pool SET ingest_status")[0][1] == 3
+
+    async def test_a_pending_close_name_is_not_queued_twice_but_waits(self, conn, monkeypatch):
+        async def resolve(c, name, cin=None, website=None):
+            return Match("trigram", score=0.8, candidates=[])
+
+        monkeypatch.setattr(job, "resolve_funder", resolve)
+        conn.replies["FROM resolution_queue"] = [{"status": "pending", "resolved_funder_id": None}]
+        assert (await job.process(FakePool(conn), _row(), self._no_research))[0] == "needs_review"
+
+    async def test_research_that_did_not_save_is_not_credited(self, conn, unmatched):
+        async def research(row):
+            return [{"slug": "acme-ltd", "saved": False}]
+
+        with pytest.raises(RuntimeError, match="saved nothing"):
+            await job.process(FakePool(conn), _row(), research)
+        assert not conn.ran("SET run_id")
+
+    async def test_a_parent_s_cin_is_never_stored_on_the_row(self, conn, unmatched):
+        conn.replies["FROM entity_research r"] = [
+            {"slug": "acme-group", "entity_name": "Acme Group", "status": "complete", "cin": "L9"},
+            {"slug": "acme-limited", "entity_name": "Acme Limited", "status": "partial", "cin": None}]
+
+        async def research(row):
+            return [{"slug": "acme-group", "saved": True}, {"slug": "acme-limited", "saved": True}]
+
+        status, error = await job.process(FakePool(conn), _row(), research)
+        assert status == "needs_review" and "none matching" in error
+        assert conn.ran("UPDATE funder_pool SET ingest_status")[0][2] is None
+
     def test_research_that_did_not_find_the_funder_says_why(self):
         assert job.verdict({"status": "not_found"}) == ("needs_review", "research ended not_found")
 
@@ -301,7 +360,7 @@ class TestTick:
         async def settings(conn):
             return [{"category": "indian_csr"}, {"category": "global"}]
 
-        async def claim(conn, category, worker_id):
+        async def claim(conn, category, worker_id, limit=None):
             if category == "global":
                 raise RuntimeError("db blip")
             return [_row(), _row(id=2)]
@@ -313,6 +372,31 @@ class TestTick:
         await worker.tick(FakePool(FakeConn()), "w1", None, running)
         await asyncio.gather(*running)
         assert started == [1, 2] and not running
+
+    async def test_the_process_never_runs_more_than_max_jobs(self, monkeypatch):
+        limits = []
+
+        async def run_one(pool, row, research):
+            await asyncio.sleep(0)
+
+        async def settings(conn):
+            return [{"category": "a"}, {"category": "b"}]
+
+        async def claim(conn, category, worker_id, limit=None):
+            limits.append(limit)
+            return [_row(id=len(limits)) for _ in range(limit)]
+
+        monkeypatch.setattr(worker, "MAX_JOBS", 3)
+        monkeypatch.setattr(worker, "run_one", run_one)
+        monkeypatch.setattr(worker.queue, "enabled_settings", settings)
+        monkeypatch.setattr(worker.queue, "claim", claim)
+        running: set[asyncio.Task] = set()
+        await worker.tick(FakePool(FakeConn()), "w1", None, running)
+        assert sum(limits) == 3 and len(running) == 3
+        limits.clear()
+        await worker.tick(FakePool(FakeConn()), "w1", None, running)
+        assert limits == []  # full: nothing is claimed
+        await asyncio.gather(*running)
 
     async def test_nothing_enabled_claims_nothing(self, monkeypatch):
         async def settings(conn):
