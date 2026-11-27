@@ -268,7 +268,7 @@ db-init-remote:  ## Apply db/init/*.sql to a managed Postgres. RUN ONCE, empty D
 	  echo "(To rebuild it, drop the existing objects first; this target never drops anything.)"; \
 	  exit 1; \
 	fi
-	$(PG_CLIENT) psql postgres "$(DB_URL)" -v ON_ERROR_STOP=1 \
+	@$(PG_CLIENT) psql postgres "$(DB_URL)" -v ON_ERROR_STOP=1 \
 	  -f /docker-entrypoint-initdb.d/01_extensions.sql \
 	  -f /docker-entrypoint-initdb.d/02_schema.sql \
 	  -f /docker-entrypoint-initdb.d/03_dev_user.sql
@@ -285,13 +285,14 @@ db-push-remote:  ## Copy the local database, schema AND data, to a managed one
 	mkdir -p $(BACKUP_DIR)
 	docker compose exec -T postgres pg_dump -U $${LOCAL_DB_USER:-sangam} -d $${LOCAL_DB_NAME:-sangam} \
 	  -Fc --no-owner --no-acl > $(BACKUP_DIR)/push.dump
-	docker run --rm -v $(CURDIR)/$(BACKUP_DIR):/b pgvector/pgvector:pg17 \
+	@docker run --rm -v $(CURDIR)/$(BACKUP_DIR):/b pgvector/pgvector:pg17 \
 	  pg_restore --no-owner --no-acl --exit-on-error -d "$(DB_URL)" /b/push.dump
 	@echo "pushed to $(ENV) (dump kept at $(BACKUP_DIR)/push.dump)"
 
 # Interactive shell against whichever database ENV selects.
+# @: make would otherwise echo the connection string, password included.
 psql:  ## Interactive shell against whichever database ENV selects
-	$(COMPOSE) run --rm --no-deps --entrypoint psql postgres "$(DB_URL)"
+	@$(COMPOSE) run --rm --no-deps --entrypoint psql postgres "$(DB_URL)"
 
 # One saved query, so before-and-after numbers compare like with like. Read-only.
 audit-review:  ## Check the answer audit against a person's labels in Langfuse: CMD=setup | CMD=rerun [SINCE=2026-11-19]
@@ -300,12 +301,12 @@ audit-review:  ## Check the answer audit against a person's labels in Langfuse: 
 	$(COMPOSE) exec -T -e PYTHONPATH=/srv backend python - $(CMD) $(if $(SINCE),--since $(SINCE)) < scripts/audit_review.py
 
 checkpoint-sizes:  ## Checkpoint bytes by table, thread and channel; THREAD=<id> for one
-	$(COMPOSE) run --rm --no-deps -T -v $(CURDIR)/scripts/sql:/sql:ro --entrypoint psql postgres "$(DB_URL)" \
+	@$(COMPOSE) run --rm --no-deps -T -v $(CURDIR)/scripts/sql:/sql:ro --entrypoint psql postgres "$(DB_URL)" \
 	  -v ON_ERROR_STOP=1 -v thread="$(THREAD)" -f /sql/checkpoint_sizes.sql
 
 # Whole subagent namespaces of threads idle 6 h and not paused; a dry run unless APPLY=1.
 prune-checkpoints:  ## Delete old subagent checkpoints (dry run unless APPLY=1); THREAD=<id> for one
-	$(COMPOSE) run --rm --no-deps -T -v $(CURDIR)/scripts/sql:/sql:ro --entrypoint psql postgres "$(DB_URL)" \
+	@$(COMPOSE) run --rm --no-deps -T -v $(CURDIR)/scripts/sql:/sql:ro --entrypoint psql postgres "$(DB_URL)" \
 	  -v ON_ERROR_STOP=1 -v thread="$(THREAD)" -v apply=$(if $(filter 1,$(APPLY)),1,0) -v idle_hours=6 \
 	  -f /sql/prune_subagent_checkpoints.sql
 
