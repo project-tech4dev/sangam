@@ -253,6 +253,9 @@ LANGFUSE_TRACING_ENVIRONMENT=aws
 chmod 600 /opt/sangam/deploy/aws/.env
 ```
 
+Compose expands `$` in `.env` values, so a password or key containing `$` arrives cut short. Wrap such a value in
+single quotes (`DATABASE_URL='postgresql://…'`) or write each `$` as `$$`.
+
 `NEXT_PUBLIC_API_URL` has no trailing slash. Do **not** add:
 
 - `DEV_AUTH`: it would accept `Bearer dev` as a signed-in user.
@@ -275,13 +278,16 @@ On the instance:
 ```
 
 It checks out `origin/master`, builds both images (~5–10 min the first time, faster once layers are cached), applies
-`db/migrations`, restarts, and ends with `backend healthy at <sha>`, or prints the backend's last 100 log lines and
-fails. The old containers keep serving while it builds.
+`db/migrations`, restarts, and ends with `healthy at <sha>` once backend and frontend both pass their checks, or prints their last 100 log
+lines and fails. The old containers keep serving while it builds.
 
 - **Migrations** run by default. If Vercel serves the same database and you would rather apply them yourself after a
   backup (`make migrate ENV=staging`), run `MIGRATE=0 /opt/sangam/deploy/aws/deploy.sh`.
 - **Another ref**: `deploy.sh origin/<branch>`, a tag, or a SHA.
-- The script refuses to run if someone edited files in the checkout; `.env` and `deployed.txt` are ignored and fine.
+- The script refuses to run if someone edited files in the checkout, or while another deploy is running; `.env` and
+  `deployed.txt` are ignored and fine.
+- Images are tagged by commit, and `:latest` moves only when a deploy ends healthy. A failed deploy leaves `:latest`
+  on the last good one, so a later `docker compose up -d` runs that, never the half-deployed build.
 
 The first request to each domain makes Caddy fetch its certificate; give it up to a minute.
 
@@ -346,7 +352,7 @@ Migrations are additive and are not rolled back, so use `MIGRATE=0` when the old
 | `set NEXT_PUBLIC_… in .env` (or `APP_DOMAIN`) | That line is missing from `.env` |
 | `the checkout has local changes` | `git -C /opt/sangam status`; discard with `git -C /opt/sangam checkout .` |
 | Build killed, or the instance freezes while building | Out of memory: check the swap from Step 1.4 is on (`swapon --show`) |
-| `backend did not become healthy`, logs mention neo4j | `NEO4J_URI` is set in `.env`; remove it |
+| `not healthy after 150 s`, logs mention neo4j | `NEO4J_URI` is set in `.env`; remove it |
 | …logs mention a missing table or `_verify_sql_catalog` | The database is not migrated; run without `MIGRATE=0`, or `make migrate ENV=staging` |
 | …connections hang or time out | `DATABASE_URL` uses the direct host or port 6543; use the session pooler on 5432 |
 | Sign-in returns to the Vercel site | Step 3.2's redirect URL |

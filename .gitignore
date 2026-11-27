@@ -37,3 +37,4 @@ skills-lock.json
 coverage.xml
 frontend/coverage/
 deploy/aws/deployed.txt
+deploy/aws/.deploy.lock

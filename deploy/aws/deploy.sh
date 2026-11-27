@@ -10,6 +10,10 @@ main() {
   repo="$(cd "$here/../.." && pwd)"
   cd "$repo"
 
+  # Every run shares this checkout, so a second deploy stops rather than build from a moving tree.
+  exec 9>"$here/.deploy.lock"
+  flock -n 9 || { echo "another deploy is running"; exit 1; }
+
   test -f "$here/.env" || { echo "$here/.env is missing; see docs/DEPLOY_AWS.md Step 4"; exit 1; }
   git diff --quiet && git diff --cached --quiet || { echo "the checkout has local changes; commit or discard them first"; exit 1; }
 
@@ -19,25 +23,32 @@ main() {
   echo "deploying $sha ($ref)"
 
   cd "$here"
+  # Images are tagged by commit; :latest, which a bare `docker compose up -d` runs, moves only once this deploy is healthy.
+  export TAG="$sha"
   # Build while the old containers keep serving; the only downtime is the restart below.
   docker compose build --pull
   if [ "${MIGRATE:-1}" = "1" ]; then
     docker compose run --rm --no-deps backend python -m app.db.migrate
   fi
 
-  logs() { docker compose logs --tail=100 backend; }
+  logs() { docker compose logs --tail=100 backend frontend; }
   docker compose up -d --remove-orphans || { echo "restart failed"; logs; exit 1; }
   docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
 
+  health() { docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$1")"; }
   for _ in $(seq 1 30); do
-    if [ "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q backend)")" = "healthy" ]; then
+    if [ "$(health backend)" = "healthy" ] && [ "$(health frontend)" = "healthy" ]; then
+      for svc in backend frontend; do
+        docker tag "ghcr.io/project-tech4dev/sangam-$svc:$sha" "ghcr.io/project-tech4dev/sangam-$svc:latest"
+      done
       echo "$sha $(date -u +%FT%TZ) $ref" >> "$here/deployed.txt"
-      docker image prune -f >/dev/null
-      echo "backend healthy at $sha"
+      # Keep a week of commit images for a quick rollback.
+      docker image prune -af --filter "until=168h" >/dev/null
+      echo "healthy at $sha"
       exit 0
     fi
     sleep 5
   done
-  echo "backend did not become healthy"; logs; exit 1
+  echo "not healthy after 150 s; :latest still names the last good deploy"; logs; exit 1
 }
 main "$@"
