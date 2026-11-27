@@ -133,6 +133,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-27 · (unmerged) · Scout's supervisor runs the free change check first (`check_changes`, staff): a researcher runs only for fields never answered or gaps not reached, so nothing changed with only tried gaps costs no model; changed pages are named with the change-check screen's link.
 - 2026-11-24 · #481 · A `compat:` model tier calls any OpenAI-compatible endpoint (`COMPAT_BASE_URL`, `COMPAT_API_KEY`) for a trial of an open model; boot refuses unless every tier is `compat:`. The Dockerfile's `uv export` typo from #427 is fixed.
 - 2026-11-24 · #482 · Every agent summarises at a fixed 170k tokens and keeps the last 20k, not 85% of the model's window (850k on a 1M model); the summary keeps each source's full URL.
+- 2026-11-27 · (unmerged) · #503: a funder pool queue (`0065`: `funder_pool`, `funder_ingest_settings`, the `funder_pool_status` view; staff-read RLS) and one worker (`app/ingest/pool/`, `make pool-worker`, compose profile `pool`) that claims rows in rank order above a category's spend floor, skips a funder Sangam holds, queues a close name for resolution and researches the rest with headless Scout. `done` means research saved and waiting on Review; nothing is promoted. `make pool-load FILE=` upserts the export, keeping each row's progress. Every category ships disabled.
 - 2026-11-24 · #440 · `read_document_pages(find="CSR obligation|Annexure II")` lists the pages of a long PDF or Word file that name any word, one line each, so a researcher reads those pages instead of guessing ranges; a find spends none of the reading limit, and a scanned PDF is a `blocked` gap.
 
 ## Funder Match and the taxonomy
@@ -315,6 +316,7 @@ Plans that shipped in part, and what is left. Check here before assuming a plan 
 | `2026-10-09-import-guided.md` | #130 | Its "review follow-ups" list is still open. |
 | `features-plans/access/auth-plan.md` | Phase 1 (#74, #92, #97) | Phase 2 (email-domain matching, join requests). Ask's SQL and Import still run on the owner pool (branch `fix/ask-sql-runs-as-caller`, unmerged). |
 | `features-plans/roadmap/2026-10-04-ui-roadmap.md` | D1 (#98), B1 (#92) | A4–A10, R1–R6. |
+| #503, funder pool worker | queue, loader, worker (unmerged) | An admin screen for the settings and status (SQL until then); Celery is #504. |
 
 Plan docs whose status line is out of date (the work did ship): `2026-09-30-supabase-storage.md` (#61),
 `2026-10-10-import-for-every-role.md` (#136–#139), and the "Draft v1" docs for #120, #125, #127, #130.

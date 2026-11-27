@@ -197,6 +197,21 @@ Generated detail (agents and their tools, middleware, skills, frontend): [sangam
   an `unknown` value answers no topic gap, and a yearly gap never reopens a year the record holds. A fact whose
   sentence is still on its own page is never removed, whatever a gap page says.
 
+### Funder pool worker
+
+- **One process researches the pool, and the settings rows are its only switch.** `app/ingest/pool/worker.py` rereads
+  `funder_ingest_settings` every minute: a disabled category claims nothing, `max_parallel` and `daily_cap` bound it,
+  and `min_csr_spend_cr` is the floor. Claims are `FOR UPDATE SKIP LOCKED` in `priority_override NULLS LAST,
+  rank_in_category` order; a lock older than `lock_timeout_min` goes back to pending, or failed after `max_attempts`.
+- **Jobs are asyncio tasks, not threads**, because the psycopg pool and Scout's graph belong to one event loop.
+- **`done` means research saved, not promoted.** The worker asks Scout to research and not save, and links the
+  `entity_research` row to the row's `ingest_runs` entry; a person promotes it from Review. A funder already in Sangam
+  is `skipped`; a close name, a CIN already on another funder, or research that did not find the funder is `needs_review`.
+- **The loader never resets progress.** A rerun of `make pool-load` updates name, rank, score, spend, signals and
+  export version only; status, `funder_id`, `cin`, attempts and locks are the worker's.
+- **The pool is not Ask's.** `funder_pool`, `funder_ingest_settings` and `funder_pool_status` are in `KNOWN_EXCLUDED`;
+  the view reports `funders.fetched_at` (funders have no `updated_at`).
+
 ## 5. Funder Match
 
 Generated detail (criteria, points, tiers, saved runs): [funder-match](../openwiki/architecture/funder-match.md).
