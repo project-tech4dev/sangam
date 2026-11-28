@@ -135,6 +135,7 @@ Which PR brought each remaining migration: `0011`–`0019` #58 · `0020` #61 · 
 - 2026-11-24 · #482 · Every agent summarises at a fixed 170k tokens and keeps the last 20k, not 85% of the model's window (850k on a 1M model); the summary keeps each source's full URL.
 - 2026-11-27 · (unmerged) · #503: a funder pool queue (`0065`: `funder_pool`, `funder_ingest_settings`, the `funder_pool_status` view; staff-read RLS) and one worker (`app/ingest/pool/`, `make pool-worker`, compose profile `pool`) that claims rows in rank order above a category's spend floor, skips a funder Sangam holds, queues a close name for resolution and researches the rest with headless Scout. `done` means research saved and waiting on Review; nothing is promoted. `make pool-load FILE=` upserts the export, keeping each row's progress. Every category ships disabled.
 - 2026-11-24 · #440 · `read_document_pages(find="CSR obligation|Annexure II")` lists the pages of a long PDF or Word file that name any word, one line each, so a researcher reads those pages instead of guessing ranges; a find spends none of the reading limit, and a scanned PDF is a `blocked` gap.
+- 2026-11-27 · (unmerged) · #508: answering a close name under "Waiting for you" saves again: `POST /api/ingest/queue/{id}` writes as the owner, like Import's other writes, since callers hold only SELECT on `resolution_queue`; every answer had been a 403.
 
 ## Funder Match and the taxonomy
 
