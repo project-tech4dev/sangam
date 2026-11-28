@@ -6,6 +6,7 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 MAX_LINKS = 30
+MAX_LABEL = 80  # a whole card wrapped in one <a> would otherwise send its blurb on every later turn
 # What a funder researcher looks for first; a link naming more of these ranks higher.
 WANTED = ("csr", "social", "responsib", "annual", "report", "investor", "policy", "sustainab", "brsr",
           "foundation", "governance", "grant", "impact", "about", ".pdf")
@@ -71,4 +72,14 @@ def same_site_links(html: str, page_url: str, limit: int = MAX_LINKS) -> list[tu
 def link_list(links: list[tuple[str, str]], heading: str) -> str:
     if not links:
         return ""
-    return f"{heading}\n" + "\n".join(f"- {text or '(no text)'}: {url}" for text, url in links)
+    return f"{heading}\n" + "\n".join(f"- {_label(text)}: {url}{_pdf(url)}" for text, url in links)
+
+
+def _label(text: str) -> str:
+    if not text:
+        return "(no text)"
+    return text if len(text) <= MAX_LABEL else text[:MAX_LABEL - 1].rstrip() + "…"
+
+
+def _pdf(url: str) -> str:
+    return " (PDF: use fetch_document)" if urlsplit(url).path.lower().endswith(".pdf") else ""

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from datetime import date
+from types import SimpleNamespace
 
 import httpx
 import pytest
 
 from app.ingest.reading import fetch, snapshots
-from app.ingest.reading.links import MAX_LINKS, same_site_links
+from app.ingest.reading.links import MAX_LABEL, MAX_LINKS, link_list, same_site_links
 from app.ingest.tools import research_tools
 
 HOME = "https://www.iocl.com/"
@@ -64,6 +65,12 @@ class TestSameSiteLinks:
         assert same_site_links(html, HOME) == [("CSR Policy", "https://www.iocl.com/csr"),
                                                ("Annual Report", "https://www.iocl.com/ar")]
 
+    def test_a_long_label_is_cut_and_a_pdf_says_how_to_open_it(self):
+        out = link_list([("x" * 300, "https://www.iocl.com/csr"), ("Report", "https://www.iocl.com/AR.PDF")], "Links:")
+        first, second = out.splitlines()[1:]
+        assert len(first.split(": ", 1)[0]) == len("- ") + MAX_LABEL and first.split(": ", 1)[0].endswith("…")
+        assert second == "- Report: https://www.iocl.com/AR.PDF (PDF: use fetch_document)"
+
     def test_a_page_with_no_links(self):
         assert same_site_links("<p>nothing</p>", HOME) == []
 
@@ -118,3 +125,12 @@ class TestReadPage:
         out = await fetch.read_page_text(HOME, "indian-oil")
         assert out.startswith("ALREADY READ") and "Rs 400 crore" not in out
         assert "- CSR: https://www.iocl.com/pages/csr-overview" in out
+
+    async def test_a_path_scoped_source_lists_only_its_allowed_paths(self, monkeypatch):
+        scoped = SimpleNamespace(path_scoped=True, key="give_do", name="Give.do")
+        monkeypatch.setattr(fetch, "rule_for_url", lambda url: (None, scoped) if "/discover/" in url else None)
+        html = ('<a href="/discover/water-trust">Water Trust</a><a href="/login">Log in</a>'
+                + "<p>Give.do lists Water Trust among its verified NGOs working on rural water access.</p>" * 5)
+        serve(monkeypatch, lambda r: httpx.Response(200, html=html))
+        out = await research_tools.read_page.ainvoke({"url": "https://give.do/discover/a"})
+        assert "https://give.do/discover/water-trust" in out and "/login" not in out

@@ -132,10 +132,19 @@ async def fetch_page(url: str) -> Fetched:
     elif content_type.startswith("text/plain") or "markdown" in content_type:
         text = response.text
     else:
-        # trafilatura drops links, which left the researcher guessing paths (#480): they are kept apart.
+        # trafilatura drops links, which left the researcher guessing paths; they are kept apart.
         text = trafilatura.extract(response.text, url=url) or ""
-        return replace(seen, text=text, links=tuple(same_site_links(response.text, seen.final_url or url)))
+        return replace(seen, text=text, links=_readable_links(response.text, seen.final_url or url))
     return replace(seen, text=text)
+
+
+def _readable_links(html: str, url: str) -> tuple[tuple[str, str], ...]:
+    """A path-scoped source lists only its allowed paths; anything else would be a REFUSED read."""
+    links = same_site_links(html, url)
+    start = rule_for_url(url)
+    if start and start[1].path_scoped:
+        links = [(t, u) for t, u in links if (here := rule_for_url(u)) and here[1].key == start[1].key]
+    return tuple(links)
 
 
 def _host(url: str) -> str:
