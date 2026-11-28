@@ -20,7 +20,7 @@ from app.core.extract import extract_pdf_text
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.reading.access import canonical_url, check_url, source_banner
 from app.ingest.reading.fingerprint import bytes_hash, text_hash
-from app.ingest.reading.links import HEADING, link_list, same_site_links
+from app.ingest.reading.links import HEADING, MAX_LINKS, link_list, same_site_links
 from app.ingest.reading.registry import rule_for_url
 from app.ingest.reading.snapshots import SavedReading, known_fingerprint, remember, saved_reading
 from app.integrations import storage
@@ -141,11 +141,13 @@ async def fetch_page(url: str, links: bool = False) -> Fetched:
 
 def _readable_links(html: str, url: str) -> tuple[tuple[str, str], ...]:
     """A path-scoped source lists only its allowed paths; anything else would be a REFUSED read."""
-    links = same_site_links(html, url)
+    links = same_site_links(html, url, limit=None)
     start = rule_for_url(url)
     if start and start[1].path_scoped:
-        links = [(t, u) for t, u in links if (here := rule_for_url(u)) and here[1].key == start[1].key]
-    return tuple(links)
+        source = start[1]
+        links = [(t, u) for t, u in links
+                 if (here := rule_for_url(u)) and here[1].key == source.key and source.path_refusal(u) is None]
+    return tuple(links[:MAX_LINKS])
 
 
 def _host(url: str) -> str:
@@ -192,7 +194,8 @@ async def _home_links(home: str) -> tuple[tuple[str, str], ...]:
         return ()
     page = await fetch_page(home, links=True)
     _note_timeout(page)
-    _HOME_LINKS[home] = (now, page.links)
+    if page.status is not None and 200 <= page.status < 300:  # a failed fetch is tried again next time
+        _HOME_LINKS[home] = (now, page.links)
     return page.links
 
 

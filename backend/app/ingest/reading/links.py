@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit, urlunsplit
+
+logger = logging.getLogger(__name__)
 
 MAX_LINKS = 30
 HEADING = "Links on this page (same site, most relevant first; open these rather than guessing a path):"
@@ -36,7 +39,7 @@ class _Anchors(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag == "a" and self._href is not None:
             # An icon or image link has no text; its label says where it goes.
-            self.found.append((self._href, " ".join("".join(self._text).split()) or self._label.strip()))
+            self.found.append((self._href, " ".join("".join(self._text).split()) or " ".join(self._label.split())))
             self._href = None
 
 
@@ -49,10 +52,13 @@ def _same_site(link: str, page: str) -> bool:
     return link == page or link.endswith("." + page)
 
 
-def same_site_links(html: str, page_url: str, limit: int = MAX_LINKS) -> list[tuple[str, str]]:
+def same_site_links(html: str, page_url: str, limit: int | None = MAX_LINKS) -> list[tuple[str, str]]:
     """(text, url) for each distinct same-site link, the ones a funder researcher wants first."""
     parser = _Anchors()
-    parser.feed(html)
+    try:
+        parser.feed(html)
+    except Exception as exc:  # noqa: BLE001 - links never cost the page; keep the ones found so far
+        logger.debug("link extraction stopped on %s: %s", page_url, exc)
     here = urlsplit(page_url)
     seen: dict[str, tuple[str, str]] = {}
     for href, text in parser.found:

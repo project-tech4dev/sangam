@@ -72,6 +72,19 @@ class TestSameSiteLinks:
         assert len(first.split(": ", 1)[0]) == len("- ") + MAX_LABEL and first.split(": ", 1)[0].endswith("…")
         assert second == "- Report: https://www.iocl.com/AR.PDF (PDF: use fetch_document)"
 
+    def test_a_parser_failure_keeps_the_links_found_so_far(self, monkeypatch):
+        from app.ingest.reading import links
+
+        def feed(self, html):
+            self.found.append(("/csr", "CSR"))
+            raise AssertionError("unknown declaration")
+        monkeypatch.setattr(links._Anchors, "feed", feed)
+        assert same_site_links("<html>", HOME) == [("CSR", "https://www.iocl.com/csr")]
+
+    def test_a_label_never_spans_lines(self):
+        html = '<a href="/csr" title="CSR\n\nPolicy"><i></i></a>'
+        assert same_site_links(html, HOME) == [("CSR Policy", "https://www.iocl.com/csr")]
+
     def test_a_page_with_no_links(self):
         assert same_site_links("<p>nothing</p>", HOME) == []
 
@@ -159,10 +172,32 @@ class TestReadPage:
         assert out.startswith("ALREADY READ") and "Rs 400 crore" not in out and "- CSR:" not in out
 
     async def test_a_path_scoped_source_lists_only_its_allowed_paths(self, monkeypatch):
-        scoped = SimpleNamespace(path_scoped=True, key="give_do", name="Give.do")
+        scoped = SimpleNamespace(path_scoped=True, key="give_do", name="Give.do", path_refusal=lambda u: None)
         monkeypatch.setattr(fetch, "rule_for_url", lambda url: (None, scoped) if "/discover/" in url else None)
         html = ('<a href="/discover/water-trust">Water Trust</a><a href="/login">Log in</a>'
                 + "<p>Give.do lists Water Trust among its verified NGOs working on rural water access.</p>" * 5)
         serve(monkeypatch, lambda r: httpx.Response(200, html=html))
         out = await research_tools.read_page.ainvoke({"url": "https://give.do/discover/a"})
         assert "https://give.do/discover/water-trust" in out and "/login" not in out
+
+    async def test_a_path_scoped_source_is_filtered_before_the_cap(self, monkeypatch):
+        scoped = SimpleNamespace(path_scoped=True, key="give_do", name="Give.do",
+                                 path_refusal=lambda u: None if "/discover/" in u else "off path")
+        monkeypatch.setattr(fetch, "rule_for_url", lambda url: (None, scoped) if "give.do" in url else None)
+        html = ("".join(f'<a href="/csr-policy-{i}">CSR policy {i}</a>' for i in range(40))
+                + '<a href="/discover/water-trust">Water Trust</a>'
+                + "<p>Give.do lists Water Trust among its verified NGOs working on rural water access.</p>" * 5)
+        serve(monkeypatch, lambda r: httpx.Response(200, html=html))
+        out = await research_tools.read_page.ainvoke({"url": "https://give.do/discover/a"})
+        assert "https://give.do/discover/water-trust" in out and "csr-policy" not in out
+
+    async def test_a_failed_home_page_is_tried_again(self, monkeypatch):
+        state = {"home": 503}
+
+        def handler(r):
+            return httpx.Response(state["home"], html=NAV) if r.url.path == "/" else httpx.Response(404)
+        serve(monkeypatch, handler)
+        first = await research_tools.read_page.ainvoke({"url": "https://www.iocl.com/csr"})
+        state["home"] = 200
+        second = await research_tools.read_page.ainvoke({"url": "https://www.iocl.com/annual-reports"})
+        assert "- CSR:" not in first and "- CSR:" in second
