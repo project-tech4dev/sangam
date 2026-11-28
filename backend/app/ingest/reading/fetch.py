@@ -20,6 +20,7 @@ from app.core.extract import extract_pdf_text
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.reading.access import canonical_url, check_url, source_banner
 from app.ingest.reading.fingerprint import bytes_hash, text_hash
+from app.ingest.reading.links import link_list, same_site_links
 from app.ingest.reading.registry import rule_for_url
 from app.ingest.reading.snapshots import SavedReading, known_fingerprint, remember, saved_reading
 from app.integrations import storage
@@ -102,6 +103,7 @@ class Fetched:
     error: str | None = None  # "<ExceptionType>: <message>" when no usable answer came back
     too_large: bool = False
     timed_out: bool = False
+    links: tuple[tuple[str, str], ...] = ()  # (text, url) same-site links, most wanted first
 
 
 async def fetch_page(url: str) -> Fetched:
@@ -130,7 +132,9 @@ async def fetch_page(url: str) -> Fetched:
     elif content_type.startswith("text/plain") or "markdown" in content_type:
         text = response.text
     else:
+        # trafilatura drops links, which left the researcher guessing paths (#480): they are kept apart.
         text = trafilatura.extract(response.text, url=url) or ""
+        return replace(seen, text=text, links=tuple(same_site_links(response.text, seen.final_url or url)))
     return replace(seen, text=text)
 
 
@@ -159,10 +163,29 @@ def _slow_reply(url: str, host: str) -> str:
             "Find the fact on another source, or record a gap that names this one.")
 
 
-def already_read(url: str, seen: SavedReading) -> str:
-    return (f"ALREADY READ: this version of {url} is unchanged since the saved research read it on "
-            f"{seen.researched_on:%d %b %Y}, and its facts are in that research. Not sent again. "
-            "If you need its text for an open item, call read_page again and the text comes back.")
+LINKS_HEADING = "Links on this page (same site, most relevant first; open these rather than guessing a path):"
+GONE = (404, 410)
+
+
+def already_read(url: str, seen: SavedReading, links: tuple[tuple[str, str], ...] = ()) -> str:
+    reply = (f"ALREADY READ: this version of {url} is unchanged since the saved research read it on "
+             f"{seen.researched_on:%d %b %Y}, and its facts are in that research. Not sent again. "
+             "If you need its text for an open item, call read_page again and the text comes back.")
+    return "\n\n".join(p for p in (reply, link_list(list(links), LINKS_HEADING)) if p)
+
+
+async def _gone_reply(url: str, status: int) -> str:
+    """A missing page, with its site's home page links: most 404s were guessed paths on a site that works."""
+    reply = f"ERROR: {url} returned HTTP {status}. Nothing was read."
+    parts = urlsplit(url)
+    home = f"{parts.scheme}://{parts.netloc}/"
+    if url.rstrip("/") == home.rstrip("/"):
+        return reply
+    page = await fetch_page(home)
+    _note_timeout(page)
+    links = link_list(list(page.links), f"The home page, {home}, links to these; open one, or search, "
+                                         "rather than guessing another path:")
+    return f"{reply}\n\n{links}" if links else reply
 
 
 async def read_page_text(url: str, subject: str | None = None) -> str:
@@ -176,6 +199,8 @@ async def read_page_text(url: str, subject: str | None = None) -> str:
         return page.refused
     if page.error:
         return f"ERROR: fetching {url} failed ({page.error})."
+    if page.status in GONE:
+        return await _gone_reply(url, page.status)
     if page.status is not None and not 200 <= page.status < 300:
         return f"ERROR: {url} returned HTTP {page.status}. Nothing was read."
     if page.document:
@@ -189,11 +214,12 @@ async def read_page_text(url: str, subject: str | None = None) -> str:
     fingerprint = text_hash(text)
     if seen := await saved_reading(url, fingerprint, subject):
         await remember(url, "page", fingerprint, seen.archive_key)
-        return already_read(url, seen)
+        return already_read(url, seen, page.links)
     # Kept as read, so a fact outlives a page that changes; silent like fetch_document's archive.
     await remember(url, "page", fingerprint, await archive_page(url, text))
-    # Uncut: a long page is evicted to a file the researcher pages back with read_file.
-    return source_banner(page.final_url or url) + text
+    # Uncut: a long page is evicted to a file the researcher pages back with read_file, so links go first.
+    links = link_list(list(page.links), LINKS_HEADING)
+    return source_banner(page.final_url or url) + (f"{links}\n\n" if links else "") + text
 
 
 def document_kind(content_type: str, url: str) -> str | None:
