@@ -9,11 +9,10 @@ from pathlib import Path
 from typing import Protocol
 from urllib.parse import urlsplit
 
-from app.ingest.reading.fetch import Fetched, document_hash, document_text, download, fetch_page
+from app.ingest.reading.fetch import GONE, Fetched, document_hash, document_text, download, fetch_page
 from app.ingest.reading.fingerprint import text_hash
 
 OK, UNVERIFIED, DEAD = "ok", "unverified", "dead"
-GONE = (404, 410)
 # A few at once: far quicker than one by one, and still no burst for a funder's site.
 FETCH_AT_ONCE = 3
 

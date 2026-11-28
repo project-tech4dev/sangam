@@ -20,6 +20,7 @@ from app.core.extract import extract_pdf_text
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.reading.access import canonical_url, check_url, source_banner
 from app.ingest.reading.fingerprint import bytes_hash, text_hash
+from app.ingest.reading.links import HEADING, MAX_LINKS, link_list, same_site_links
 from app.ingest.reading.registry import rule_for_url
 from app.ingest.reading.snapshots import SavedReading, known_fingerprint, remember, saved_reading
 from app.integrations import storage
@@ -102,9 +103,10 @@ class Fetched:
     error: str | None = None  # "<ExceptionType>: <message>" when no usable answer came back
     too_large: bool = False
     timed_out: bool = False
+    links: tuple[tuple[str, str], ...] = ()  # (text, url) same-site links, most wanted first
 
 
-async def fetch_page(url: str) -> Fetched:
+async def fetch_page(url: str, links: bool = False) -> Fetched:
     """Fetch and clean a page with the same access checks as research, and write nothing."""
     url = canonical_url(url)
     refusal = await check_url(url)
@@ -130,8 +132,22 @@ async def fetch_page(url: str) -> Fetched:
     elif content_type.startswith("text/plain") or "markdown" in content_type:
         text = response.text
     else:
+        # trafilatura drops links, which left the researcher guessing paths; they are kept apart.
         text = trafilatura.extract(response.text, url=url) or ""
+        if links:
+            return replace(seen, text=text, links=_readable_links(response.text, seen.final_url or url))
     return replace(seen, text=text)
+
+
+def _readable_links(html: str, url: str) -> tuple[tuple[str, str], ...]:
+    """A path-scoped source lists only its allowed paths; anything else would be a REFUSED read."""
+    links = same_site_links(html, url, limit=None)
+    start = rule_for_url(url)
+    if start and start[1].path_scoped:
+        source = start[1]
+        links = [(t, u) for t, u in links
+                 if (here := rule_for_url(u)) and here[1].key == source.key and source.path_refusal(u) is None]
+    return tuple(links[:MAX_LINKS])
 
 
 def _host(url: str) -> str:
@@ -159,23 +175,55 @@ def _slow_reply(url: str, host: str) -> str:
             "Find the fact on another source, or record a gap that names this one.")
 
 
+GONE = (404, 410)
+# A host's home page links, fetched once an hour however many of its guessed paths 404.
+_HOME_LINKS: dict[str, tuple[float, tuple[tuple[str, str], ...]]] = {}
+
+
 def already_read(url: str, seen: SavedReading) -> str:
     return (f"ALREADY READ: this version of {url} is unchanged since the saved research read it on "
             f"{seen.researched_on:%d %b %Y}, and its facts are in that research. Not sent again. "
             "If you need its text for an open item, call read_page again and the text comes back.")
 
 
+async def _home_links(home: str) -> tuple[tuple[str, str], ...]:
+    now = time.monotonic()
+    if (cached := _HOME_LINKS.get(home)) and now - cached[0] < SLOW_FOR:
+        return cached[1]
+    if slow_host(home):
+        return ()
+    page = await fetch_page(home, links=True)
+    _note_timeout(page)
+    if page.status is not None and 200 <= page.status < 300:  # a failed fetch is tried again next time
+        _HOME_LINKS[home] = (now, page.links)
+    return page.links
+
+
+async def _gone_reply(url: str, status: int) -> str:
+    """A missing page, with its site's home page links: most 404s were guessed paths on a site that works."""
+    reply = f"ERROR: {url} returned HTTP {status}. Nothing was read."
+    parts = urlsplit(url)
+    home = f"{parts.scheme}://{parts.netloc}/"
+    if url.rstrip("/") == home.rstrip("/"):
+        return reply
+    links = link_list(list(await _home_links(home)), f"The home page, {home}, links to these; open one, or "
+                                                     "search, rather than guessing another path:")
+    return f"{reply}\n\n{links}" if links else reply
+
+
 async def read_page_text(url: str, subject: str | None = None) -> str:
     """`subject` is the slug of the saved research a Scout top-up builds on; a page it read is not sent again."""
     if host := slow_host(canonical_url(url)):
         return _slow_reply(canonical_url(url), host)
-    page = await fetch_page(url)
+    page = await fetch_page(url, links=True)
     _note_timeout(page)
     url = page.url
     if page.refused:
         return page.refused
     if page.error:
         return f"ERROR: fetching {url} failed ({page.error})."
+    if page.status in GONE:
+        return await _gone_reply(url, page.status)
     if page.status is not None and not 200 <= page.status < 300:
         return f"ERROR: {url} returned HTTP {page.status}. Nothing was read."
     if page.document:
@@ -184,16 +232,18 @@ async def read_page_text(url: str, subject: str | None = None) -> str:
             f"then read_document_pages to read it."
         )
     text = page.text
+    links = link_list(list(page.links), HEADING)
     if not text.strip():
-        return f"No readable text could be extracted from {url}."
+        # A page built in JavaScript often still has its menu: the links are what the researcher needs.
+        return f"No readable text could be extracted from {url}." + (f"\n\n{links}" if links else "")
     fingerprint = text_hash(text)
     if seen := await saved_reading(url, fingerprint, subject):
         await remember(url, "page", fingerprint, seen.archive_key)
         return already_read(url, seen)
     # Kept as read, so a fact outlives a page that changes; silent like fetch_document's archive.
     await remember(url, "page", fingerprint, await archive_page(url, text))
-    # Uncut: a long page is evicted to a file the researcher pages back with read_file.
-    return source_banner(page.final_url or url) + text
+    # Uncut: a long page is evicted to a file the researcher pages back with read_file, so links go first.
+    return source_banner(page.final_url or url) + (f"{links}\n\n" if links else "") + text
 
 
 def document_kind(content_type: str, url: str) -> str | None:
