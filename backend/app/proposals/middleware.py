@@ -16,6 +16,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 
 from app.agentkit.middleware import AgUiState
 from app.ingest.reading.access import canonical_url
+from app.ingest.reading.links import without_links
 from app.integrations.storage import safe_name
 from app.proposals import context
 from app.proposals import facts as fact_rules
@@ -104,8 +105,8 @@ class PublicGuard(AgentMiddleware):
             if name in ("read_page", "fetch_document") and text.startswith(("REFUSED", "ERROR", f"{name} failed")):
                 if host := urlparse(str(args.get("url") or "")).hostname:
                     run.unopened.add(host)
-            elif name == "read_page":
-                run.pages[page_key(args.get("url"))] = text
+            elif name == "read_page":  # a link's label is not a quote from the page
+                run.pages[page_key(args.get("url"))] = without_links(text)
             elif name == "fetch_document" and (m := _SAVED.match(text)):
                 run.files[m.group(1)] = page_key(args.get("url"))
             # A find lists snippets, not pages read, so a quote from one must not pass the quote check.

@@ -20,7 +20,7 @@ from app.core.extract import extract_pdf_text
 from app.ingest.adapters._http import TIMEOUT_SECONDS, USER_AGENT
 from app.ingest.reading.access import canonical_url, check_url, source_banner
 from app.ingest.reading.fingerprint import bytes_hash, text_hash
-from app.ingest.reading.links import link_list, same_site_links
+from app.ingest.reading.links import HEADING, link_list, same_site_links
 from app.ingest.reading.registry import rule_for_url
 from app.ingest.reading.snapshots import SavedReading, known_fingerprint, remember, saved_reading
 from app.integrations import storage
@@ -106,7 +106,7 @@ class Fetched:
     links: tuple[tuple[str, str], ...] = ()  # (text, url) same-site links, most wanted first
 
 
-async def fetch_page(url: str) -> Fetched:
+async def fetch_page(url: str, links: bool = False) -> Fetched:
     """Fetch and clean a page with the same access checks as research, and write nothing."""
     url = canonical_url(url)
     refusal = await check_url(url)
@@ -134,7 +134,8 @@ async def fetch_page(url: str) -> Fetched:
     else:
         # trafilatura drops links, which left the researcher guessing paths; they are kept apart.
         text = trafilatura.extract(response.text, url=url) or ""
-        return replace(seen, text=text, links=_readable_links(response.text, seen.final_url or url))
+        if links:
+            return replace(seen, text=text, links=_readable_links(response.text, seen.final_url or url))
     return replace(seen, text=text)
 
 
@@ -172,15 +173,27 @@ def _slow_reply(url: str, host: str) -> str:
             "Find the fact on another source, or record a gap that names this one.")
 
 
-LINKS_HEADING = "Links on this page (same site, most relevant first; open these rather than guessing a path):"
 GONE = (404, 410)
+# A host's home page links, fetched once an hour however many of its guessed paths 404.
+_HOME_LINKS: dict[str, tuple[float, tuple[tuple[str, str], ...]]] = {}
 
 
-def already_read(url: str, seen: SavedReading, links: tuple[tuple[str, str], ...] = ()) -> str:
-    reply = (f"ALREADY READ: this version of {url} is unchanged since the saved research read it on "
-             f"{seen.researched_on:%d %b %Y}, and its facts are in that research. Not sent again. "
-             "If you need its text for an open item, call read_page again and the text comes back.")
-    return "\n\n".join(p for p in (reply, link_list(list(links), LINKS_HEADING)) if p)
+def already_read(url: str, seen: SavedReading) -> str:
+    return (f"ALREADY READ: this version of {url} is unchanged since the saved research read it on "
+            f"{seen.researched_on:%d %b %Y}, and its facts are in that research. Not sent again. "
+            "If you need its text for an open item, call read_page again and the text comes back.")
+
+
+async def _home_links(home: str) -> tuple[tuple[str, str], ...]:
+    now = time.monotonic()
+    if (cached := _HOME_LINKS.get(home)) and now - cached[0] < SLOW_FOR:
+        return cached[1]
+    if slow_host(home):
+        return ()
+    page = await fetch_page(home, links=True)
+    _note_timeout(page)
+    _HOME_LINKS[home] = (now, page.links)
+    return page.links
 
 
 async def _gone_reply(url: str, status: int) -> str:
@@ -190,10 +203,8 @@ async def _gone_reply(url: str, status: int) -> str:
     home = f"{parts.scheme}://{parts.netloc}/"
     if url.rstrip("/") == home.rstrip("/"):
         return reply
-    page = await fetch_page(home)
-    _note_timeout(page)
-    links = link_list(list(page.links), f"The home page, {home}, links to these; open one, or search, "
-                                         "rather than guessing another path:")
+    links = link_list(list(await _home_links(home)), f"The home page, {home}, links to these; open one, or "
+                                                     "search, rather than guessing another path:")
     return f"{reply}\n\n{links}" if links else reply
 
 
@@ -201,7 +212,7 @@ async def read_page_text(url: str, subject: str | None = None) -> str:
     """`subject` is the slug of the saved research a Scout top-up builds on; a page it read is not sent again."""
     if host := slow_host(canonical_url(url)):
         return _slow_reply(canonical_url(url), host)
-    page = await fetch_page(url)
+    page = await fetch_page(url, links=True)
     _note_timeout(page)
     url = page.url
     if page.refused:
@@ -218,16 +229,17 @@ async def read_page_text(url: str, subject: str | None = None) -> str:
             f"then read_document_pages to read it."
         )
     text = page.text
+    links = link_list(list(page.links), HEADING)
     if not text.strip():
-        return f"No readable text could be extracted from {url}."
+        # A page built in JavaScript often still has its menu: the links are what the researcher needs.
+        return f"No readable text could be extracted from {url}." + (f"\n\n{links}" if links else "")
     fingerprint = text_hash(text)
     if seen := await saved_reading(url, fingerprint, subject):
         await remember(url, "page", fingerprint, seen.archive_key)
-        return already_read(url, seen, page.links)
+        return already_read(url, seen)
     # Kept as read, so a fact outlives a page that changes; silent like fetch_document's archive.
     await remember(url, "page", fingerprint, await archive_page(url, text))
     # Uncut: a long page is evicted to a file the researcher pages back with read_file, so links go first.
-    links = link_list(list(page.links), LINKS_HEADING)
     return source_banner(page.final_url or url) + (f"{links}\n\n" if links else "") + text
 
 

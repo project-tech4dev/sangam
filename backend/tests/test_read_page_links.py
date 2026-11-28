@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from app.ingest.reading import fetch, snapshots
-from app.ingest.reading.links import MAX_LABEL, MAX_LINKS, link_list, same_site_links
+from app.ingest.reading.links import MAX_LABEL, MAX_LINKS, link_list, same_site_links, without_links
 from app.ingest.tools import research_tools
 
 HOME = "https://www.iocl.com/"
@@ -36,6 +36,7 @@ def offline(monkeypatch):
         return key
 
     fetch._TIMEOUTS.clear()
+    fetch._HOME_LINKS.clear()
     monkeypatch.setattr(fetch, "check_url", allowed)
     monkeypatch.setattr(fetch.storage, "upload", upload)
 
@@ -74,6 +75,22 @@ class TestSameSiteLinks:
     def test_a_page_with_no_links(self):
         assert same_site_links("<p>nothing</p>", HOME) == []
 
+    def test_a_malformed_href_is_skipped_not_fatal(self):
+        assert same_site_links('<a href="http://[oops/x">Bad</a><a href="/csr">CSR</a>', HOME) == [
+            ("CSR", "https://www.iocl.com/csr")]
+
+    def test_a_trailing_slash_is_one_link(self):
+        assert same_site_links('<a href="/csr">CSR</a><a href="/csr/">CSR</a>', HOME) == [
+            ("CSR", "https://www.iocl.com/csr")]
+
+    def test_a_parent_domain_is_another_site(self):
+        assert same_site_links('<a href="https://gov.in/x">Portal</a>', "https://www.india.gov.in/") == []
+
+    def test_a_quote_check_sees_the_page_without_its_links(self):
+        reply = link_list([("CSR Policy", "https://www.iocl.com/csr")], fetch.HEADING) + "\n\nIndian Oil spent Rs 400 crore."
+        assert without_links(reply) == "Indian Oil spent Rs 400 crore."
+        assert without_links("no list here") == "no list here"
+
 
 class TestReadPage:
     async def test_a_page_comes_back_with_its_links_before_the_text(self, monkeypatch):
@@ -107,11 +124,27 @@ class TestReadPage:
         await research_tools.read_page.ainvoke({"url": HOME})
         assert calls == [HOME]
 
+    async def test_two_404s_on_one_site_fetch_its_home_page_once(self, monkeypatch):
+        calls = []
+
+        def handler(r):
+            calls.append(r.url.path)
+            return httpx.Response(200, html=NAV) if r.url.path == "/" else httpx.Response(404)
+        serve(monkeypatch, handler)
+        for path in ("/csr", "/annual-reports"):
+            assert "- CSR:" in await research_tools.read_page.ainvoke({"url": f"https://www.iocl.com{path}"})
+        assert calls == ["/csr", "/", "/annual-reports"]
+
+    async def test_a_page_with_no_text_still_gives_its_links(self, monkeypatch):
+        serve(monkeypatch, lambda r: httpx.Response(200, html='<nav><a href="/csr">CSR</a></nav><div id="app"></div>'))
+        out = await research_tools.read_page.ainvoke({"url": HOME})
+        assert out.startswith("No readable text") and "- CSR: https://www.iocl.com/csr" in out
+
     async def test_a_403_is_unchanged(self, monkeypatch):
         serve(monkeypatch, lambda r: httpx.Response(403))
         assert await research_tools.read_page.ainvoke({"url": HOME}) == f"ERROR: {HOME} returned HTTP 403. Nothing was read."
 
-    async def test_a_page_already_read_still_gives_its_links(self, monkeypatch):
+    async def test_a_page_already_read_sends_no_links(self, monkeypatch):
         seen = snapshots.SavedReading(archive_key="aa/home.md", researched_on=date(2026, 11, 26))
 
         async def saved(url, fingerprint, subject):
@@ -123,8 +156,7 @@ class TestReadPage:
         monkeypatch.setattr(fetch, "remember", remember)
         serve(monkeypatch, lambda r: httpx.Response(200, html=NAV))
         out = await fetch.read_page_text(HOME, "indian-oil")
-        assert out.startswith("ALREADY READ") and "Rs 400 crore" not in out
-        assert "- CSR: https://www.iocl.com/pages/csr-overview" in out
+        assert out.startswith("ALREADY READ") and "Rs 400 crore" not in out and "- CSR:" not in out
 
     async def test_a_path_scoped_source_lists_only_its_allowed_paths(self, monkeypatch):
         scoped = SimpleNamespace(path_scoped=True, key="give_do", name="Give.do")
